@@ -1,0 +1,12 @@
+{
+  "monaca": {
+    "default_api_root": "https://ide.monaca.mobi/api"
+  },
+  "localkit": {
+    "http_server_port": 8001,
+    "beacon_send_port": 1337,
+    "beacon_send_interval": 200,
+    "version": "2.0",
+    "type": 3
+  }
+}
