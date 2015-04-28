@@ -1623,7 +1623,7 @@
         fs.exists(parentDir, function(exists) {
           if (!exists) {
             try {
-              shell.mkdir('-p', path.dirname(parentDir));
+              shell.mkdir('-p', parentDir);
             }
             catch (err) {
               return deferred.reject(err);
