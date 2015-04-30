@@ -552,7 +552,7 @@
             deferred.reject(error);
           }
         }
-      },
+      }.bind(this),
       function(error) {
         deferred.reject(error);
       }
