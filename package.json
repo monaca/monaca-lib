@@ -28,6 +28,7 @@
     "jasmine-node": "^1.14.5"
   },
   "dependencies": {
+    "adbkit": "^2.2.1",
     "async": "^0.9.0",
     "buffer-crc32": "^0.2.4",
     "cordova": "^5.0.0",
@@ -35,6 +36,7 @@
     "lockfile": "^1.0.0",
     "mv": "^2.0.3",
     "nconf": "^0.7.1",
+    "portfinder": "^0.4.0",
     "q": "^1.1.2",
     "request": "^2.53.0",
     "rimraf": "^2.2.8",
