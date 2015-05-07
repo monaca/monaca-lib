@@ -1,11 +1,12 @@
 (function() {
-  'use strict';   
+  'use strict';
 
   // imports
   var qs = require('querystring'),
     path = require('path'),
     fs = require('fs'),
-    rc4 = require(path.join(__dirname, 'rc4'));
+    rc4 = require(path.join(__dirname, 'rc4')),
+    inspector = require(path.join(__dirname, '..', 'inspector'));
 
   var PAIRING_KEYS_FILE = path.join(
     process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'],
@@ -20,7 +21,8 @@
       '/api/pairing/request': this.pairingApi.bind(this),
       '/api/projects': this.projectsApi.bind(this),
       '/api/project/:project_id/file/tree': this.fileTreeApi.bind(this),
-      '/api/project/:project_id/file/read': this.fileReadApi.bind(this)
+      '/api/project/:project_id/file/read': this.fileReadApi.bind(this),
+      '/api/debugger/inspect': this.inspectApi.bind(this)
     };
   };
 
@@ -100,7 +102,7 @@
       requestToken = data.requestToken,
       clientIdHash = data.clientIdHash;
 
-    if (!requestToken || !clientIdHash) {  
+    if (!requestToken || !clientIdHash) {
       if (this.localkit.verbose) {
         console.log('Invalid pairing paramters.');
       }
@@ -252,6 +254,32 @@
       }
     }.bind(this));
   };
+
+  Api.prototype.inspectApi = function(request, response) {
+    if (!this.validatePairing(request)) {
+      this.sendJsonResponse(response, 401, 'Not paired with debugger.');
+      return;
+    }
+
+    var data = qs.parse((request.url + '?').split('?')[1]),
+      pairingKey = this.getPairingKey(request),
+      deviceId = data.deviceId,
+      abstractSocketAddress = data.abstractSocketAddress,
+      fileUrl = data.fileUrl;
+
+    if (!deviceId || !abstractSocketAddress || !fileUrl) {
+      return this.sendJsonResponse(response, 400, 'Parameters missing.', undefined, true, pairingKey);
+    }
+
+    inspector.launch(deviceId, abstractSocketAddress, fileUrl).then(
+      function() {
+        return this.sendJsonResponse(response, 200, 'Inspection started.', undefined, true, pairingKey);
+      }.bind(this),
+      function(error) {
+        return this.sendJsonResponse(response, 500, 'Unable to start inspector.', undefined, true, pairingKey);
+      }.bind(this)
+    );
+  }
 
   module.exports = Api;
 })();

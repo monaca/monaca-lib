@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Chrome DevTools</title>
+
+    <style>
+      body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      #content {
+        position: absolute;
+        left: 0px;
+        right: 0px;
+        bottom: 0px;
+        top: 0px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content">
+      <iframe frameborder="0" id="devtools" width="100%" height="100%"></iframe>
+    </div>
+    <script>
+      window.gui = require('nw.gui');
+      var webSocketUrl = require('nw.gui').App.argv[0].replace(/^ws:\/\//, ''),
+
+      srcUrl = 'devtools/front_end/inspector.html?ws=' + webSocketUrl;
+      document.getElementById('devtools').setAttribute('src', srcUrl);
+
+      window.focus();
+    </script>
+  </body>
+</html>

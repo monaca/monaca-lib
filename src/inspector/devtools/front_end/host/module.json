@@ -1,0 +1,12 @@
+{
+    "dependencies": [
+        "common",
+        "platform"
+    ],
+    "scripts": [
+        "NwjsInspectorFrontendHost.js",
+        "InspectorFrontendHost.js",
+        "Platform.js",
+        "UserMetrics.js"
+    ]
+}
