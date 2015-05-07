@@ -10,7 +10,7 @@
     http = require('http');
 
   var nwBin = require('nw').findpath(),
-    app = path.join(__dirname, 'inspector');
+    app = path.join(__dirname, 'inspector-app');
 
   var getPort = function() {
     var deferred = Q.defer();
