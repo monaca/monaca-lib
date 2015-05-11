@@ -1886,7 +1886,6 @@
    * @memberof Monaca
    * @description
    *   Get all config key-value pairs.
-   * @param {String}
    * @return {Promise}
    * @example
    *   monaca.getAllConfigs().then(
@@ -1922,6 +1921,43 @@
     );
 
     return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Utility method to check if a folder is a Cordova project.
+   * @param {String} projectDir - Project directory.
+   * @return {Promise}
+   */
+  Monaca.prototype.isCordovaProject = function(projectDir) {
+    var exists = function(dir) {
+      var deferred = Q.defer();
+
+      fs.exists(dir, function(exists) {
+        if (exists) {
+          deferred.resolve();
+        }
+        else {
+          deferred.reject();
+        }
+      });
+
+      return deferred.promise;
+    }
+
+    return Q.all([
+      exists(path.join(projectDir, 'www')),
+      exists(path.join(projectDir, 'config.xml'))
+    ]).then(
+      function() {
+        return projectDir + ' is a Cordova project.';
+      },
+      function() {
+        return Q.reject(projectDir + ' is not a Cordova project.');
+      }
+    );
   };
 
   module.exports = Monaca;
