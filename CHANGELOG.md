@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v1.0.3-dev
+----
+ * monaca: Added `options` parameter to `Monaca.login()` to specify version.
+
 v1.0.2
 ----
  * monaca: Fixed bug where .cordova directory was not created correctly when missing.

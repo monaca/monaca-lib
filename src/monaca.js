@@ -3,6 +3,7 @@
 
   var Q = require('q'),
     request = require('request'),
+    os = require('os'),
     path = require('path'),
     fs = require('fs'),
     shell = require('shelljs'),
@@ -73,6 +74,17 @@
      */
     Object.defineProperty(this, 'version', {
       value: require(path.join(__dirname, '..', 'package.json')).version,
+      writable: false
+    });
+
+    /**
+     * @description
+     *   Package name.
+     * @name Monaca#packageName
+     * @type string
+     */
+    Object.defineProperty(this, 'packageName', {
+      value: require(path.join(__dirname, '..', 'package.json')).name,
       writable: false
     });
 
@@ -398,10 +410,19 @@
   Monaca.prototype._login = function() {
     var deferred = Q.defer();
 
+    var options;
+    if (arguments.length === 3) {
+      options = arguments[2];
+    }
+    else {
+      options = {};
+    }
+
     var form = {
-        language: 'en',
+      language: 'en',
       clientType: 'local',
-      version: this.version
+      version: options.version || this.packageName + ' ' + this.version,
+      os: os.platform()
     };
 
     if (arguments.length === 1) {
@@ -532,6 +553,8 @@
    *   be used to login.
    * @param {string} email - A Monaca account email.
    * @param {string} password - Password associated with the account.
+   * @param {object} [options] - Additional options.
+   * @param {string} [options.version] - App name and version to send to the Monaca API. Defaults to "monaca-lib x.y.z".
    * @return {Promise}
    * @example
    *   monaca.login('my@email.com', 'password').then(
@@ -543,8 +566,13 @@
    *     }
    *   );
    */
-  Monaca.prototype.login = function(email, password) {
-    return this._login(email, password);
+  Monaca.prototype.login = function(email, password, options) {
+    if (options) {
+      return this._login(email, password, options);
+    }
+    else {
+      return this._login(email, password);
+    }
   };
 
   /**
