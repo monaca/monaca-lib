@@ -2,7 +2,7 @@
 CHANGELOG
 ====
 
-v1.0.3-dev
+v1.0.3
 ----
  * monaca: Added `options` parameter to `Monaca.login()` to specify version.
  * monaca: Added `Monaca.isCordovaProject()` to check if a directory is a Cordova project.

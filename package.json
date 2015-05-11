@@ -1,6 +1,6 @@
 {
   "name": "monaca-lib",
-  "version": "1.0.3-dev",
+  "version": "1.0.3",
   "description": "Monaca cloud API bindings for JavaScript",
   "main": "./src/main.js",
   "scripts": {
