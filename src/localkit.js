@@ -533,10 +533,13 @@
    * @description
    *   Send a start project event to the debugger.
    * @param {String} projectPath
+   * @param {Object} [options]
+   * @param {String} [options.deviceId]
    * @return {Promise}
    */
-  Localkit.prototype.startProject = function(projectPath) {
-    var deferred = Q.defer();
+  Localkit.prototype.startProject = function(projectPath, options) {
+    var deferred = Q.defer(),
+      options = options || {};
 
     this.monaca.getLocalProjectId(projectPath).then(
       function(projectId) {
@@ -545,7 +548,7 @@
         }
         else {
           try {
-            this.projectEvents.sendStartEvent(projectId);
+            this.projectEvents.sendStartEvent(projectId, options.clientId);
             deferred.resolve(projectId);
           }
           catch (error) {

@@ -59,7 +59,8 @@
 
       var clientObject = {
         client: client,
-        pairingKey: pairingKey
+        pairingKey: pairingKey,
+        clientId: clientIdHash
       };
 
       this._clients.push(clientObject);
@@ -125,11 +126,28 @@
     }
   };
 
-  ProjectEvents.prototype.sendStartEvent = function(projectId) {
-    this.sendMessage({
-      action: 'start',
-      projectId: projectId
-    });
+  ProjectEvents.prototype.sendStartEvent = function(projectId, clientId) {
+    if (clientId) {
+      var client = this._clients.filter(function(client) {
+        return client.clientId === clientId;
+      })[0];
+
+      if (client) {
+        this.sendMessage({
+          action: 'start',
+          projectId: projectId
+        }, client);
+      }
+      else {
+        throw new Error('No such client: ' + clientId);
+      }
+    }
+    else {
+      this.sendMessage({
+        action: 'start',
+        projectId: projectId
+      });
+    }
   };
 
   ProjectEvents.prototype.sendExitEvent = function(projectId) {
