@@ -633,7 +633,7 @@
    * @memberof Monaca
    * @name getLatestNews
    * @description
-   *   fetches latest news and status on known issues from monaca cloud
+   *   Fetches latest news and status on known issues from Monaca Cloud.
    * @param {object} [options] - configuration options
    * @return {Promise}
    */

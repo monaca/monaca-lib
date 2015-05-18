@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v1.0.5
+----
+ * monaca: Added `Monaca.getLatestNews()` to fetch latest news and status on known issues from Monaca Cloud.
+
 v1.0.4
 ----
  * localkit: Added `options.clientId` to `Localkit.startProject()` method. Used to start a project on one device instead of sending the start signal to all connected devices.
