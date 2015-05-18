@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v1.0.4
+----
+ * localkit: Added `options.clientId` to `Localkit.startProject()` method. Used to start a project on one device instead of sending the start signal to all connected devices.
+
 v1.0.3
 ----
  * monaca: Added `options` parameter to `Monaca.login()` to specify version.
