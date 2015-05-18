@@ -628,7 +628,7 @@
     return deferred.promise;
   };
 
-    /**
+  /**
    * @method
    * @memberof Monaca
    * @name getLatestNews
@@ -639,7 +639,6 @@
    */
   Monaca.prototype.getLatestNews = function(options) {
     var deferred = Q.defer();
-
     this._get('/user/info/news', options ? options : {} ).then(
       function(response) {
         deferred.resolve(JSON.parse(response));
