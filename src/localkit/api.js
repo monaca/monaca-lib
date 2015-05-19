@@ -73,7 +73,7 @@
         }
       }
     }
-    
+
     return data;
   };
 
@@ -263,15 +263,18 @@
 
     var data = qs.parse((request.url + '?').split('?')[1]),
       pairingKey = this.getPairingKey(request),
-      deviceId = data.deviceId,
-      abstractSocketAddress = data.abstractSocketAddress,
       fileUrl = data.fileUrl;
 
-    if (!deviceId || !abstractSocketAddress || !fileUrl) {
+    if (!fileUrl) {
       return this.sendJsonResponse(response, 400, 'Parameters missing.', undefined, true, pairingKey);
     }
 
-    inspector.launch(deviceId, abstractSocketAddress, fileUrl).then(
+    var platform = data.hasOwnProperty('abstractSocketAddress') ? 'android' : 'ios';
+
+    inspector.launch({
+      type: platform,
+      pageUrl: fileUrl
+    }).then(
       function() {
         return this.sendJsonResponse(response, 200, 'Inspection started.', undefined, true, pairingKey);
       }.bind(this),

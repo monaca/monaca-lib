@@ -6,9 +6,12 @@
     spawn = require('child_process').spawn,
     request = require('request'),
     portfinder = require('portfinder'),
-    adb = require('adbkit').createClient(),
+    adb = require('adbkit'),
+    client = adb.createClient(),
     Q = require('q'),
     http = require('http');
+
+  portfinder.basePort = 21538;
 
   var nwBin = require('nw').findpath(),
     app = path.join(__dirname, 'inspector-app');
@@ -23,42 +26,6 @@
       else {
         deferred.resolve(port);
       }
-    });
-
-    return deferred.promise;
-  };
-
-  var getWebSocketUrl = function(port, pageUrl) {
-    var deferred = Q.defer();
-
-    http.get('http://localhost:' + port + '/json', function(res) {
-      var data = '';
-
-      res.on('data', function(chunk) {
-        data += chunk;
-      });
-
-      res.on('end', function() {
-        try {
-          var pages = JSON.parse(data);
-
-          for (var i = 0; i < pages.length; i++) {
-            var page = pages[i];
-
-            if (page.url.trim() === pageUrl.trim()) {
-              return deferred.resolve(page.webSocketDebuggerUrl);
-            }
-          }
-
-          deferred.reject('No debugger found.');
-        }
-        catch (err) {
-          deferred.reject(err);
-        }
-      });
-    })
-    .on('error', function(err) {
-      deferred.reject(err);
     });
 
     return deferred.promise;
@@ -94,38 +61,40 @@
 
   var firstSuccess = function(promises) {
     var deferred = Q.defer(),
-      success = [], failure = [];
+      successes = [], errors = [];
+
+    var onSuccess = function(data) {
+      successes.push(data);
+    };
+
+    var onError = function(error) {
+      errors.push(error);
+    };
+
+    var onComplete = function() {
+      if (successes.length + errors.length === promises.length) {
+        if (successes.length) {
+          deferred.resolve(successes[0]);
+        }
+        else {
+          deferred.reject(errors[0]);
+        }
+      }
+    };
 
     for (var i = 0, l = promises.length; i < l; i ++) {
-      var promise = promises[i];
-
-      promise.then(
-        function(data) {
-          success.push(data);
-        },
-        function(error) {
-          failure.push(error);
-        }
-      ).finally(
-        function() {
-          if (success.length + failure.length === promises.length) {
-            if (success.length) {
-              deferred.resolve(success[0]);
-            }
-            else {
-              deferred.reject(failure[0]);
-            }
-          }
-        }
-      );
+      promises[i]
+        .then(onSuccess, onError)
+        .finally(onComplete);
     }
 
     return deferred.promise;
   };
 
-  var searchDeviceForUrl = function(infoUrl, pageUrl, retries) {
-    var deferred = Q.defer(),
-      retries = retries || 0;
+  var searchDeviceForUrl = function(infoUrl, options, retries) {
+    var deferred = Q.defer();
+
+    retries = retries || 0;
 
     request({
       url: infoUrl,
@@ -138,11 +107,11 @@
         deferred.reject(response.statusMessage);
       }
       else if (body.length === 0) {
-        // Retry
+        // Retry since sometimes it takes some time for the device to turn up in the list.
         if (retries < 20) {
           setTimeout(function() {
-            deferred.resolve(searchDeviceForUrl(infoUrl, pageUrl, retries + 1));
-          }, 50);
+            deferred.resolve(searchDeviceForUrl(infoUrl, options, retries + 1));
+          }, 500);
         }
         else {
           deferred.reject('Page not found.');
@@ -150,7 +119,17 @@
       }
       else {
         var result = body.filter(function(page) {
-          return page.url === pageUrl;
+          var ret = true;
+
+          if (options.pageUrl) {
+            ret = ret && options.pageUrl.trim() === page.url.trim();
+          }
+
+          if (options.projectId) {
+            ret = ret && page.url.indexOf('/' + options.projectId.trim() + '/') >= 0;
+          }
+
+          return ret;
         });
 
         if (result[0]) {
@@ -165,7 +144,7 @@
     return deferred.promise;
   };
 
-  var findWebSocketUrl = function(listUrl, pageUrl) {
+  var findWebSocketUrl = function(listUrl, options) {
     var deferred = Q.defer();
 
     request({
@@ -179,12 +158,9 @@
         return deferred.reject(response.statusMessage);
       }
 
-      body.push({});
-      body[1].url = 'localhost:123';
-
       var promises = body.map(function(device) {
         var infoUrl = 'http://' + device.url + '/json';
-        return searchDeviceForUrl(infoUrl, pageUrl);
+        return searchDeviceForUrl(infoUrl, options);
       });
 
       firstSuccess(promises).then(
@@ -200,90 +176,150 @@
     return deferred.promise;
   };
 
+  var listUrl;
+
+  getPort()
+    .then(startProxy)
+    .then(
+      function(url) {
+        listUrl = url;
+      }
+    );
+
   var launchIOS = function(options) {
-    return getPort()
-      .then(startProxy)
+      return findWebSocketUrl(listUrl, options)
+        .then(startDevTools);
+  };
+
+  var findAbstractSockets = function() {
+    return client.listDevices()
       .then(
-        function(listUrl) {
-          return findWebSocketUrl(listUrl, options.pageUrl);
-        }
-      )
-      .then(startDevTools)
-      .then(
-        function(bla) {
-          console.log('sucess', bla);
-        },
-        function(bla) {
-          console.log('error', bla);
+        function(devices) {
+          var promises = devices
+            .map(
+              function(device) {
+                return client.shell(device.id, 'cat /proc/net/unix | grep -a remote')
+                  .then(adb.util.readAll)
+                  .then(
+                    function(output) {
+                      return [device.id, output.toString()];
+                    }
+                  );
+              }
+            );
+
+          return Q.all(promises).then(
+            function(results) {
+              var sockets = {};
+
+              for (var i = 0, l = results.length; i < l; i ++) {
+                var deviceId = results[i][0],
+                  output = results[i][1];
+
+                var matches = output.match(/@[^\s]+/g) || [];
+
+                sockets[deviceId] = matches
+                  .map(function(socket) {
+                    return socket.replace(/^@/, 'localabstract:');
+                  });
+              }
+              return sockets;
+            }
+          );
         }
       );
   };
 
-  var launch2 = function(options) {
+  var forwardAndroidDevice = function(deviceId, abstractSocket) {
+    return getPort()
+      .then(
+        function(port) {
+          return client.forward(deviceId, 'tcp:' + port, abstractSocket)
+            .then(
+              function() {
+                return 'http://localhost:' + port + '/json';
+              }
+            );
+        }
+      );
+  };
+
+  var removeForwarding = function() {
+    var deferred = Q.defer();
+
+    var proc = spawn('adb', ['forward', '--remove-all']);
+
+    proc.on('exit', function(code, signal) {
+      if (code === 0) {
+        deferred.resolve();
+      }
+      else {
+        deferred.reject('Unable to stop port forwarding.');
+      }
+    });
+
+    proc.on('error', function() {
+      deferred.reject('Unable to start adb. Please install it.');
+    });
+
+    return deferred.promise;
+  };
+
+  var launchAndroid = function(options) {
+    return removeForwarding()
+      .then(findAbstractSockets)
+      .then(
+        function(abstractSockets) {
+          var promises = [];
+
+          var deviceIds = Object.keys(abstractSockets);
+
+          for (var i = 0, l = deviceIds.length; i < l; i ++) {
+            var deviceId = deviceIds[i];
+
+            if (abstractSockets.hasOwnProperty(deviceId)) {
+              var sockets = abstractSockets[deviceId];
+
+              for (var j = 0, l = sockets.length; j < l; j ++) {
+                var abstractSocket = sockets[j];
+
+                promises.push(forwardAndroidDevice(deviceId, abstractSocket));
+              }
+            }
+          }
+
+          return Q.all(promises);
+        }
+      )
+      .then(
+        function(urls) {
+          var promises = urls
+            .map(
+              function(url) {
+                return searchDeviceForUrl(url, options);
+              }
+            );
+
+          return firstSuccess(promises);
+        }
+      )
+      .then(startDevTools);
+  };
+
+  var launch = function(options) {
     options = options || {};
 
     switch (options.type) {
       case 'ios':
         return launchIOS(options);
-        break;
       case 'android':
         return launchAndroid(options);
-        break;
       default:
         return Q.reject(options.type ? 'No such device: ' + options.type : 'You must supply a device type.');
     }
   };
 
-  var launch = function(deviceId, socketName, pageUrl) {
-    var deferred = Q.defer(),
-      port;
-
-    if (!deviceId || !socketName || !pageUrl) {
-      deferred.reject('Parameters missing.');
-    }
-    else {
-      getPort()
-      .catch(
-        function() {
-          return 9222;
-        }
-      )
-      .then(
-        function(_port) {
-          port = _port;
-          return adb.forward(deviceId, 'tcp:' + port, 'localabstract:' + socketName);
-        }
-      )
-      .then(
-        function() {
-          return getWebSocketUrl(port, pageUrl);
-        },
-        function(err) {
-          deferred.reject(err);
-        }
-      )
-      .then(
-        function(webSocketUrl) {
-          return startDevTools(webSocketUrl);
-        },
-        function(err) {
-          deferred.reject(err);
-        }
-      ).then(
-        function() {
-          deferred.resolve();
-        },
-        function(err) {
-          deferred.reject(err);
-        }
-      );
-    }
-
-    return deferred.promise;
-  };
-
   module.exports = {
-    launch: launch,
-    launch2: launch2
+    launch: launch
   };
 })();
