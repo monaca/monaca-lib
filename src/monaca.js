@@ -631,6 +631,28 @@
   /**
    * @method
    * @memberof Monaca
+   * @name getLatestNews
+   * @description
+   *   Fetches latest news and status on known issues from Monaca Cloud.
+   * @param {object} [options] - configuration options
+   * @return {Promise}
+   */
+  Monaca.prototype.getLatestNews = function(options) {
+    var deferred = Q.defer();
+    this._get('/user/info/news', options ? options : {} ).then(
+      function(response) {
+        deferred.resolve(JSON.parse(response));
+      },
+      function(error) {
+        deferred.reject(error);
+      }
+    );
+    return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
    * @description
    *   Fetch a list of all available projects.
    * @return {Promise}
