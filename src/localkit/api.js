@@ -276,14 +276,10 @@
       pageUrl: fileUrl
     }).then(
       function() {
-        var statusCode = platform === 'ios' ? 500 : 200;
-
-        return this.sendJsonResponse(response, statusCode, 'Inspection started.', undefined, true, pairingKey);
+        return this.sendJsonResponse(response, 200, 'Inspection started.', undefined, true, pairingKey);
       }.bind(this),
       function(error) {
-        var statusCode = platform === 'ios' ? 200 : 500;
-
-        return this.sendJsonResponse(response, statusCode, 'Unable to start inspector.', undefined, true, pairingKey);
+        return this.sendJsonResponse(response, 500, 'Unable to start inspector.', undefined, true, pairingKey);
       }.bind(this)
     );
   }
