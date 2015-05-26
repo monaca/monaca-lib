@@ -2,6 +2,7 @@
   'use strict';
 
   var path = require('path'),
+    os = require('os'),
     bin = require('nw').findpath(),
     spawn = require('child_process').spawn,
     request = require('request'),
@@ -45,19 +46,82 @@
     return deferred.promise;
   };
 
-  var startProxy = function(port) {
-    var deferred = Q.defer();
+  var startProxy = function() {
+    var binaries = [];
 
-    try {
-      var proc = spawn('ios_webkit_debug_proxy', ['-c', 'null:' + port + ',:' + (port + 1) + '-' + (port + 100)]);
-      deferred.resolve('http://localhost:' + port + '/json');
+    if (os.platform() === 'darwin') {
+      var binaries = [
+        path.join(__dirname, '..', 'bin', 'ios-webkit-debug-proxy', 'darwin', 'ios_webkit_debug_proxy'),
+        'ios_webkit_debug_proxy'
+      ];
     }
-    catch (error) {
-      deferred.reject(error);
+    else if (os.platform() === 'linux') {
+      var binaries = [
+        'ios_webkit_debug_proxy'
+      ];
+    }
+    else if (os.platform() === 'windows') {
+      var binaries = [
+        path.join(__dirname, '..', 'bin', 'ios-webkit-debug-proxy', 'windows', 'ios-webkit-debug-proxy.exe')
+      ];
+    }
+    else {
+      var binaries = [
+        'ios_webkit_debug_proxy'
+      ];
     }
 
-    return deferred.promise;
+    var spawnProcess = function(binary, port) {
+      var deferred = Q.defer();
+
+      try {
+        var proc = spawn(binary, ['-c', 'null:' + port + ',:' + (port + 1) + '-' + (port + 100)]);
+
+        proc.on('error', function(error) {
+          deferred.reject(error);
+        });
+
+        setTimeout(function() {
+          if (proc.exitCode === null) {
+            deferred.resolve(proc);
+          }
+          else {
+            deferred.reject();
+          }
+        }, 100);
+      }
+      catch (e) {
+        deferred.reject(e);
+      }
+
+      return deferred.promise;
+    };
+
+    var runNext = function(port) {
+      var binary = binaries.shift();
+
+      if (!binary) {
+        return Q.reject('Unable to start webkit proxy. Maybe it is not installed.');
+      }
+
+      return spawnProcess(binary, port).then(
+        function() {
+          return Q.resolve('http://localhost:' + port + '/json');
+        },
+        function() {
+          return runNext(port);
+        }
+      );
+    }
+
+    return getPort().then(runNext);
   };
+
+  startProxy().then(
+    function(bla) {
+      console.log(bla);
+    }
+  );
 
   var firstSuccess = function(promises) {
     var deferred = Q.defer(),
@@ -175,17 +239,6 @@
 
     return deferred.promise;
   };
-
-  // TODO: Clean this up.
-  var listUrl;
-
-  getPort()
-    .then(startProxy)
-    .then(
-      function(url) {
-        listUrl = url;
-      }
-    );
 
   var launchIOS = function(options) {
       return findWebSocketUrl(listUrl, options)

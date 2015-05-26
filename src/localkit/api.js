@@ -279,7 +279,7 @@
         return this.sendJsonResponse(response, 200, 'Inspection started.', undefined, true, pairingKey);
       }.bind(this),
       function(error) {
-        return this.sendJsonResponse(response, 500, 'Unable to start inspector.', undefined, true, pairingKey);
+        return this.sendJsonResponse(response, 500, 'Unable to start inspector: ' + error, undefined, true, pairingKey);
       }.bind(this)
     );
   }
