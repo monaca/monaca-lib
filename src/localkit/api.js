@@ -5,8 +5,7 @@
   var qs = require('querystring'),
     path = require('path'),
     fs = require('fs'),
-    rc4 = require(path.join(__dirname, 'rc4')),
-    inspector = require(path.join(__dirname, '..', 'inspector'));
+    rc4 = require(path.join(__dirname, 'rc4'));
 
   var PAIRING_KEYS_FILE = path.join(
     process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'],
@@ -271,7 +270,7 @@
 
     var platform = data.hasOwnProperty('abstractSocketAddress') ? 'android' : 'ios';
 
-    inspector.launch({
+    this.localkit.startInspector({
       type: platform,
       pageUrl: fileUrl
     }).then(

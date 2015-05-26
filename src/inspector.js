@@ -10,7 +10,12 @@
     adb = require('adbkit'),
     client = adb.createClient(),
     Q = require('q'),
-    http = require('http');
+    http = require('http'),
+    Padlock = require('padlock').Padlock;
+
+  if (!global.webkitProxyLock) {
+    global.webkitProxyLock = new Padlock();
+  }
 
   portfinder.basePort = 21538;
 
@@ -50,23 +55,23 @@
     var binaries = [];
 
     if (os.platform() === 'darwin') {
-      var binaries = [
+      binaries = [
         path.join(__dirname, '..', 'bin', 'ios-webkit-debug-proxy', 'darwin', 'ios_webkit_debug_proxy'),
         'ios_webkit_debug_proxy'
       ];
     }
     else if (os.platform() === 'linux') {
-      var binaries = [
+      binaries = [
         'ios_webkit_debug_proxy'
       ];
     }
     else if (os.platform() === 'windows') {
-      var binaries = [
+      binaries = [
         path.join(__dirname, '..', 'bin', 'ios-webkit-debug-proxy', 'windows', 'ios-webkit-debug-proxy.exe')
       ];
     }
     else {
-      var binaries = [
+      binaries = [
         'ios_webkit_debug_proxy'
       ];
     }
@@ -105,23 +110,53 @@
       }
 
       return spawnProcess(binary, port).then(
-        function() {
-          return Q.resolve('http://localhost:' + port + '/json');
+        function(proc) {
+          var url = 'http://localhost:' + port + '/json';
+
+          global.iosWebkitProxyProc = proc;
+          global.iosWebkitProxyUrl = url;
+
+          proc.on('exit', function() {
+            delete global.iosWebkitProxyProc;
+            delete global.iosWebkitProxyUrl;
+          });
+
+          return Q.resolve(url);
         },
         function() {
           return runNext(port);
         }
       );
-    }
+    };
 
-    return getPort().then(runNext);
+    var deferred = Q.defer(),
+      lock = global.webkitProxyLock;
+
+    lock.runwithlock(function() {
+      var proc = global.iosWebkitProxyProc;
+
+      if (proc) {
+        lock.release();
+        return deferred.resolve(global.iosWebkitProxyUrl);
+      }
+
+      getPort()
+        .then(runNext)
+        .then(
+          function(result) {
+            deferred.resolve(result);
+          },
+          function(error) {
+            deferred.reject(error);
+          }
+        )
+        .finally(function() {
+          lock.release();
+        });
+    });
+
+    return deferred.promise;
   };
-
-  startProxy().then(
-    function(bla) {
-      console.log(bla);
-    }
-  );
 
   var firstSuccess = function(promises) {
     var deferred = Q.defer(),
@@ -241,8 +276,13 @@
   };
 
   var launchIOS = function(options) {
-      return findWebSocketUrl(listUrl, options)
-        .then(startDevTools);
+    return startProxy()
+      .then(
+        function(listUrl) {
+          return findWebSocketUrl(listUrl, options);
+        }
+      )
+      .then(startDevTools);
   };
 
   var findAbstractSockets = function() {
@@ -334,7 +374,7 @@
             if (abstractSockets.hasOwnProperty(deviceId)) {
               var sockets = abstractSockets[deviceId];
 
-              for (var j = 0, l = sockets.length; j < l; j ++) {
+              for (var j = 0, ll = sockets.length; j < ll; j ++) {
                 var abstractSocket = sockets[j];
 
                 promises.push(forwardAndroidDevice(deviceId, abstractSocket));
@@ -374,6 +414,7 @@
   };
 
   module.exports = {
-    launch: launch
+    launch: launch,
+    startProxy: startProxy
   };
 })();

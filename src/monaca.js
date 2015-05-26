@@ -90,7 +90,7 @@
 
     this._loggedIn = false;
   };
- 
+
   Monaca.prototype._loadAllData = function() {
     var deferred = Q.defer();
 

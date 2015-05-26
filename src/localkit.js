@@ -14,7 +14,8 @@
     Monaca = require(path.join(__dirname, 'monaca')),
     FileWatcher = require(path.join(__dirname, 'localkit', 'fileWatcher')),
     Api = require(path.join(__dirname, 'localkit', 'api')),
-    broadcastAddresses = require(path.join(__dirname, 'localkit', 'broadcastAddresses'));
+    broadcastAddresses = require(path.join(__dirname, 'localkit', 'broadcastAddresses')),
+    inspector = require(path.join(__dirname, 'inspector'));
 
   // config
   var config = nconf.env()
@@ -101,6 +102,8 @@
     this.verbose = !!verbose;
 
     this.api = new Api(this);
+
+    inspector.startProxy();
   };
 
   Localkit.prototype._getServerInfo = function() {
@@ -808,6 +811,20 @@
     var deferred = Q.defer();
     deferred.resolve(this.projectEvents.connectedClients);
     return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Start inspector
+   * @param {Object} options - Parameter object
+   * @param {String} options.type - Device type, should be "ios" or "android".
+   * @param {String} options.pageUrl - URL of the page to inspect.
+   * @param {String} options.projectId - ID of the project to inspect.
+   */
+  Localkit.prototype.startInspector = function(options) {
+    return inspector.launch(options);
   };
 
   module.exports = Localkit;
