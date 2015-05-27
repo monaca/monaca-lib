@@ -1982,5 +1982,69 @@
     );
   };
 
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Utility method to check if a folder is a Monaca project.
+   * @param {String} projectDir - Project directory.
+   * @return {Promise}
+   */
+  Monaca.prototype.isMonacaProject = function(projectDir) {
+    var exists = function(dir) {
+      var deferred = Q.defer();
+
+      fs.exists(dir, function(exists) {
+        if (exists) {
+          deferred.resolve();
+        }
+        else {
+          deferred.reject();
+        }
+      });
+
+      return deferred.promise;
+    }
+
+    var hasConfigFile = function() {
+      var configFiles = ['config.xml', 'config.ios.xml', 'config.android.xml'];
+
+      var promises = configFiles
+        .map(
+          function(fileName) {
+            return exists(path.join(projectDir, fileName));
+          }
+        );
+
+      var next = function() {
+        var promise = promises.shift();
+
+        if (!promise) {
+          return Q.reject('Config file is missing.');
+        }
+
+        return promise.then(
+          function() {
+            return projectDir;
+          },
+          function() {
+            return next();
+          }
+        );
+      };
+
+      return next();
+    };
+
+    return exists(path.join(projectDir, 'www')).then(
+      function() {
+        return hasConfigFile();
+      },
+      function() {
+        return Q.reject('"www" directory is missing.');
+      }
+    );
+  };
+
   module.exports = Monaca;
 })();
