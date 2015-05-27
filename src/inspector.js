@@ -17,7 +17,7 @@
     global.webkitProxyLock = new Padlock();
   }
 
-  portfinder.basePort = 21538;
+  portfinder.basePort = 8002;
 
   var nwBin = require('nw').findpath(),
     app = path.join(__dirname, 'inspector-app');
