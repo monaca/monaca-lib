@@ -65,7 +65,7 @@
         'ios_webkit_debug_proxy'
       ];
     }
-    else if (os.platform() === 'windows') {
+    else if (os.platform() === 'win32') {
       binaries = [
         path.join(__dirname, '..', 'bin', 'ios-webkit-debug-proxy', 'windows', 'ios-webkit-debug-proxy.exe')
       ];
