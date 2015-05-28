@@ -5,6 +5,7 @@ CHANGELOG
 v1.0.5
 ----
  * monaca: Added `isBuildOnly` parameter to `Monaca.createProject()` API.
+ * monaca: Rewrote `Monaca.getTemplates()` method to get templates from Monaca Cloud.
 
 v1.0.4
 ----

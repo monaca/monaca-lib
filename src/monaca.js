@@ -755,6 +755,7 @@
         deferred.reject(error);
       }
     );
+      
     return deferred.promise;
   };
 
@@ -1439,6 +1440,7 @@
    * @memberof Monaca
    * @description
    *   Gets a list of project templates.
+   *
    *   The method will resolve to list of project templates.
    * @return {Promise}
    * @example
@@ -1451,31 +1453,26 @@
    *     });
    */
   Monaca.prototype.getTemplates = function() {
-    var deferred = Q.defer();
-    try {
-      var dir = path.join(__dirname, '..', 'templates'),
-        list = [];
-      list.push({
-        name: 'Minimal Cordova Template',
-        path: null
-      });
-      var files = fs.readdirSync(dir);
-      files.forEach(function(file) {
-        if (/\.zip$/.test(file)) {
-          list.push({
-            name: file.replace(/\.zip/g, '').replace(/_/g, ' ').replace(/(?:^|\s)\S/g, function(a) {
-              return a.toUpperCase();
-            }),
-            path: path.join(dir, file)
-          });
+    return this._get('/user/project/templates')
+      .then(
+        function(response) {
+          var data;
+
+          try {
+            data = JSON.parse(response);
+          }
+          catch (e) {
+            return Q.reject(e);
+          }
+
+          if (data.status === 'ok') {
+            return data.result.items;
+          }
+          else {
+            return Q.reject(data.status);
+          }
         }
-      });
-      deferred.resolve(list);
-    } 
-    catch (e) {
-      deferred.reject(e);
-    }
-    return deferred.promise;
+      );
   };
 
   /**
