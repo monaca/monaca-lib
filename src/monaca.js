@@ -990,6 +990,7 @@
    * @param {string} options.name - Project name
    * @param {string} options.description - Project description
    * @param {string} options.templateId - Template ID (e.g. "rss", "minimum", etc.)
+   * @param {boolean} options.isBuildOnly - Set to true if the project is uploaded just for building.
    * @return {Promise}
    * @example
    *   monaca.createProject({
@@ -1007,6 +1008,8 @@
    */
   Monaca.prototype.createProject = function(options) {
     var deferred = Q.defer();
+
+    options.isBuildOnly = options.isBuildOnly ? 1 : 0;
 
     this._post('/user/project/create', options).then(
       function(response) {

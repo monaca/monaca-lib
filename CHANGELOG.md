@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v1.0.5
+----
+ * monaca: Added `isBuildOnly` parameter to `Monaca.createProject()` API.
+
 v1.0.4
 ----
  * monaca: Added `Monaca.getLatestNews()` to fetch latest news and status on known issues from Monaca Cloud.
