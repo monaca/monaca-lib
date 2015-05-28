@@ -1524,7 +1524,7 @@
       if (appname) {
         var self = this,
           dirName = appname,
-          cmd = '"' + path.join(__dirname, '..', 'node_modules', '.bin', 'cordova') + '"' + ' create  ' + '"' +  workingDir + '" ' + packageId + '  ' + appname,
+          cmd = '"' + path.join(__dirname, '..', 'node_modules', '.bin', 'cordova') + '"' + ' create  ' + '"' +  workingDir + '" ' + packageId + '  "' + appname + '"',
           childProcess = exec(cmd);
         childProcess.on('uncaughtException', function(err) {
           deferred.reject(err);
