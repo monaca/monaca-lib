@@ -6,6 +6,7 @@ v1.0.5
 ----
  * monaca: Added `isBuildOnly` parameter to `Monaca.createProject()` API.
  * monaca: Rewrote `Monaca.getTemplates()` method to get templates from Monaca Cloud.
+ * monaca: Added `Monaca.createFromTemplate()` method to create a project from a template in Monaca cloud.
 
 v1.0.4
 ----

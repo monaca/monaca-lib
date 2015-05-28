@@ -9,14 +9,16 @@
     shell = require('shelljs'),
     crc32 = require('buffer-crc32'),
     nconf = require('nconf'),
-    unzip = require('unzip'),
     rimraf = require('rimraf'),
     exec = require('child_process').exec, 
     async = require('async'),
     extend = require('extend'),
     crypto = require('crypto'),
     xml2js = require('xml2js'),
-    lockfile = require('lockfile');
+    lockfile = require('lockfile'),
+    tmp = require('tmp'),
+    Decompress = require('decompress'),
+    zip = require('decompress-unzip');
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -1476,149 +1478,122 @@
   };
 
   /**
-     * @method
-     * @memberof Monaca
-     * @description
-     *   Creates a project according to the chosen template.
-     *
-     *   If it is successful, it will create a cordova app, replace the default templates 
-     *   with the chosen ones, move the app files to working directory specified in the parameters
-     *   and will install all the npm packages.
-     * @param {object} options - contains all parameters
-     * @param {object} options.template - template parameters 
-     * @param {string} options.template.name - name of the template
-     * @param {string} options.template.path - path from where the template will be taken
-     * @param {string} options.appname - name with which the app will be created and an entry will be made into parmanent storage
-     * @param {string} options.workingDir - where on disk the app will be created.
-     * @param {string} [options.packageId] - package id for this app.
-     * @return {Promise}
-     * @example
-     *    var template = {
-     *       name: 'Onsen Tab Bar',
-     *       path: '/Users/sunny/localkit/lib/templates/onsen_tab_bar.zip'
-     *    };
-     *    this.monaca.createApp(
-     *      { template : template, 
-     *        appname : 'mynewapp', 
-     *        workingDir : '/Users/sunny/workspace/mynewapp'
-     *      }).then(
-     *      function() {
-     *        //app is created
-     *      },
-     *      function(err) {
-     *        //an error occured
-     *      }
-     *    );
-     */
-  Monaca.prototype.createApp = function(options) {
-    var deferred = Q.defer(),
-      template = options.template,
-      appname = options.appname,
-      workingDir = options.workingDir,
-      packageId = options.packageId || 'io.cordova.hellocordova';
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Download template from Monaca Cloud.
+   * @param {String} templateId Template ID
+   * @param {String} destinationDir Destionation directory
+   * @return {Promise}
+   */
+  Monaca.prototype.downloadTemplate = function(templateId, destinationDir) {
+    var checkDirectory = function() {
+      var deferred = Q.defer();
 
-    try {
-      if (appname) {
-        var self = this,
-          dirName = appname,
-          cmd = '"' + path.join(__dirname, '..', 'node_modules', '.bin', 'cordova') + '"' + ' create  ' + '"' +  workingDir + '" ' + packageId + '  ' + appname,
-          childProcess = exec(cmd);
-        childProcess.on('uncaughtException', function(err) {
-          deferred.reject(err);
-        });
-        childProcess.stdout.on('data', function(data) {
-          console.log(data.toString());
-        });
-        childProcess.stderr.on('data', function(data) {
-          process.stderr.write(data.toString());
-        });
-        childProcess.on('exit', function(code) {
-          if (code === 0) {
-            self._replaceTemplate(dirName, template, workingDir).then(
-              function() {
-                deferred.resolve();
-              },
-              function(err) {
+      fs.exists(destinationDir, function(exists) {
+        if (exists) {
+          deferred.reject('Directory already exists');
+        }
+        else {
+          deferred.resolve(destinationDir);
+        }
+      });
+
+      return deferred.promise;
+    };
+
+    var createTmpFile = function() {
+      return Q.denodeify(tmp.file)()
+        .then(
+          function() {
+            return arguments[0][0];
+          }
+        );
+    };
+
+    var saveZipFile = function(path, data) {
+      return Q.denodeify(fs.writeFile)(path, data)
+        .then(
+          function() {
+            return path;
+          }
+        );
+    };
+
+    var unzipFile = function(data) {
+      return createTmpFile()
+        .then(
+          function(path) {
+            return saveZipFile(path, data);
+          }
+        )
+        .then(
+          function(path) {
+            var deferred = Q.defer();
+
+            var decompress = new Decompress()
+              .src(path)
+              .dest(destinationDir)
+              .use(zip({strip: 1}));
+
+            decompress.run(function(err) {
+              if (err) {
                 deferred.reject(err);
               }
-            );
-          } else {
-            //process.exit(code);        
-            deferred.reject('process exit with code ' + code);
+              else {
+                deferred.resolve(destinationDir);
+              }
+            });
+
+            return deferred.promise;
           }
-        });
-      } else {
-        deferred.reject('Appname needs to be specified.');
-      }
-    } 
-    catch (e) {
-      deferred.reject(e);
+        );
     }
-    return deferred.promise;
+
+    var fetchFile = function() {
+      return this._get('/user/project/downloadTemplate', {templateId: templateId});
+    }.bind(this);
+
+    return checkDirectory()
+      .then(fetchFile)
+      .then(unzipFile);
   };
 
-  Monaca.prototype._replaceTemplate = function(dirName, template, workingDir) {
-    var deferred = Q.defer();
-    async.series([
-      function replaceTemplate(done) {
-        if (template.path) {
-          var tmpPath = path.join('/tmp', 'ons' + new Date().getTime().toString());
-          var wwwPath = path.join(workingDir, 'www');
-          try {
-            fs.createReadStream(template.path).pipe(unzip.Extract({
-              path: tmpPath
-            }))
-            .on('close', function() {
-                ['.jshintrc', 'gulpfile.js', 'package.json', 'README.md'].forEach(function(name) {                  
-                  fs.renameSync(path.join(tmpPath, name), path.join(workingDir, name));
-                });
-                rimraf.sync(wwwPath);
-                fs.renameSync(path.join(tmpPath, 'www'), wwwPath);
-                rimraf.sync(tmpPath);
-                done();
-            })
-            .on('error', function(error) {
-                done(error);
-            });
-          } 
-          catch (error) {
-            done(error);
-          }
-        } else {
-          done();
-        }
-      },
-      function executeNpmInstall(done) {        
-        if (template.path) {
-          // npm install       
-          var npmProcess = exec('npm install --prefix ' + '"' + workingDir + '"');
-          npmProcess.stdout.on('data', function(data) {
-            console.log(data);
-          });
-          npmProcess.stderr.on('data', function(data) {
-            console.log(data);
-          });
-          npmProcess.on('exit', function(code) {
-            if (code === 0) {
-              console.log('Set template: ' + template.name);
-              done();
-            } else {
-              done(code);
-            }
-          });
-        } else {
-          done();
-        }
-      }
-    ],
-    function(err, results) {
-      if (err) {
-        deferred.reject(err);
-      } else {
-        deferred.resolve();
-      }
-    });
-    return deferred.promise;
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Create project from template.
+   * @param {String} templateId Template ID
+   * @param {String} destinationDir Destionation directory
+   * @param {Object} [options] Parameters
+   * @param {String} [options.name] Project name
+   * @param {String} [options.description] Project description
+   * @return {Promise}
+   */
+  Monaca.prototype.createFromTemplate = function(templateId, destinationDir, options) {
+    options = options || {};
+
+    var createProject = function() {
+      return this.createProject({
+        name: options.name,
+        description: options.description,
+        templateId: templateId
+      });
+    }.bind(this);
+
+    var setProjectId = function(info) {
+      return this.setProjectId(destinationDir, info.projectId);
+    }.bind(this);
+
+    var downloadProject = function() {
+      return this.downloadProject(destinationDir);
+    }.bind(this);
+
+    return this.downloadTemplate(templateId, destinationDir)
+      .then(createProject)
+      .then(setProjectId)
+      .then(downloadProject);
   };
 
   /**
