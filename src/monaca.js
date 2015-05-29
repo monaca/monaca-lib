@@ -636,7 +636,7 @@
    * @name getLatestNews
    * @description
    *   Fetches latest news and status on known issues from Monaca Cloud.
-   * @param {object} [options] - configuration options
+   * @param {object} [options] Parameters
    * @return {Promise}
    */
   Monaca.prototype.getLatestNews = function(options) {
