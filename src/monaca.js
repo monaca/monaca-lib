@@ -636,11 +636,16 @@
    * @name getLatestNews
    * @description
    *   Fetches latest news and status on known issues from Monaca Cloud.
-   * @param {object} [options] Parameters
+   * @param {Object} [options] Parameters
+   * @param {Boolean} [options.disableStatusUpdate]
    * @return {Promise}
    */
   Monaca.prototype.getLatestNews = function(options) {
     var deferred = Q.defer();
+
+    options = options || {};
+    options.disableStatusUpdate = options.disableStatusUpdate ? 1 : 0;
+
     this._get('/user/info/news', options ? options : {} ).then(
       function(response) {
         deferred.resolve(JSON.parse(response));
