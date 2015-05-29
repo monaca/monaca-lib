@@ -993,7 +993,7 @@
    * @param {string} options.name - Project name
    * @param {string} options.description - Project description
    * @param {string} options.templateId - Template ID (e.g. "rss", "minimum", etc.)
-   * @param {boolean} options.isBuildOnly - Set to true if the project is uploaded just for building.
+   * @param {boolean} [options.isBuildOnly] - Set to true if the project is uploaded just for building.
    * @return {Promise}
    * @example
    *   monaca.createProject({
