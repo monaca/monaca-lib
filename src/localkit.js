@@ -479,6 +479,40 @@
   };
 
   /**
+   * @memberof Localkit
+   * @description
+   *   Start watching for a specific project.
+   * @param {String} projectDir
+   * @return {Promise}
+   */
+  Localkit.prototype.startWatchProject = function(projectDir) {
+    var deferred = Q.defer();
+
+    var projectId = Object.keys(this.projects)
+      .filter(function(projectId) {
+        return this.projects[projectId].path === projectDir;
+      })[0];
+
+    if (!projectId) {
+      return Q.reject('No such project.');
+    }
+    else {
+      var project = this.projects[projectId],
+        watchDir = path.join(project.path, 'www');
+
+      if (!project.fileWatcher.isRunning()) {
+        try {
+          project.fileWatcher.run(watchDir);
+        }
+        catch (e) {
+          return Q.reject(e);
+        }
+      }
+      return Q.resolve(watchDir);
+    }
+  };
+
+  /**
    * @method
    * @memberof Localkit
    * @description
@@ -520,6 +554,70 @@
     );
 
     return deferred.promise;
+  };
+
+  /**
+   * @memberof Localkit
+   * @description
+   *   Stop watching for a specific project.
+   * @param {String} projectDir
+   * @return {Promise}
+   */
+  Localkit.prototype.stopWatchProject = function(projectDir) {
+    var deferred = Q.defer();
+
+    var projectId = Object.keys(this.projects)
+      .filter(function(projectId) {
+        return this.projects[projectId].path === projectDir;
+      })[0];
+
+    if (!projectId) {
+      return Q.reject('No such project.');
+    }
+    else {
+      var project = this.projects[projectId],
+        watchDir = path.join(project.path, 'www');
+
+      if (project.fileWatcher.isRunning()) {
+        try {
+          project.fileWatcher.stop();
+        }
+        catch (e) {
+          return Q.reject(e);
+        }
+      }
+      return Q.resolve(watchDir);
+    }
+  };
+
+  /**
+   * @memberof Localkit
+   * @description
+   *   Check if project is being watched.
+   * @param {String} projectDir
+   * @return {Promise}
+   */
+  Localkit.prototype.isWatchingProject = function(projectDir) {
+    var deferred = Q.defer();
+
+    var projectId = Object.keys(this.projects)
+      .filter(function(projectId) {
+        return this.projects[projectId].path === projectDir;
+      })[0];
+
+    if (!projectId) {
+      return Q.reject('No such project.');
+    }
+    else {
+      var project = this.projects[projectId];
+
+      if (project.fileWatcher.isRunning()) {
+        return Q.resolve();
+      }
+      else {
+        return Q.reject();
+      }
+    }
   };
 
   /**
