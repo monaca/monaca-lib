@@ -612,10 +612,10 @@
       var project = this.projects[projectId];
 
       if (project.fileWatcher.isRunning()) {
-        return Q.resolve();
+        return Q.resolve(true);
       }
       else {
-        return Q.reject();
+        return Q.resolve(false);
       }
     }
   };
