@@ -448,40 +448,32 @@
    * @description
    *   Start file watcher for all projects where it's not currently running.
    * @return {Promise}
-   *   The promise resolves to a list of directories.
    */
   Localkit.prototype.startWatch = function() {
-    var promises = Object.keys(this.projects)
+    var deferred = Q.defer(),
+      paths = [];
+
+    var projectIds = Object.keys(this.projects)
       .filter(function(projectId) {
         return !this.projects[projectId].fileWatcher.isRunning();
-      }.bind(this))
-
-      .map(function(projectId) {
-        var deferred = Q.defer(),
-          project = this.projects[projectId];
-
-        try {
-          project.fileWatcher.run(path.join(project.path, 'www'));
-          deferred.resolve(project.path);
-        }
-        catch (e) {
-          deferred.reject(e);
-        }
-
-        return deferred.promise;
       }.bind(this));
 
-    var deferred = Q.defer();
+    for (var i = 0, l = projectIds.length; i < l; i ++) {
+      var project = this.projects[projectIds[i]];
 
-    Q.all(promises).then(
-      function(projectPaths) {
-        this._isWatching = true;
-        deferred.resolve(projectPaths);
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
+      try {
+        var watchDir = path.join(project.path, 'www');
+
+        project.fileWatcher.run(watchDir);
+        paths.push(watchDir);
       }
-    );
+      catch (e) {
+        console.log('Unable to start file watcher: ' + e);
+      }
+    }
+
+    deferred.resolve(paths);
+    this._isWatching = false;
 
     return deferred.promise;
   };
@@ -541,8 +533,9 @@
    * @return {Promise}
    */
   Localkit.prototype.startProject = function(projectPath, options) {
-    var deferred = Q.defer(),
-      options = options || {};
+    var deferred = Q.defer();
+
+    options = options || {};
 
     this.monaca.getLocalProjectId(projectPath).then(
       function(projectId) {
