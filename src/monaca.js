@@ -1539,7 +1539,7 @@
             var decompress = new Decompress()
               .src(path)
               .dest(destinationDir)
-              .use(zip({strip: 1}));
+              .use(zip({strip: 0}));
 
             decompress.run(function(err) {
               if (err) {
