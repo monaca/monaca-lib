@@ -9,6 +9,8 @@ v1.0.5
  * monaca: Added `Monaca.createFromTemplate()` method to create a project from a template in Monaca cloud.
  * monaca: Added `disableStatusUpdate` parameter to `Monaca.getLatestNews()`.
  * localkit: Added `Localkit.startWatchProject()`, `Localkit.stopWatchingProject()` and `Localkit.isWatchingProject()` for more granular control.
+ * monaca: Added `options.language` parameter.
+ * monaca: Added `options` object to `Monaca.relogin()`. Works exactly like the parameters for `Monaca.login()`.
 
 v1.0.4
 ----

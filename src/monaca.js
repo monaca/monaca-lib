@@ -410,24 +410,27 @@
   };
 
   Monaca.prototype._login = function() {
-    var deferred = Q.defer();
+    var deferred = Q.defer(),
+      options;
 
-    var options;
     if (arguments.length === 3) {
       options = arguments[2];
+    }
+    else if (typeof arguments[1] === 'object') {
+      options = arguments[1];
     }
     else {
       options = {};
     }
 
     var form = {
-      language: 'en',
+      language: options.language || 'en',
       clientType: 'local',
       version: options.version || this.packageName + ' ' + this.version,
       os: os.platform()
     };
 
-    if (arguments.length === 1) {
+    if (arguments.length === 1 || typeof arguments[1] === 'object') {
       form.token = arguments[0];
     }
     else {
@@ -513,7 +516,10 @@
    * @description
    *   Login to Monaca cloud using a saved relogin token. Use {@link Monaca#login} to
    *   login the first time.
-   * @return {Promise} 
+   * @param {object} [options] - Login parameters.
+   * @param {string} [options.version] - App name and version to send to the Monaca API. Defaults to "monaca-lib x.y.z".
+   * @param {string} [options.language] - Can be either "en" or "ja". Defaults to "en".
+   * @return {Promise}
    * @example
    *   monaca.relogin().then(
    *     function() {
@@ -524,12 +530,14 @@
    *     }
    *   );
    */
-  Monaca.prototype.relogin = function() {
+  Monaca.prototype.relogin = function(options) {
     var deferred = Q.defer();
+
+    options = options || {};
 
     this.getData('reloginToken').then(
       function(reloginToken) {
-        this._login(reloginToken).then(
+        this._login(reloginToken, options).then(
           function() {
             deferred.resolve();
           },
@@ -557,6 +565,7 @@
    * @param {string} password - Password associated with the account.
    * @param {object} [options] - Additional options.
    * @param {string} [options.version] - App name and version to send to the Monaca API. Defaults to "monaca-lib x.y.z".
+   * @param {string} [options.language] - Can be either "en" or "ja". Defaults to "en".
    * @return {Promise}
    * @example
    *   monaca.login('my@email.com', 'password').then(
