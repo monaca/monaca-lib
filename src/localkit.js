@@ -491,7 +491,7 @@
     var projectId = Object.keys(this.projects)
       .filter(function(projectId) {
         return this.projects[projectId].path === projectDir;
-      })[0];
+      }.bind(this))[0];
 
     if (!projectId) {
       return Q.reject('No such project.');
@@ -569,7 +569,7 @@
     var projectId = Object.keys(this.projects)
       .filter(function(projectId) {
         return this.projects[projectId].path === projectDir;
-      })[0];
+      }.bind(this))[0];
 
     if (!projectId) {
       return Q.reject('No such project.');
@@ -603,7 +603,7 @@
     var projectId = Object.keys(this.projects)
       .filter(function(projectId) {
         return this.projects[projectId].path === projectDir;
-      })[0];
+      }.bind(this))[0];
 
     if (!projectId) {
       return Q.reject('No such project.');
