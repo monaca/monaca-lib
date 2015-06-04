@@ -1580,34 +1580,10 @@
    *   Create project from template.
    * @param {String} templateId Template ID
    * @param {String} destinationDir Destionation directory
-   * @param {Object} [options] Parameters
-   * @param {String} [options.name] Project name
-   * @param {String} [options.description] Project description
    * @return {Promise}
    */
-  Monaca.prototype.createFromTemplate = function(templateId, destinationDir, options) {
-    options = options || {};
-
-    var createProject = function() {
-      return this.createProject({
-        name: options.name,
-        description: options.description,
-        templateId: templateId
-      });
-    }.bind(this);
-
-    var setProjectId = function(info) {
-      return this.setProjectId(destinationDir, info.projectId);
-    }.bind(this);
-
-    var downloadProject = function() {
-      return this.downloadProject(destinationDir);
-    }.bind(this);
-
-    return this.downloadTemplate(templateId, destinationDir)
-      .then(createProject)
-      .then(setProjectId)
-      .then(downloadProject);
+  Monaca.prototype.createFromTemplate = function(templateId, destinationDir) {
+    return this.downloadTemplate(templateId, destinationDir);
   };
 
   /**
