@@ -467,7 +467,11 @@
           form: form
         },
         function(error, response, body) {
-          var _body = JSON.parse(body || '{}');
+          try {
+            var _body = JSON.parse(body || '{}');
+          } catch (e) {
+            deferred.reject("Not a JSON response");
+          }
           if (error) {
             deferred.reject(error.code);
           }
@@ -511,7 +515,7 @@
               );
             }
             else {
-              deferred.reject(_body.message);
+              deferred.reject(_body);
             }
           }
         }.bind(this));
@@ -552,6 +556,10 @@
 
     this.getData('reloginToken').then(
       function(reloginToken) {
+        if (typeof(reloginToken) !== 'string' || reloginToken === '') {
+          return deferred.reject("Not a valid relogin token.");
+        }
+
         this._login(reloginToken, options).then(
           function() {
             deferred.resolve();
