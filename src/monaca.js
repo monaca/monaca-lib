@@ -10,7 +10,7 @@
     crc32 = require('buffer-crc32'),
     nconf = require('nconf'),
     rimraf = require('rimraf'),
-    exec = require('child_process').exec, 
+    exec = require('child_process').exec,
     async = require('async'),
     extend = require('extend'),
     crypto = require('crypto'),
@@ -207,7 +207,7 @@
     }
   };
 
-  Monaca.prototype._get = function(resource, data) {
+  Monaca.prototype._createRequestClient = function(data) {
     var deferred = Q.defer(),
       qs = {
         api_token: this.tokens.api
@@ -217,25 +217,41 @@
       extend(qs, data);
     }
 
-    if (resource.charAt(0) !== '/') {
-      resource = '/' + resource;
-    }
-
     if (!this._loggedIn) {
       deferred.reject('Must be logged in to use this method.');
     }
     else {
       this.getConfig('http_proxy').then(
         function(httpProxy) {
-          request({
-            url: this.apiRoot + resource,
+          var requestClient = request.defaults({
             qs: qs,
             encoding: null,
             proxy: httpProxy,
             headers: {
               Cookie: this.tokens.session
             }
-          }, function(error, response, body) {
+          });
+          deferred.resolve(requestClient);
+        }.bind(this),
+        function(error) {
+          deferred.reject(error);
+        }
+      )
+    }
+
+    return deferred.promise;
+  }
+
+  Monaca.prototype._get = function(resource, data) {
+    var deferred = Q.defer();
+
+    this._createRequestClient(data).then(
+      function(requestClient) {
+        if (resource.charAt(0) !== '/') {
+          resource = '/' + resource;
+        }
+        requestClient.get(this.apiRoot + resource,
+          function(error, response, body) {
             if (error) {
               deferred.reject(error.code);
             } else {
@@ -250,14 +266,13 @@
                 }
               }
             }
-          });
-        }.bind(this),
-        function(error) {
-          deferred.reject(error);
-        }
-      )
-    }
-
+          }
+        )
+      }.bind(this),
+      function(error) {
+        deferred.reject(error);
+      }
+    )
     return deferred.promise;
   };
 
@@ -483,11 +498,11 @@
                   this.tokens = {
                     api: headers['x-monaca-param-api-token'],
                     session: headers['x-monaca-param-session']
-                  };                  
+                  };
 
                   this.loginBody = _body.result;
 
-                  this._loggedIn = true;                   
+                  this._loggedIn = true;
                   deferred.resolve();
                 }.bind(this),
                 function(error) {
@@ -558,7 +573,7 @@
    * @method
    * @memberof Monaca
    * @description
-   *   Sign in to Monaca cloud using email and password. Will save relogin token to disk 
+   *   Sign in to Monaca cloud using email and password. Will save relogin token to disk
    *   if successful. After the relogin token has been saved, {@link Monaca#relogin} can
    *   be used to login.
    * @param {string} email - A Monaca account email.
@@ -638,6 +653,53 @@
 
     return deferred.promise;
   };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Downloads a file from Monaca request.
+   *
+   *   If the download is successful the promise will resolve with the
+   *   downloaded filename.
+   * @param {string} url - URL to download from
+   * @param {object} data - Request parameters
+   * @param {string} filename - Filename the data will be saved to. Can be a callback function.
+   * @return {Promise}
+   */
+  Monaca.prototype.download = function(url, data, filename) {
+    var deferred = Q.defer();
+
+    this._createRequestClient(data).then(function(requestClient) {
+      requestClient.get(url)
+      .on('response', function(response) {
+
+        var dest = filename;
+        if (typeof filename === 'function') {
+          // Callback so that the caller can decide the filename from the response
+          dest = filename(response);
+        }
+
+        if (typeof dest === 'string') {
+          var file = fs.createWriteStream(dest);
+          response.pipe(file);
+          file.on('finish', function() {
+            deferred.resolve(filename);
+          });
+          file.on('error', function(error) {
+            deferred.reject(error);
+          });
+        } else {
+          deferred.reject("Not a valid file name");
+        }
+      })
+
+    }.bind(this),
+    function(error) {
+      return deferred.reject(error);
+    });
+    return deferred.promise;
+  }
 
   /**
    * @method
@@ -771,7 +833,7 @@
         deferred.reject(error);
       }
     );
-      
+
     return deferred.promise;
   };
 
@@ -826,15 +888,15 @@
           // Converting Windows path delimiter to slash
           key = key.split(path.sep).join('/');
           files[key] = obj;
-          
+
           var absolutePath = path.join(projectDir, file);
 
           if (fs.lstatSync(absolutePath).isDirectory()) {
-            obj.type = 'dir';  
+            obj.type = 'dir';
           }
           else {
             obj.type = 'file';
-         
+
             var deferred = Q.defer();
 
             getFileChecksum(absolutePath).then(
@@ -883,10 +945,10 @@
    * @description
    *   Download Monaca project and save it to disk. Must be logged in to use.
    *   Will fail if {@link destDir} already exists. The returned promise will
-   *   be notified every time a file has been copied so the progress can be 
+   *   be notified every time a file has been copied so the progress can be
    *   tracked.
    * @param {string} projectId - Monaca project ID.
-   * @param {string} destDir - Destination directory. 
+   * @param {string} destDir - Destination directory.
    * @return {Promise}
    * @example
    *   monaca.cloneProject(123, '/home/user/workspace/myproject').then(
@@ -898,7 +960,7 @@
    *     },
    *     function(file) {
    *       var progress = 100 * file.index / file.total;
-   *       console.log('[' + progress + '%] ' + file.path); 
+   *       console.log('[' + progress + '%] ' + file.path);
    *     }
    *   );
    */
@@ -1116,12 +1178,12 @@
    * @description
    *  Uploads a Monaca project to the Cloud. Will fail if the specified
    *  directory doesn't contain a Monaca project or if the project is
-   *  not associated with the logged in user. 
+   *  not associated with the logged in user.
    *
    *  Will not overwrite files if they are identical.
    *
    *  If the upload is successful the promise will resolve with the project ID.
-   * @param {string} projectDir - Project directory. 
+   * @param {string} projectDir - Project directory.
    * @return {Promise}
    * @example
    *   monaca.uploadProject('/my/project/').then(
@@ -1224,7 +1286,7 @@
    * @method
    * @memberof Monaca
    * @description
-   *   Downloads a Monaca project from the Cloud. Will fail if the 
+   *   Downloads a Monaca project from the Cloud. Will fail if the
    *   specified directory doesn't contain a Monaca project or if the
    *   project is not associated with the logged in user.
    *
@@ -1232,7 +1294,7 @@
    *
    *   If the upload is successful the promise will resolve with the
    *   project ID.
-   * @param {string} projectDir - Project directory. 
+   * @param {string} projectDir - Project directory.
    * @return {Promise}
    * @example
    *   monaca.downloadProject('/my/project/').then(
@@ -1390,7 +1452,7 @@
             var result = JSON.parse(response).result;
 
             deferred.notify(result.description);
-            
+
             if (result.finished) {
               clearInterval(interval);
 
@@ -1858,7 +1920,7 @@
 
     this.getAllConfigs().then(
       function(settings) {
-        deferred.resolve(settings[key]); 
+        deferred.resolve(settings[key]);
       },
       function(error) {
         deferred.reject(error);
