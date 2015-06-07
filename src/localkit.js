@@ -28,7 +28,7 @@
   );
 
   /**
-   * @class Localkit 
+   * @class Localkit
    * @description
    *   Create localkit object.
    * @param {object} monaca - Monaca object.
@@ -69,7 +69,7 @@
       if (exists) {
         fs.readFile(PAIRING_KEYS_FILE, function(err, data) {
           if (err) {
-            throw new Error('Unable to open ' + PAIRING_KEYS_FILE); 
+            throw new Error('Unable to open ' + PAIRING_KEYS_FILE);
           }
 
           this.pairingKeys = JSON.parse(data);
@@ -102,8 +102,6 @@
     this.verbose = !!verbose;
 
     this.api = new Api(this);
-
-    inspector.startProxy();
   };
 
   Localkit.prototype._getServerInfo = function() {
@@ -233,7 +231,7 @@
    *
    *   <p>There is also an endpoint on <code>/events</code> that uses Server Sent Events (SSE)
    *   to send information about file system changes that the debugger listens to.</p>
-   *     
+   *
    * @param {object} [params] - Options
    * @param {number} [params.httpPort] - Port to listen on. Defaults to 8080.
    * @return {Promise} - Resolves to <code>{ address: IP_ADDRESS, port: PORT }</code>.
@@ -272,7 +270,7 @@
         this.projectEvents = new ProjectEvents(this);
         this.httpServerRunning = true;
         deferred.resolve({
-          address: this._getLocalIp(), 
+          address: this._getLocalIp(),
           port: port
         });
       }
@@ -745,7 +743,7 @@
    * @description
    *   Fetch list of projects.
    * @return {Promise}
-   */ 
+   */
   Localkit.prototype.getProjects = function() {
     var promises = [];
 
@@ -839,7 +837,7 @@
         absoluteProjectPath = path.resolve(projectPath);
 
       if (absoluteFilePath.indexOf(absoluteProjectPath) !== 0) {
-        deferred.reject('File is outside of project path.'); 
+        deferred.reject('File is outside of project path.');
       }
       else {
         fs.exists(filePath, function(exists) {
@@ -903,6 +901,20 @@
     deferred.resolve(this.projectEvents.connectedClients);
     return deferred.promise;
   };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Init inspector functionality
+   * @param {Object} options - Parameter object
+   * @param {String} options.adbPath - Path to adb [optional]
+   * @param {String} options.proxyPath - Path to iOS WebKit Proxy [optional]
+   */
+  Localkit.prototype.initInspector = function(config) {
+    inspector.initialize(config);
+    inspector.startProxy();
+  }
 
   /**
    * @method

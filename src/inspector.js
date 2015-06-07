@@ -3,6 +3,7 @@
 
   var path = require('path'),
     os = require('os'),
+    fs = require('fs'),
     bin = require('nw').findpath(),
     spawn = require('child_process').spawn,
     request = require('request'),
@@ -12,6 +13,20 @@
     Q = require('q'),
     http = require('http'),
     Padlock = require('padlock').Padlock;
+
+  var config = {
+    'adbPath': 'adb',
+    'proxyPath': function() {
+      switch (os.platform()) {
+        case 'darwin':
+          return path.join(__dirname, '..', 'bin', 'ios-webkit-debug-proxy', 'darwin', 'ios_webkit_debug_proxy');
+        case 'win32':
+          return path.join(__dirname, '..', 'bin', 'ios-webkit-debug-proxy', 'windows', 'ios-webkit-debug-proxy.exe');
+        default:
+          return 'ios_webkit_debug_proxy';
+      }
+    }()
+  };
 
   if (!global.webkitProxyLock) {
     global.webkitProxyLock = new Padlock();
@@ -52,29 +67,6 @@
   };
 
   var startProxy = function() {
-    var binaries = [];
-
-    if (os.platform() === 'darwin') {
-      binaries = [
-        path.join(__dirname, '..', 'bin', 'ios-webkit-debug-proxy', 'darwin', 'ios_webkit_debug_proxy'),
-        'ios_webkit_debug_proxy'
-      ];
-    }
-    else if (os.platform() === 'linux') {
-      binaries = [
-        'ios_webkit_debug_proxy'
-      ];
-    }
-    else if (os.platform() === 'win32') {
-      binaries = [
-        path.join(__dirname, '..', 'bin', 'ios-webkit-debug-proxy', 'windows', 'ios-webkit-debug-proxy.exe')
-      ];
-    }
-    else {
-      binaries = [
-        'ios_webkit_debug_proxy'
-      ];
-    }
 
     var spawnProcess = function(binary, port) {
       var deferred = Q.defer();
@@ -103,9 +95,9 @@
     };
 
     var runNext = function(port) {
-      var binary = binaries.shift();
+      var binary = config.proxyPath;
 
-      if (!binary) {
+      if (!config.proxyPath || !fs.existsSync(config.proxyPath)) {
         return Q.reject('Unable to start webkit proxy. Maybe it is not installed.');
       }
 
@@ -124,7 +116,10 @@
           return Q.resolve(url);
         },
         function() {
-          return runNext(port);
+          // 1s delay
+          setTimeout(function() {
+            return runNext(port);
+          }, 1000);
         }
       );
     };
@@ -341,7 +336,7 @@
   var removeForwarding = function() {
     var deferred = Q.defer();
 
-    var proc = spawn('adb', ['forward', '--remove-all']);
+    var proc = spawn(config.adbPath, ['forward', '--remove-all']);
 
     proc.on('exit', function(code, signal) {
       if (code === 0) {
@@ -413,7 +408,17 @@
     }
   };
 
+  var initialize = function(configOptions) {
+    configOptions = configOptions || {};
+    for (var i in configOptions) {
+      if (config.hasOwnProperty(i)) {
+        config[i] = configOptions[i];
+      }
+    }
+  }
+
   module.exports = {
+    initialize: initialize,
     launch: launch,
     startProxy: startProxy
   };
