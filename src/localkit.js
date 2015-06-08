@@ -297,7 +297,7 @@
         this.httpServerRunning = false;
         deferred.resolve();
       }
-    });
+    }.bind(this));
 
     return deferred.promise;
   };
