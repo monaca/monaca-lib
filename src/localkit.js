@@ -7,6 +7,8 @@
     dgram = require('dgram'),
     os = require('os'),
     crypto = require('crypto'),
+    util = require('util'),
+    events = require('events'),
     nconf = require('nconf');
 
   // local imports
@@ -103,6 +105,8 @@
 
     this.api = new Api(this);
   };
+
+  util.inherits(Localkit, events.EventEmitter);
 
   Localkit.prototype._getServerInfo = function() {
     var loginBody = this.monaca.loginBody;
@@ -927,7 +931,13 @@
    * @param {String} options.projectId - ID of the project to inspect.
    */
   Localkit.prototype.startInspector = function(options) {
-    return inspector.launch(options);
+    return inspector.launch(options)
+      .catch(
+        function(error) {
+          this.emit('error', error);
+          return Q.reject(error);
+        }.bind(this)
+      );
   };
 
   module.exports = Localkit;
