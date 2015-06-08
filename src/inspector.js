@@ -4,7 +4,6 @@
   var path = require('path'),
     os = require('os'),
     fs = require('fs'),
-    bin = require('nw').findpath(),
     spawn = require('child_process').spawn,
     request = require('request'),
     portfinder = require('portfinder'),
@@ -25,7 +24,10 @@
         default:
           return 'ios_webkit_debug_proxy';
       }
-    }()
+    }(),
+    'inspectorCallback': function(args) {
+      console.log('Unimplemented. Called with the following args', args);
+    }
   };
 
   if (!global.webkitProxyLock) {
@@ -33,9 +35,6 @@
   }
 
   portfinder.basePort = 8002;
-
-  var nwBin = require('nw').findpath(),
-    app = path.join(__dirname, 'inspector-app');
 
   var getPort = function() {
     var deferred = Q.defer();
@@ -56,10 +55,19 @@
     var deferred = Q.defer();
 
     try {
-      var nw = spawn(nwBin, [app, webSocketUrl]);
-      deferred.resolve();
+      var result = config.inspectorCallback({
+        app: path.join(__dirname, 'inspector-app'),
+        webSocketUrl: webSocketUrl,
+        nwUrl: path.join(__dirname, 'inspector-app', 'devtools', 'front_end', 'inspector.html'),
+        electronUrl: path.join(__dirname, 'inspector-app', 'electron.html'),
+        inspectorUrl: 'devtools/front_end/inspector.html?ws=' + webSocketUrl.replace(/^ws:\/\//, ''),
+        args: '?ws=' + webSocketUrl.replace(/^ws:\/\//, '')
+      });
+      
+      deferred.resolve(result);
     }
     catch (err) {
+      console.log("Calling inspector callback has failed. " + err);
       deferred.reject(err);
     }
 
@@ -194,6 +202,7 @@
       url: infoUrl,
       json: true
     }, function(error, response, body) {
+
       if (error) {
         deferred.reject(error);
       }
@@ -339,6 +348,7 @@
     var proc = spawn(config.adbPath, ['forward', '--remove-all']);
 
     proc.on('exit', function(code, signal) {
+    
       if (code === 0) {
         deferred.resolve();
       }
@@ -382,9 +392,11 @@
       )
       .then(
         function(urls) {
+
           var promises = urls
             .map(
               function(url) {
+
                 return searchDeviceForUrl(url, options);
               }
             );
