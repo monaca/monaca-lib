@@ -411,6 +411,10 @@
 
           var deviceIds = Object.keys(abstractSockets);
 
+          if (deviceIds.length === 0) {
+            return Q.reject('Device not found. Is it connected with USB?');
+          }
+
           for (var i = 0, l = deviceIds.length; i < l; i ++) {
             var deviceId = deviceIds[i];
 
