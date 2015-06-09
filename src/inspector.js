@@ -101,8 +101,9 @@
       return deferred.promise;
     };
 
-    var runNext = function(port) {
-      var binary = config.proxyPath;
+    var runNext = function(port, nbrOfTimes) {
+      var binary = config.proxyPath,
+        nbrOfTimes = nbrOfTimes || 0;
 
       if (!config.proxyPath || !fs.existsSync(config.proxyPath)) {
         return Q.reject('Unable to start webkit proxy. Maybe it is not installed.');
@@ -123,10 +124,25 @@
           return Q.resolve(url);
         },
         function() {
-          // 1s delay
+          if (nbrOfTimes > 3) {
+            return Q.reject('Unable to start proxy. Is the device connected with USB?');
+          }
+
+          var deferred = Q.defer();
+
           setTimeout(function() {
-            return runNext(port);
-          }, 1000);
+            runNext(port, nbrOfTimes + 1)
+              .then(
+                function(result) {
+                  deferred.resolve(result);
+                },
+                function(error) {
+                  deferred.reject(error);
+                }
+              );
+          }, 500);
+
+          return deferred.promise;
         }
       );
     };
@@ -158,6 +174,21 @@
     });
 
     return deferred.promise;
+  };
+
+  var stopProxy = function() {
+    if (global.iosWebkitProxyProc) {
+      try {
+        global.iosWebkitProxyProc.kill();
+      }
+      catch (e) {
+      }
+
+      delete global.iosWebkitProxyProc;;
+      delete global.iosWebkitProxyUrl;
+    }
+
+    return Q.resolve();
   };
 
   var firstSuccess = function(promises) {
@@ -238,7 +269,7 @@
           deferred.resolve(result[0].webSocketDebuggerUrl);
         }
         else {
-          deferred.reject('Didn\'t find page.');
+          deferred.reject('Didn\'t find page. Is the app running on the device? Please start the app before starting the inspector.');
         }
       }
     });
@@ -251,13 +282,11 @@
 
     request({
       url: listUrl,
-      json: true
+      json: true,
+      timeout: 1000
     }, function(error, response, body) {
-      if (error) {
-        return deferred.reject(error);
-      }
-      else if (response.statusCode !== 200) {
-        return deferred.reject(response.statusMessage);
+      if (error || body.length === 0 || response.statusCode !== 200) {
+        return deferred.reject('Unable to connect to device. Is it connected by USB?');
       }
 
       var promises = body.map(function(device) {
@@ -282,7 +311,17 @@
     return startProxy()
       .then(
         function(listUrl) {
-          return findWebSocketUrl(listUrl, options);
+          return findWebSocketUrl(listUrl, options)
+            .catch(
+              function(error) {
+                return stopProxy()
+                  .then(
+                    function() {
+                      return Q.reject(error);
+                    }
+                  );
+              }
+            );
         }
       )
       .then(startDevTools);
