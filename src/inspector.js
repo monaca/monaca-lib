@@ -22,7 +22,7 @@
         case 'win32':
           return path.join(__dirname, '..', 'bin', 'ios-webkit-debug-proxy', 'windows', 'ios-webkit-debug-proxy.exe');
         default:
-          return 'ios_webkit_debug_proxy';
+          return '/usr/local/bin/ios_webkit_debug_proxy';
       }
     }(),
     'inspectorCallback': function(args) {
@@ -59,15 +59,15 @@
         app: path.join(__dirname, 'inspector-app'),
         webSocketUrl: webSocketUrl,
         nwUrl: path.join(__dirname, 'inspector-app', 'devtools', 'front_end', 'inspector.html'),
-        electronUrl: path.join(__dirname, 'inspector-app', 'electron.html'),
+        electronUrl: 'file://' + path.join(__dirname, 'inspector-app', 'electron.html'),
         inspectorUrl: 'devtools/front_end/inspector.html?ws=' + webSocketUrl.replace(/^ws:\/\//, ''),
         args: '?ws=' + webSocketUrl.replace(/^ws:\/\//, '')
       });
-      
+
       deferred.resolve(result);
     }
     catch (err) {
-      console.log("Calling inspector callback has failed. " + err);
+      console.log('Calling inspector callback has failed. ' + err);
       deferred.reject(err);
     }
 
@@ -75,7 +75,6 @@
   };
 
   var startProxy = function() {
-
     var spawnProcess = function(binary, port) {
       var deferred = Q.defer();
 
