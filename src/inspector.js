@@ -241,13 +241,13 @@
       }
       else if (body.length === 0) {
         // Retry since sometimes it takes some time for the device to turn up in the list.
-        if (retries < 20) {
+        if (retries < 10) {
           setTimeout(function() {
             deferred.resolve(searchDeviceForUrl(infoUrl, options, retries + 1));
           }, 500);
         }
         else {
-          deferred.reject('Page not found.');
+          deferred.reject('Didn\'t find page. Is the app running on the device? Please start the app before starting the inspector.');
         }
       }
       else {
