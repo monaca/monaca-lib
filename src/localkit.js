@@ -629,7 +629,7 @@
    *   Send a start project event to the debugger.
    * @param {String} projectPath
    * @param {Object} [options]
-   * @param {String} [options.deviceId]
+   * @param {String} [options.clientId]
    * @return {Promise}
    */
   Localkit.prototype.startProject = function(projectPath, options) {
