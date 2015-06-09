@@ -435,6 +435,9 @@
 
           deferred.resolve(projectId);
         }
+        else {
+          deferred.reject('No such project.');
+        }
       }.bind(this),
       function(error) {
         deferred.reject(error);
