@@ -91,6 +91,7 @@
             clientData = qs.parse(decrypted);
 
           this.connectedClients[clientIdHash] = clientData;
+          this.connectedClients[clientIdHash].clientId = clientIdHash;
 
         }.bind(this));
       }
