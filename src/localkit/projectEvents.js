@@ -109,9 +109,9 @@
       for (i = 0, l = this._clients.length; i < l; i ++) {
         _client = this._clients[i];
 
-        if (client === _client.client) {
-          pairingKey = _client.pairingKey;
-          client.send(rc4.encrypt(JSON.stringify(message), pairingKey));
+        if (client === _client) {
+          pairingKey = client.pairingKey;
+          client.client.send(rc4.encrypt(JSON.stringify(message), pairingKey));
           break;
         }
       }
