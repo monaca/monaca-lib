@@ -493,9 +493,10 @@
     catch (e) {}
   };
 
-  process.on("uncaughtException", onClose);
-  process.on("SIGINT", onClose);
-  process.on("SIGTERM", onClose);
+  process.on('exit', onClose);
+  process.on('uncaughtException', onClose);
+  process.on('SIGINT', onClose);
+  process.on('SIGTERM', onClose);
 
   module.exports = {
     initialize: initialize,
