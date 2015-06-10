@@ -475,6 +475,17 @@
     }
   }
 
+  var onClose = function() {
+    try {
+      global.iosWebkitProxyProc.kill();
+    }
+    catch (e) {}
+  };
+
+  process.on("uncaughtException", onClose);
+  process.on("SIGINT", onClose);
+  process.on("SIGTERM", onClose);
+
   module.exports = {
     initialize: initialize,
     launch: launch,
