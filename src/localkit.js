@@ -257,7 +257,16 @@
 
     if (!this.server) {
       this.server = http.createServer(this.api.requestHandler.bind(this.api));
+      this.serverClients = [];
     }
+
+    this.server.on('connection', function(client) {
+      this.serverClients.push(client);
+
+      client.on('end', function() {
+        this.serverClients.splice(this.serverClients.indexOf(client));
+      }.bind(this));
+    }.bind(this));
 
     this.server.on('error', function(error) {
       deferred.reject(error);
@@ -292,6 +301,12 @@
    */
   Localkit.prototype.stopHttpServer = function() {
     var deferred = Q.defer();
+
+    if (this.serverClients && this.serverClients.length) {
+      this.serverClients.forEach(function(client) {
+        client.destroy();
+      });
+    }
 
     this.server.close(function(error) {
       if (error) {
