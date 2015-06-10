@@ -17,7 +17,7 @@
   var ERROR_START_PROXY    = 'ERROR_START_PROXY',
   // Failed to find page to inspect. Probably because the app is not running in the Debugger.
       ERROR_NO_PAGE        = 'ERROR_NO_PAGE',
-  // Device is not connected by USB or USB debugging is not enabled. 
+  // Device is not connected by USB or USB debugging is not enabled.
       ERROR_USB_CONNECTION = 'ERROR_USB_CONNECTION',
   // Generic ADB error. Will happen when adb fails to launch or port forwarding fails.
       ERROR_ADB            = 'ERROR_ADB',
