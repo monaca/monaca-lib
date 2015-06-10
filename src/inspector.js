@@ -402,7 +402,6 @@
     var proc = spawn(config.adbPath, ['forward', '--remove-all']);
 
     proc.on('exit', function(code, signal) {
-    
       if (code === 0) {
         deferred.resolve();
       }
