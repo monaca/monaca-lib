@@ -304,7 +304,10 @@
 
     if (this.serverClients && this.serverClients.length) {
       this.serverClients.forEach(function(client) {
-        client.destroy();
+        try {
+          client.destroy();
+        }
+        catch (e) {}
       });
     }
 
