@@ -2,7 +2,7 @@
 CHANGELOG
 ====
 
-v1.0.5
+v1.1.0
 ----
  * monaca: Added `isBuildOnly` parameter to `Monaca.createProject()` API.
  * monaca: Rewrote `Monaca.getTemplates()` method to get templates from Monaca Cloud.
@@ -11,6 +11,14 @@ v1.0.5
  * localkit: Added `Localkit.startWatchProject()`, `Localkit.stopWatchingProject()` and `Localkit.isWatchingProject()` for more granular control.
  * monaca: Added `options.language` parameter.
  * monaca: Added `options` object to `Monaca.relogin()`. Works exactly like the parameters for `Monaca.login()`.
+ * localkit: Added `Localkit.initInspector()` method.
+ * localkit: Fixed `Localkit.startWatch()` so it will always be resolved.
+ * monaca: Return whole response body in `Monaca.login` instead of just the message.
+ * monaca: Added `Monaca.download()` method.
+ * localkit: Removed nw.js dependency.
+ * localkit: `Localkit` object is now an event emitter.
+ * localkit: Fixed `Localkit.stopHttpServer` so it will work even if clients are connected to SSE.
+
 
 v1.0.4
 ----
