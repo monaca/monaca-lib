@@ -2,7 +2,7 @@
 CHANGELOG
 ====
 
-v1.1.0-rc.3
+v1.1.0-rc.4
 ----
  * monaca: Added `isBuildOnly` parameter to `Monaca.createProject()` API.
  * monaca: Rewrote `Monaca.getTemplates()` method to get templates from Monaca Cloud.
@@ -18,6 +18,7 @@ v1.1.0-rc.3
  * localkit: Removed nw.js dependency.
  * localkit: `Localkit` object is now an event emitter.
  * localkit: Fixed `Localkit.stopHttpServer` so it will work even if clients are connected to SSE.
+ * localkit: Kill adb processes on shutdown.
 
 v1.0.4
 ----
