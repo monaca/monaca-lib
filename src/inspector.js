@@ -24,6 +24,8 @@
   // Will happen if a request is made to inspect a device that is not "android" or "ios".
       ERROR_NO_SUCH_DEVICE = 'ERROR_NO_SUCH_DEVICE';
 
+  var adbProc = [];
+
   var config = {
     'adbPath': 'adb',
     'proxyPath': function() {
@@ -401,6 +403,8 @@
 
     var proc = spawn(config.adbPath, ['forward', '--remove-all']);
 
+    adbProc.push(proc);
+
     proc.on('exit', function(code, signal) {
       if (code === 0) {
         deferred.resolve();
@@ -495,6 +499,15 @@
       global.iosWebkitProxyProc.kill();
     }
     catch (e) {}
+
+    for (var i = 0, l = adbProc.length; i < l; i ++) {
+      var proc = adbProc[i];
+
+      try {
+        proc.kill();
+      }
+      catch (e) {}
+    }
   };
 
   process.on('exit', onClose);
