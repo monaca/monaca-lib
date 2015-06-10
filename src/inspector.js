@@ -429,6 +429,10 @@
             }
           }
 
+          if (promises.length === 0) {
+            return Q.reject('Didn\'t find page. Is the app running on the device? Please start the app before starting the inspector.');
+          }
+
           return Q.all(promises);
         }
       )
