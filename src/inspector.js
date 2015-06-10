@@ -13,6 +13,17 @@
     http = require('http'),
     Padlock = require('padlock').Padlock;
 
+  // Failed starting the proxy. Probably because no iOS device is connected.
+  var ERROR_START_PROXY    = 'ERROR_START_PROXY',
+  // Failed to find page to inspect. Probably because the app is not running in the Debugger.
+      ERROR_NO_PAGE        = 'ERROR_NO_PAGE',
+  // Device is not connected by USB or USB debugging is not enabled. 
+      ERROR_USB_CONNECTION = 'ERROR_USB_CONNECTION',
+  // Generic ADB error. Will happen when adb fails to launch or port forwarding fails.
+      ERROR_ADB            = 'ERROR_ADB',
+  // Will happen if a request is made to inspect a device that is not "android" or "ios".
+      ERROR_NO_SUCH_DEVICE = 'ERROR_NO_SUCH_DEVICE';
+
   var config = {
     'adbPath': 'adb',
     'proxyPath': function() {
@@ -106,7 +117,7 @@
         nbrOfTimes = nbrOfTimes || 0;
 
       if (!config.proxyPath || !fs.existsSync(config.proxyPath)) {
-        return Q.reject('Unable to start webkit proxy. Maybe it is not installed.');
+        return Q.reject(ERROR_START_PROXY);
       }
 
       return spawnProcess(binary, port).then(
@@ -125,7 +136,7 @@
         },
         function() {
           if (nbrOfTimes > 3) {
-            return Q.reject('Unable to start proxy. Is the device connected with USB?');
+            return Q.reject(ERROR_START_PROXY);
           }
 
           var deferred = Q.defer();
@@ -247,7 +258,7 @@
           }, 500);
         }
         else {
-          deferred.reject('Didn\'t find page. Is the app running on the device? Please start the app before starting the inspector.');
+          deferred.reject(ERROR_NO_PAGE);
         }
       }
       else {
@@ -269,7 +280,7 @@
           deferred.resolve(result[0].webSocketDebuggerUrl);
         }
         else {
-          deferred.reject('Didn\'t find page. Is the app running on the device? Please start the app before starting the inspector.');
+          deferred.reject(ERROR_NO_PAGE);
         }
       }
     });
@@ -286,7 +297,7 @@
       timeout: 1000
     }, function(error, response, body) {
       if (error || body.length === 0 || response.statusCode !== 200) {
-        return deferred.reject('Unable to connect to device. Is it connected by USB?');
+        return deferred.reject(ERROR_USB_CONNECTION);
       }
 
       var promises = body.map(function(device) {
@@ -391,12 +402,12 @@
         deferred.resolve();
       }
       else {
-        deferred.reject('Unable to stop port forwarding.');
+        deferred.reject(ERROR_ADB);
       }
     });
 
     proc.on('error', function() {
-      deferred.reject('Unable to start adb. Please install it.');
+      deferred.reject(ERROR_ADB);
     });
 
     return deferred.promise;
@@ -412,7 +423,7 @@
           var deviceIds = Object.keys(abstractSockets);
 
           if (deviceIds.length === 0) {
-            return Q.reject('Device not found. Is it connected with USB?');
+            return Q.reject(ERROR_USB_CONNECTION);
           }
 
           for (var i = 0, l = deviceIds.length; i < l; i ++) {
@@ -430,7 +441,7 @@
           }
 
           if (promises.length === 0) {
-            return Q.reject('Didn\'t find page. Is the app running on the device? Please start the app before starting the inspector.');
+            return Q.reject(ERROR_NO_PAGE);
           }
 
           return Q.all(promises);
@@ -462,7 +473,7 @@
       case 'android':
         return launchAndroid(options);
       default:
-        return Q.reject(options.type ? 'No such device: ' + options.type : 'You must supply a device type.');
+        return Q.reject(ERROR_NO_SUCH_DEVICE);
     }
   };
 
