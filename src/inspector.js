@@ -45,10 +45,15 @@
     global.webkitProxyLock = new Padlock();
   }
 
-  portfinder.basePort = 8002;
-
-  var getPort = function() {
+  var getPort = function(basePort) {
     var deferred = Q.defer();
+
+    if (basePort) {
+      portfinder.basePort = basePort;
+    }
+    else {
+      portfinder.basePort = 8002;
+    }
 
     portfinder.getPort(function(err, port) {
       if (err) {
@@ -169,7 +174,7 @@
         return deferred.resolve(global.iosWebkitProxyUrl);
       }
 
-      getPort()
+      getPort(8002)
         .then(runNext)
         .then(
           function(result) {
@@ -378,7 +383,7 @@
   };
 
   var forwardAndroidDevice = function(deviceId, abstractSocket) {
-    return getPort()
+    return getPort(8102)
       .then(
         function(port) {
           return client.forward(deviceId, 'tcp:' + port, abstractSocket)
