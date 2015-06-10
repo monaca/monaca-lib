@@ -2,7 +2,7 @@
 CHANGELOG
 ====
 
-v1.1.0-rc.2
+v1.1.0-rc.3
 ----
  * monaca: Added `isBuildOnly` parameter to `Monaca.createProject()` API.
  * monaca: Rewrote `Monaca.getTemplates()` method to get templates from Monaca Cloud.
