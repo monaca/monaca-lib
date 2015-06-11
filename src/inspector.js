@@ -110,7 +110,7 @@
           else {
             deferred.reject();
           }
-        }, 100);
+        }, 400);
       }
       catch (e) {
         deferred.reject(e);
