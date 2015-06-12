@@ -377,10 +377,13 @@
    * @description
    *  Add a project.
    * @param {String} projectPath - Path to project directory.
+   * @param {Object} options Project parameters
+   * @param {String} options.name Project name. This name will override the name in config.xml
    * @return {Promise}
    */
-  Localkit.prototype.addProject = function(projectPath) {
-    var deferred = Q.defer();
+  Localkit.prototype.addProject = function(projectPath, options) {
+    var deferred = Q.defer(),
+      options = options || {};
 
     this.monaca.getLocalProjectId(projectPath).then(
       function(projectId) {
@@ -410,7 +413,8 @@
 
           this.projects[projectId] = {
             fileWatcher: fileWatcher,
-            path: projectPath
+            path: projectPath,
+            name: options.name
           };
 
           deferred.resolve(projectId);
@@ -698,20 +702,27 @@
    * @description
    *   Add a list of projects and remove projects not in the list.
    * @param {Array} pathList - List of project directories.
+   * @param {Array} optionsList - List of options objects.
    * @return {Promise}
    */
-  Localkit.prototype.setProjects = function(pathList) {
-    var deferred = Q.defer();
+  Localkit.prototype.setProjects = function(pathList, optionsList) {
+    var deferred = Q.defer(),
+      optionsList = optionsList || {};
 
-    var getProjects = Q.all(
-      pathList.map(function(path) {
-        var deferred = Q.defer();
+    var getProjects = function() {
+      var promises = [];
+
+      for (var i = 0, l = pathList.length; i < l; i ++) {
+        var path = pathList[i],
+          options = optionsList[i],
+          deferred = Q.defer();
 
         this.monaca.getLocalProjectId(path).then(
           function(projectId) {
             deferred.resolve({
               path: path,
-              projectId: projectId
+              projectId: projectId,
+              options: options
             });
           },
           function(error) {
@@ -719,11 +730,13 @@
           }
         );
 
-        return deferred.promise;
-      }.bind(this))
-    );
+        promises.push(deferred.promise);
+      }
 
-    getProjects.then(
+      return Q.all(promises);
+    }.bind(this);
+
+    getProjects().then(
       function(projects) {
         var promises = [];
 
@@ -731,7 +744,7 @@
           var project = projects[i];
 
           if (!this.projects[project.projectId]) {
-            promises.push(this.addProject(project.path));
+            promises.push(this.addProject(project.path, project.options));
           }
         }
 
@@ -774,7 +787,22 @@
 
     for (var id in this.projects) {
       if (this.projects.hasOwnProperty(id)) {
-        promises.push(this.monaca.getProjectInfo(this.projects[id].path));
+        var deferred = Q.defer(),
+          _project = this.projects[id];
+
+        this.monaca.getProjectInfo(_project.path)
+          .then(
+            function(project) {
+              project.name = _project.name || project.name;
+
+              deferred.resolve(project);
+            },
+            function(error) {
+              deferred.reject(error);
+            }
+          );
+
+        promises.push(deferred.promise);
       }
     }
 
