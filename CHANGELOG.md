@@ -21,6 +21,7 @@ v1.1.0-rc.6
  * localkit: Kill adb processes on shutdown.
  * localkit: Add ability to override config.xml project name in `Localkit.addProject()` and `Localkit.setProjects()`.
  * monaca: Don't save cloud project id in `Monaca.cloneProject()`.
+ * monaca: Return whole JSON response when making requests to Monaca Cloud.
 
 v1.0.4
 ----

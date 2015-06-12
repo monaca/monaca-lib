@@ -259,7 +259,7 @@
                 deferred.resolve(body);
               } else {
                 try {
-                  deferred.reject(JSON.parse(body).message);
+                  deferred.reject(JSON.parse(body));
                 }
                 catch (e) {
                   deferred.reject(response.statusCode);
@@ -306,7 +306,7 @@
                 deferred.resolve(body);
               } else {
                 try {
-                  deferred.reject(JSON.parse(body).message);
+                  deferred.reject(JSON.parse(body));
                 }
                 catch (e) {
                   deferred.reject('Error code: ' + response.statusCode);
