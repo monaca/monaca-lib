@@ -1039,21 +1039,12 @@
 
               Q.all(promises).then(
                 function() {
-                  // Save project id.
-                  localProperties.set(destDir, 'project_id', projectId).then(
-                    function() {
-                      deferred.resolve(destDir);
-                    },
-                    function() {
-                      deferred.reject(error);
-                    }
-                  );
+                  deferred.resolve(destDir);
                 },
                 function(error) {
                   deferred.reject(error);
                 }
               );
-
             }.bind(this),
             function(error) {
               deferred.reject(error);
