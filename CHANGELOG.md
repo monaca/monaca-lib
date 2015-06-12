@@ -2,7 +2,7 @@
 CHANGELOG
 ====
 
-v1.1.0-rc.5
+v1.1.0-rc.6
 ----
  * monaca: Added `isBuildOnly` parameter to `Monaca.createProject()` API.
  * monaca: Rewrote `Monaca.getTemplates()` method to get templates from Monaca Cloud.
@@ -19,6 +19,8 @@ v1.1.0-rc.5
  * localkit: `Localkit` object is now an event emitter.
  * localkit: Fixed `Localkit.stopHttpServer` so it will work even if clients are connected to SSE.
  * localkit: Kill adb processes on shutdown.
+ * localkit: Add ability to override config.xml project name in `Localkit.addProject()` and `Localkit.setProjects()`.
+ * monaca: Don't save cloud project id in `Monaca.cloneProject()`.
 
 v1.0.4
 ----
