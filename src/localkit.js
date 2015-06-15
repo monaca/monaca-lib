@@ -713,24 +713,26 @@
       var promises = [];
 
       for (var i = 0, l = pathList.length; i < l; i ++) {
-        var path = pathList[i],
-          options = optionsList[i],
-          deferred = Q.defer();
+        (function(i) {
+          var projectPath = pathList[i],
+            options = optionsList[i],
+            deferred = Q.defer();
 
-        this.monaca.getLocalProjectId(path).then(
-          function(projectId) {
-            deferred.resolve({
-              path: path,
-              projectId: projectId,
-              options: options
-            });
-          },
-          function(error) {
-            deferred.reject(error);
-          }
-        );
+          this.monaca.getLocalProjectId(projectPath).then(
+            function(projectId) {
+              deferred.resolve({
+                path: projectPath,
+                projectId: projectId,
+                options: options
+              });
+            },
+            function(error) {
+              deferred.reject(error);
+            }
+          );
 
-        promises.push(deferred.promise);
+          promises.push(deferred.promise);
+         }.bind(this))(i);
       }
 
       return Q.all(promises);
@@ -738,6 +740,7 @@
 
     getProjects().then(
       function(projects) {
+
         var promises = [];
 
         for (var i = 0, l = projects.length; i < l; i ++) {
@@ -786,24 +789,27 @@
     var promises = [];
 
     for (var id in this.projects) {
-      if (this.projects.hasOwnProperty(id)) {
-        var deferred = Q.defer(),
-          _project = this.projects[id];
+      (function(id) {
+        if (this.projects.hasOwnProperty(id)) {
+          var deferred = Q.defer(),
+            _project = this.projects[id];
 
-        this.monaca.getProjectInfo(_project.path)
-          .then(
-            function(project) {
-              project.name = _project.name || project.name;
+          this.monaca.getProjectInfo(_project.path)
+            .then(
+              function(project) {
+  
+                project.name = _project.name || project.name;
 
-              deferred.resolve(project);
-            },
-            function(error) {
-              deferred.reject(error);
-            }
-          );
+                deferred.resolve(project);
+              },
+              function(error) {
+                deferred.reject(error);
+              }
+            );
 
-        promises.push(deferred.promise);
-      }
+          promises.push(deferred.promise);
+        }
+      }.bind(this))(id);
     }
 
     return Q.all(promises);
