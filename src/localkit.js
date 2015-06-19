@@ -10,6 +10,7 @@
     util = require('util'),
     events = require('events'),
     nconf = require('nconf');
+    
 
   // local imports
   var ProjectEvents = require(path.join(__dirname, 'localkit', 'projectEvents')),
@@ -398,8 +399,12 @@
           var fileWatcher = new FileWatcher();
 
           try {
-            fileWatcher.onchange(function(changeType, filePath) {
+            fileWatcher.onchange(function(changeType, filePath) {              
               this.projectEvents.sendFileEvent(projectId, changeType, filePath);
+
+              //emit this event so that if an app is being previewed, it will be reloaded
+              this.emit("live-reload","");              
+
             }.bind(this));
 
             if (this.isWatching()) {
@@ -410,11 +415,12 @@
             deferred.reject(e);
             return deferred.promise;
           }
-
+          
           this.projects[projectId] = {
             fileWatcher: fileWatcher,
             path: projectPath,
-            name: options.name
+            name: options.name,
+            createdAt: options.createdAt
           };
 
           deferred.resolve(projectId);
@@ -799,7 +805,7 @@
               function(project) {
   
                 project.name = _project.name || project.name;
-
+                project.createdAt = _project.createdAt || project.createdAt;
                 deferred.resolve(project);
               },
               function(error) {

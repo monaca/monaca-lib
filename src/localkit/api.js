@@ -5,7 +5,8 @@
   var qs = require('querystring'),
     path = require('path'),
     fs = require('fs'),
-    rc4 = require(path.join(__dirname, 'rc4'));
+    rc4 = require(path.join(__dirname, 'rc4')),
+    _  = require('underscore');
 
   var PAIRING_KEYS_FILE = path.join(
     process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'],
@@ -176,7 +177,23 @@
 
     this.localkit.getProjects().then(
       function(projects) {
-        this.sendJsonResponse(response, 200, 'Project list', projects, true, pairingKey); 
+        
+        var newList;
+        var sortProjects = function(projects) {
+          function convertToDate(o) {              
+              o.createdAt = new Date(o.createdAt + "");              
+              return o;
+          }
+          function descending(o) {
+              return -o.createdAt.getTime();
+          }
+          newList = _.chain(projects)
+         .map(convertToDate)
+         .sortBy(descending)
+         .value();         
+        }(projects);
+
+        this.sendJsonResponse(response, 200, 'Project list', newList, true, pairingKey); 
       }.bind(this),
       function(error) {
         this.sendJsonResponse(response, 400, 'Unable to get project list.', undefined, true, pairingKey);
