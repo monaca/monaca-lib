@@ -9,8 +9,7 @@
     crypto = require('crypto'),
     util = require('util'),
     events = require('events'),
-    nconf = require('nconf');
-    
+    nconf = require('nconf');    
 
   // local imports
   var ProjectEvents = require(path.join(__dirname, 'localkit', 'projectEvents')),
@@ -399,7 +398,7 @@
           var fileWatcher = new FileWatcher();
 
           try {
-            fileWatcher.onchange(function(changeType, filePath) {              
+            fileWatcher.onchange(function(changeType, filePath) {
               this.projectEvents.sendFileEvent(projectId, changeType, filePath);
 
               //emit this event so that if an app is being previewed, it will be reloaded
@@ -414,8 +413,7 @@
           catch (e) {
             deferred.reject(e);
             return deferred.promise;
-          }
-          
+          }          
           this.projects[projectId] = {
             fileWatcher: fileWatcher,
             path: projectPath,
@@ -802,8 +800,7 @@
 
           this.monaca.getProjectInfo(_project.path)
             .then(
-              function(project) {
-  
+              function(project) {  
                 project.name = _project.name || project.name;
                 project.createdAt = _project.createdAt || project.createdAt;
                 deferred.resolve(project);
