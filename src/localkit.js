@@ -799,6 +799,10 @@
               function(project) {
   
                 project.name = _project.name || project.name;
+                project.frameworkVersion = "";
+                try {
+                  project.frameworkVersion = require(path.join(_project.path, '.monaca', 'project_info.json'))["framework_version"]
+                } catch(e) {}
 
                 deferred.resolve(project);
               },
