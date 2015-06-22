@@ -400,6 +400,12 @@
           try {
             fileWatcher.onchange(function(changeType, filePath) {
               this.projectEvents.sendFileEvent(projectId, changeType, filePath);
+              this.emit('live-reload', {
+	        projectId: projectId,
+		changeType: changeType,
+		filePath: filePath,
+		projectPath: projectPath
+	      });
             }.bind(this));
 
             if (this.isWatching()) {
