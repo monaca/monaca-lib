@@ -402,8 +402,8 @@
               this.projectEvents.sendFileEvent(projectId, changeType, filePath);
 
               //emit this event so that if an app is being previewed, it will be reloaded
-              this.emit("live-reload","");              
-
+              this.emit("live-reload", projectPath);
+              
             }.bind(this));
 
             if (this.isWatching()) {
