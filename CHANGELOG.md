@@ -2,7 +2,11 @@
 CHANGELOG
 ====
 
-v1.1.0-rc9.
+v1.1.0-rc.10
+----
+ * Released without any changes.
+
+v1.1.0-rc.9
 ----
  * localkit: Return `frameworkVersion` when calling `Localkit.getProject()` function.
  * localkit: Now `Localkit` emits `live-reload` event when the file has changed.
