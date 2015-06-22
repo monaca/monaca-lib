@@ -2,6 +2,15 @@
 CHANGELOG
 ====
 
+v1.1.0-rc9.
+----
+ * localkit: Return `frameworkVersion` when calling `Localkit.getProject()` function.
+ * localkit: Now `Localkit` emits `live-reload` event when the file has changed.
+
+v1.1.0-rc.8
+----
+ * localkit: Fixed bug when serving multiple projects.
+
 v1.1.0-rc.7
 ----
  * monaca: Added `isBuildOnly` parameter to `Monaca.createProject()` API.
