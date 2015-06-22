@@ -803,13 +803,17 @@
               function(project) {  
                 project.name = _project.name || project.name;
                 project.createdAt = _project.createdAt || project.createdAt;
+                project.frameworkVersion = "";
+                try {
+                  project.frameworkVersion = JSON.parse(fs.readFileSync(path.join(_project.path, '.monaca','project_info.json')))["framework_version"]
+                }
+                catch(e) {}                
                 deferred.resolve(project);
               },
               function(error) {
                 deferred.reject(error);
               }
             );
-
           promises.push(deferred.promise);
         }
       }.bind(this))(id);
