@@ -9,7 +9,7 @@
     crypto = require('crypto'),
     util = require('util'),
     events = require('events'),
-    nconf = require('nconf');
+    nconf = require('nconf');    
 
   // local imports
   var ProjectEvents = require(path.join(__dirname, 'localkit', 'projectEvents')),
@@ -400,6 +400,10 @@
           try {
             fileWatcher.onchange(function(changeType, filePath) {
               this.projectEvents.sendFileEvent(projectId, changeType, filePath);
+
+              //emit this event so that if an app is being previewed, it will be reloaded
+              this.emit("live-reload", projectPath);
+              
             }.bind(this));
 
             if (this.isWatching()) {
@@ -409,12 +413,12 @@
           catch (e) {
             deferred.reject(e);
             return deferred.promise;
-          }
-
+          }          
           this.projects[projectId] = {
             fileWatcher: fileWatcher,
             path: projectPath,
-            name: options.name
+            name: options.name,
+            createdAt: options.createdAt
           };
 
           deferred.resolve(projectId);
@@ -796,17 +800,20 @@
 
           this.monaca.getProjectInfo(_project.path)
             .then(
-              function(project) {
-  
+              function(project) {  
                 project.name = _project.name || project.name;
-
+                project.createdAt = _project.createdAt || project.createdAt;
+                project.frameworkVersion = "";
+                try {
+                  project.frameworkVersion = JSON.parse(fs.readFileSync(path.join(_project.path, '.monaca','project_info.json')))["framework_version"]
+                }
+                catch(e) {}                
                 deferred.resolve(project);
               },
               function(error) {
                 deferred.reject(error);
               }
             );
-
           promises.push(deferred.promise);
         }
       }.bind(this))(id);
