@@ -1935,45 +1935,29 @@
    * @description
    *   Get a config value synchronously
    * @param {String} key
-   * @return {object} config Object that contains error flag and value
-   * @return {boolean} config.error Flag to show if there was any error while reading key from config file
-   * @return {string} config.value Actual value of the key from config file if error flag is false, error message otherwise 
+   * @return {String} config Value of the key from config file
    * @example
    *   var proxy = monaca.getConfigSync('http_proxy');
    */
   Monaca.prototype.getConfigSync = function(key) {    
-    var config = {
-      error: true,
-      value: ""
-    }, configFile = this._configFile || CONFIG_FILE;
+    var config;
+    var configFile = this._configFile || CONFIG_FILE;    
     if (typeof key === 'undefined') {      
-      config.value = '"key" must exist.';
+      throw new Error('"key" must exist.');
     }
     else if (typeof key !== 'string') {      
-      config.value = '"key" must be a string.';
+      throw new Error('"key" must be a string.');
     }
-    // if value message is populated, it means wrong/invalid key is provided.
-    if (config.value) {
-      return config;
-    }
-
     try {
       if (fs.existsSync(configFile)) {
-        var configJson = require(configFile);
+        var configJson = JSON.parse(fs.readFileSync(configFile));
         if (configJson && configJson[key]) {
-          config.error = false;
-          config.value = configJson[key];
+          config = configJson[key];
         }
-        else {        
-          config.value = "Specified key not found in configuration."
-        }
-      }
-      else {      
-        config.value = "Config file not found.";
       }
     }
-    catch (e){    
-      config.value = "error is " + e;      
+    catch (e){
+      throw new Error(e);
     }
     return config;
   };
