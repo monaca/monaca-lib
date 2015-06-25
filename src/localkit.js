@@ -417,11 +417,22 @@
             return deferred.promise;
           }
 
+          //copy existing projects into temporary variable
+          var tempCopy = {};
+          util._extend(tempCopy, this.projects);
+
+          //empty current project list
+          this.projects = {};          
+
+          //add given project to the empty project list
           this.projects[projectId] = {
             fileWatcher: fileWatcher,
             path: projectPath,
             name: options.name
           };
+
+          //append previous projects from temporary variable
+          util._extend(this.projects, tempCopy);                  
 
           deferred.resolve(projectId);
         }
@@ -715,6 +726,10 @@
     var deferred = Q.defer(),
       optionsList = optionsList || {};
 
+    // since addProject will add project on top of the list, the order is reversed before calling addProject    
+    pathList.reverse();
+    optionsList.reverse();
+    
     var getProjects = function() {
       var promises = [];
 
