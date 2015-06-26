@@ -1933,6 +1933,39 @@
    * @method
    * @memberof Monaca
    * @description
+   *   Get a config value synchronously
+   * @param {String} key
+   * @return {String} config Value of the key from config file
+   * @example
+   *   var proxy = monaca.getConfigSync('http_proxy');
+   */
+  Monaca.prototype.getConfigSync = function(key) {    
+    var config;
+    var configFile = this._configFile || CONFIG_FILE;    
+    if (typeof key === 'undefined') {      
+      throw new Error('"key" must exist.');
+    }
+    else if (typeof key !== 'string') {      
+      throw new Error('"key" must be a string.');
+    }
+    try {
+      if (fs.existsSync(configFile)) {
+        var configJson = JSON.parse(fs.readFileSync(configFile));
+        if (configJson && configJson[key]) {
+          config = configJson[key];
+        }
+      }
+    }
+    catch (e){
+      throw new Error(e);
+    }
+    return config;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *   Get all config key-value pairs.
    * @return {Promise}
    * @example
