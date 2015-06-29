@@ -279,47 +279,33 @@
   Monaca.prototype._post = function(resource, data) {
     var deferred = Q.defer();
 
-    if (resource.charAt(0) !== '/') {
-      resource = '/' + resource;
-    }
-
-    if (!this._loggedIn) {
-      deferred.reject('Must be logged in to use this method.');
-    }
-    else {
-      this.getConfig('http_proxy').then(
-        function(httpProxy) {
-          request.post({
-            url: this.apiRoot + resource,
-            qs: { api_token: this.tokens.api },
-            headers: {
-              Cookie: this.tokens.session
-            },
-            proxy: httpProxy,
-            encoding: null,
-            formData: data
-          }, function(error, response, body) {
-            if (error) {
-              deferred.reject(error.code);
+    this._createRequestClient().then(
+      function(requestClient) {
+        if (resource.charAt(0) !== '/') {
+          resource = '/' + resource;
+        }
+        requestClient.post({
+          url: this.apiRoot + resource,
+          formData: data
+        }, function(error, response, body) {
+          if (error) {
+            deferred.reject(error.code);
+          } else {
+            if (response.statusCode === 200 || response.statusCode === 201) {
+              deferred.resolve(body);
             } else {
-              if (response.statusCode === 200 || response.statusCode === 201) {
-                deferred.resolve(body);
-              } else {
-                try {
-                  deferred.reject(JSON.parse(body));
-                }
-                catch (e) {
-                  deferred.reject('Error code: ' + response.statusCode);
-                }
+              try {
+                deferred.reject(JSON.parse(body));
+              }
+              catch (e) {
+                deferred.reject('Error code: ' + response.statusCode);
               }
             }
-          });
-        }.bind(this),
-        function(error) {
-          deferred.reject(error);
-        }
-      );
-    }
+          }
+        });
+      }.bind(this)
+    );
+
     return deferred.promise;
   };
 
