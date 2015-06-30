@@ -55,7 +55,57 @@
       writable: false
     });
 
-    this.projects = {};
+    this.projects = [];
+
+    Object.defineProperty(this.projects, "hasOwnProperty", { 
+      enumerable: false,
+      value: function(id) { 
+        for(var p in this.projects) {
+          if ( this.projects[p][id] ) {
+            return true; 
+          }
+        }
+        return false; 
+      }.bind(this)
+    });
+
+    Object.defineProperty(this.projects, "getProjectById", { 
+      enumerable: false,
+      value: function(id) { 
+        for(var p in this.projects) {
+          if ( this.projects[p][id] ) {
+            return this.projects[p][id];
+          }
+        }
+        return null; 
+      }.bind(this)
+    });
+
+    Object.defineProperty(this.projects, "getAllProjectIds", { 
+      enumerable: false,
+      value: function() {
+        var keys = [];
+          for(var p in this.projects) {
+            for (var k in this.projects[p]) {
+              keys.push(k);
+            }
+          }
+          return keys;
+      }.bind(this)
+    });
+
+    Object.defineProperty(this.projects, "deleteProjectById", { 
+      enumerable: false,
+      value: function(id) { 
+        for(var p in this.projects) {
+          if ( this.projects[p][id] ) {
+            return this.projects.splice(this.projects.indexOf(this.projects[p]),1);
+          }
+        }
+        return null;
+      }.bind(this)
+    });
+
     this._isWatching = false;
 
     /**
@@ -416,23 +466,13 @@
             deferred.reject(e);
             return deferred.promise;
           }
-
-          //copy existing projects into temporary variable
-          var tempCopy = {};
-          util._extend(tempCopy, this.projects);
-
-          //empty current project list
-          this.projects = {};          
-
-          //add given project to the empty project list
-          this.projects[projectId] = {
+          var obj = {};
+          obj[projectId] = {
             fileWatcher: fileWatcher,
             path: projectPath,
             name: options.name
-          };
-
-          //append previous projects from temporary variable
-          util._extend(this.projects, tempCopy);                  
+          }
+          this.projects.unshift(obj); 
 
           deferred.resolve(projectId);
         }
@@ -459,7 +499,7 @@
     this.monaca.getLocalProjectId(projectPath).then(
       function(projectId) {
         if (this.projects.hasOwnProperty(projectId)) {
-          var project = this.projects[projectId];
+          var project = this.projects.getProjectById(projectId);
 
           try {
             project.fileWatcher.stop();
@@ -470,8 +510,7 @@
           }
 
           project.fileWatcher = project.path = null;
-          delete this.projects[projectId];
-
+          delete this.projects.deleteProjectById(projectId);
           deferred.resolve(projectId);
         }
         else {
@@ -496,14 +535,13 @@
   Localkit.prototype.startWatch = function() {
     var deferred = Q.defer(),
       paths = [];
-
-    var projectIds = Object.keys(this.projects)
+    var projectIds = this.projects.getAllProjectIds()
       .filter(function(projectId) {
-        return !this.projects[projectId].fileWatcher.isRunning();
+        return !this.projects.getProjectById(projectId).fileWatcher.isRunning();
       }.bind(this));
 
     for (var i = 0, l = projectIds.length; i < l; i ++) {
-      var project = this.projects[projectIds[i]];
+      var project = this.projects.getProjectById(projectIds[i]);
 
       try {
         var watchDir = path.join(project.path, 'www');
@@ -532,16 +570,16 @@
   Localkit.prototype.startWatchProject = function(projectDir) {
     var deferred = Q.defer();
 
-    var projectId = Object.keys(this.projects)
+    var projectId = this.projects.getAllProjectIds()
       .filter(function(projectId) {
-        return this.projects[projectId].path === projectDir;
+        return this.projects.getProjectById(projectId).path === projectDir;
       }.bind(this))[0];
 
     if (!projectId) {
       return Q.reject('No such project.');
     }
     else {
-      var project = this.projects[projectId],
+      var project = this.projects.getProjectById(projectId),
         watchDir = path.join(project.path, 'www');
 
       if (!project.fileWatcher.isRunning()) {
@@ -565,14 +603,14 @@
    *   The promise resolves to a list of directories.
    */
   Localkit.prototype.stopWatch = function() {
-    var promises = Object.keys(this.projects)
+    var promises = this.projects.getAllProjectIds()
       .filter(function(projectId) {
-        return this.projects[projectId].fileWatcher.isRunning();
+        return this.projects.getProjectById(projectId).fileWatcher.isRunning();
       }.bind(this))
 
       .map(function(projectId) {
         var deferred = Q.defer(),
-          project = this.projects[projectId];
+          project = this.projects.getProjectById(projectId);
 
         try {
           project.fileWatcher.stop();
@@ -610,16 +648,16 @@
   Localkit.prototype.stopWatchProject = function(projectDir) {
     var deferred = Q.defer();
 
-    var projectId = Object.keys(this.projects)
+    var projectId = this.projects.getAllProjectIds()
       .filter(function(projectId) {
-        return this.projects[projectId].path === projectDir;
+        return this.projects.getProjectById(projectId).path === projectDir;
       }.bind(this))[0];
 
     if (!projectId) {
       return Q.reject('No such project.');
     }
     else {
-      var project = this.projects[projectId],
+      var project = this.projects.getProjectById(projectId),
         watchDir = path.join(project.path, 'www');
 
       if (project.fileWatcher.isRunning()) {
@@ -644,16 +682,16 @@
   Localkit.prototype.isWatchingProject = function(projectDir) {
     var deferred = Q.defer();
 
-    var projectId = Object.keys(this.projects)
+    var projectId = this.projects.getAllProjectIds()
       .filter(function(projectId) {
-        return this.projects[projectId].path === projectDir;
+        return this.projects.getProjectById(projectId).path === projectDir;
       }.bind(this))[0];
 
     if (!projectId) {
       return Q.reject('No such project.');
     }
     else {
-      var project = this.projects[projectId];
+      var project = this.projects.getProjectById(projectId);
 
       if (project.fileWatcher.isRunning()) {
         return Q.resolve(true);
@@ -726,10 +764,6 @@
     var deferred = Q.defer(),
       optionsList = optionsList || {};
 
-    // since addProject will add project on top of the list, the order is reversed before calling addProject    
-    pathList.reverse();
-    optionsList.reverse();
-    
     var getProjects = function() {
       var promises = [];
 
@@ -766,15 +800,14 @@
 
         for (var i = 0, l = projects.length; i < l; i ++) {
           var project = projects[i];
-
-          if (!this.projects[project.projectId]) {
+          if (!this.projects.getProjectById(project.projectId)) {
             promises.push(this.addProject(project.path, project.options));
           }
         }
-
-        for (var projectId in this.projects) {
-          if (this.projects.hasOwnProperty(projectId)) {
-            var projectPath = this.projects[projectId].path;
+        var ids = this.projects.getAllProjectIds();
+        for (var projectId in ids) {
+          if (this.projects.hasOwnProperty(ids[projectId])) {
+            var projectPath = this.projects.getProjectById(ids[projectId]).path;
 
             if (pathList.indexOf(projectPath) < 0) {
               promises.push(this.removeProject(projectPath));
@@ -785,7 +818,7 @@
         Q.all(promises).then(
           function(projectPaths) {
             deferred.resolve(projectPaths);
-          },
+          }.bind(this),
           function(error) {
             deferred.reject(error);
           }
@@ -808,13 +841,13 @@
    */
   Localkit.prototype.getProjects = function() {
     var promises = [];
-
-    for (var id in this.projects) {
+    var ids = this.projects.getAllProjectIds();
+    for (var id in ids) {
+      var currentId = ids[id];
       (function(id) {
         if (this.projects.hasOwnProperty(id)) {
           var deferred = Q.defer(),
-            _project = this.projects[id];
-
+            _project = this.projects.getProjectById(id);
           this.monaca.getProjectInfo(_project.path)
             .then(
               function(project) {
@@ -834,7 +867,7 @@
 
           promises.push(deferred.promise);
         }
-      }.bind(this))(id);
+      }.bind(this))(currentId);
     }
 
     return Q.all(promises);
@@ -853,7 +886,7 @@
 
     if (this.projects.hasOwnProperty(projectId)) {
 
-      this.monaca.getLocalProjectFiles(this.projects[projectId].path).then(
+      this.monaca.getLocalProjectFiles(this.projects.getProjectById(projectId).path).then(
         function(files) {
           var tmp = {};
 
@@ -907,7 +940,7 @@
       deferred.reject('No project width id: ' + projectId);
     }
     else {
-      var projectPath = this.projects[projectId].path,
+      var projectPath = this.projects.getProjectById(projectId).path,
         origFilePath = filePath;
 
       if (filePath.charAt(0) === '/') {

@@ -167,7 +167,7 @@
       isDir = false;
     }
 
-    var projectPath = this.localkit.projects[projectId].path,
+    var projectPath = this.localkit.projects.getProjectById(projectId).path,
       pathInProject = '/' + path.relative(projectPath, filePath).split(path.sep).join('/');
 
     var sendSaveEvent = function(filePath, pathInProject) {
