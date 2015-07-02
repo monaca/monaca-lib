@@ -767,7 +767,7 @@
     var getProjects = function() {
       var promises = [];
 
-      for (var i = 0, l = pathList.length; i < l; i ++) {
+      for (var i = pathList.length - 1; i >= 0; i--) {
         (function(i) {
           var projectPath = pathList[i],
             options = optionsList[i],
