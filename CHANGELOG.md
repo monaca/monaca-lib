@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v1.1.2
+----
+ * monaca: Fix issue in `Monaca.cloneProject()` where promise was never resolved.
+
 v1.1.0-rc.10
 ----
  * Released without any changes.
