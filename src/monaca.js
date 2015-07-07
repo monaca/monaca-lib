@@ -984,7 +984,7 @@
             function(files) {
               var index = 0,
                 promises = [],
-                defers = [];
+                defers = {};
 
               var totalLength = Object.keys(files)
               .map(
@@ -998,14 +998,12 @@
                 }
               );
 
-              for (var i = 0, l = totalLength; i < l; i ++) {
-                var d = Q.defer();
-                defers.push(d);
-                promises.push(d.promise);
-              }
-
               Object.keys(files).forEach(function(_path) {
                 if (files.hasOwnProperty(_path) && files[_path].type == 'file') {
+                  var d = Q.defer();
+                  defers[_path] = d;
+                  promises.push(d.promise);
+
                   this.downloadFile(projectId, _path, path.join(destDir, _path)).then(
                     function(dest) {
                       deferred.notify({
@@ -1013,10 +1011,10 @@
                         index: index,
                         path: dest
                       });
-                      defers[index].resolve(dest);
+                      defers[_path].resolve(dest);
                     },
                     function(error) {
-                      defers[index].reject(error);
+                      defers[_path].reject(error);
                     }
                   )
                   .finally(
