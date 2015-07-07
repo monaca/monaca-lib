@@ -55,7 +55,7 @@
    *     }
    *   );
    */
-  var Monaca = function(apiRoot) {
+  var Monaca = function(apiRoot, options) {
     /**
      * @description
      *   Root of Monaca web API.
@@ -91,6 +91,10 @@
     });
 
     this._loggedIn = false;
+    
+    if (options && options.hasOwnProperty("debug") && options.debug === true) {
+      request.debug = true;
+    }
   };
 
   Monaca.prototype._loadAllData = function() {
