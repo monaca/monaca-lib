@@ -11,7 +11,7 @@
     it('should return a list of templates', function(done) {
       monaca.getTemplates().then(
         function(templates) {
-          expect(templates.length).toEqual(5); //for now there are only 4 templates.  
+          expect(templates.length > 5).toBeTruthy();  
           done();
         }
       );

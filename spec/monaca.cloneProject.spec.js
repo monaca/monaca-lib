@@ -69,21 +69,4 @@
       );
     }, 20000);
 
-    it('should save the project id to .monaca/local_properties.json', function(done) {
-      monaca.cloneProject(projectId, this.destDir).then(
-        function() {
-          var propFile = path.join(this.destDir, '.monaca', 'local_properties.json');
-
-          fs.readFile(propFile, function(error, data) {
-            expect(error).toBe(null);
-
-            if (!error) {
-              expect(data.toString()).toContain(projectId);
-            }
-            done();
-          }); 
-        }.bind(this)
-      );
-    }, 20000);
-  });
 })();
