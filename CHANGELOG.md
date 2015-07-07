@@ -2,7 +2,7 @@
 CHANGELOG
 ====
 
-v1.1.2
+v1.1.3
 ----
  * monaca: Fix issue in `Monaca.cloneProject()` where promise was never resolved.
 
