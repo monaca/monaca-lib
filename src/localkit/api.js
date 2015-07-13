@@ -14,6 +14,16 @@
 
   var Api = function(localkit) {
     this.localkit = localkit;
+    localkit.generateOneTimePassword(15 * 60 * 1000).then(
+      function(password) {
+        var pwds = this.localkit.localAuth.passwords;
+
+        var key = Object.keys(pwds)[0];
+        pwds['abc'] = pwds[key];
+        console.log(this.localkit.localAuth.passwords);
+
+      }.bind(this)
+    );
     this.monaca = localkit.monaca;
 
     this.routes = {
@@ -21,7 +31,8 @@
       '/api/projects': this.projectsApi.bind(this),
       '/api/project/:project_id/file/tree': this.fileTreeApi.bind(this),
       '/api/project/:project_id/file/read': this.fileReadApi.bind(this),
-      '/api/debugger/inspect': this.inspectApi.bind(this)
+      '/api/debugger/inspect': this.inspectApi.bind(this),
+      '/api/local/auth': this.localAuthApi.bind(this)
     };
   };
 
@@ -282,6 +293,42 @@
       }.bind(this)
     );
   }
+
+  Api.prototype.localAuthApi = function(request, response) {
+    var passwordHash = request.headers['x-otp-hash'] || '';
+
+    this.localkit.validateOneTimePassword(passwordHash)
+      .then(
+        function(password) {
+          var body = '',
+            otp = password.data;
+
+          request.on('data', function (data) {
+            body += data;
+
+            if (body.length > 1e6) {
+              request.connection.destroy();
+            }
+          });
+
+          request.on('end', function() {
+            try {
+              // var data = JSON.parse(rc4.decrypt(body, otp));
+              var data = JSON.parse(body);
+            }
+            catch (e) {
+              return this.sendJsonResponse(response, 400, 'This operation is rejected by the user.');
+            }
+
+            // TODO: Generate pairing key, etc.
+          }.bind(this));
+
+        }.bind(this),
+        function(error) {
+          return this.sendJsonResponse(response, 401, 'Failed to process the request. The one-time password might have expired.');
+        }.bind(this)
+      )
+  };
 
   module.exports = Api;
 })();

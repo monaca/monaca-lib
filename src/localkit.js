@@ -15,6 +15,7 @@
   var ProjectEvents = require(path.join(__dirname, 'localkit', 'projectEvents')),
     Monaca = require(path.join(__dirname, 'monaca')),
     FileWatcher = require(path.join(__dirname, 'localkit', 'fileWatcher')),
+    LocalAuth = require(path.join(__dirname, 'localkit', 'localAuth')),
     Api = require(path.join(__dirname, 'localkit', 'api')),
     broadcastAddresses = require(path.join(__dirname, 'localkit', 'broadcastAddresses')),
     inspector = require(path.join(__dirname, 'inspector'));
@@ -153,6 +154,7 @@
      */
     this.verbose = !!verbose;
 
+    this.localAuth = new LocalAuth();
     this.api = new Api(this);
   };
 
@@ -1051,6 +1053,41 @@
           return Q.reject(error);
         }.bind(this)
       );
+  };
+
+  /**
+   * @method
+   * @memberof Localkit
+   * @description
+   *   Generate a One-Time Password.
+   * @param {number} ttl Number of milliseconds the password should be valid.
+   * @return {Promise}
+   */
+  Localkit.prototype.generateOneTimePassword = function(ttl) {
+    return this.localAuth.generateOneTimePassword(ttl);
+  };
+
+  /**
+   * @method
+   * @memberof Localkit
+   * @description
+   *   Validate a SHA-1 hash of a One-Time Password.
+   * @param {string} passwordHash
+   * @return Promise
+   */
+  Localkit.prototype.validateOneTimePassword = function(passwordHash) {
+    return this.localAuth.validateOneTimePassword(passwordHash);
+  };
+
+  /**
+   * @method
+   * @memberof Localkit
+   * @description
+   *   Generate local pairing key
+   * @return Promise
+   */
+  LocalAuth.prototype.generateLocalPairingKey = function() {
+    return this.localAuth.generateLocalPairingKey();
   };
 
   module.exports = Localkit;
