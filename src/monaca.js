@@ -2,6 +2,7 @@
   'use strict';
 
   var Q = require('q'),
+    qlimit = require('qlimit'),
     request = require('request'),
     os = require('os'),
     path = require('path'),
@@ -233,7 +234,8 @@
             proxy: httpProxy,
             headers: {
               Cookie: this.tokens.session
-            }
+            },
+            timeout: 300 * 1000
           });
           deferred.resolve(requestClient);
         }.bind(this),
@@ -983,8 +985,7 @@
           this.getProjectFiles(projectId).then(
             function(files) {
               var index = 0,
-                promises = [],
-                defers = {};
+                qLimit = qlimit(4);
 
               var totalLength = Object.keys(files)
               .map(
@@ -997,35 +998,35 @@
                   return a + b;
                 }
               );
+              
+              var downloadFile = function(_path) {
+                var d = Q.defer();
+                this.downloadFile(projectId, _path, path.join(destDir, _path)).then(
+                  function(dest) {
+                    deferred.notify({
+                      total: totalLength,
+                      index: index,
+                      path: dest
+                    });
+                    d.resolve(dest);
+                  },
+                  function(error) {
+                    d.reject(error);
+                  }
+                )
+                .finally(
+                  function() {
+                    index++;
+                  }
+                );
+                return d.promise;
+              }.bind(this);
 
-              Object.keys(files).forEach(function(_path) {
+              Q.all(Object.keys(files).map(qLimit(function(_path) {
                 if (files.hasOwnProperty(_path) && files[_path].type == 'file') {
-                  var d = Q.defer();
-                  defers[_path] = d;
-                  promises.push(d.promise);
-
-                  this.downloadFile(projectId, _path, path.join(destDir, _path)).then(
-                    function(dest) {
-                      deferred.notify({
-                        total: totalLength,
-                        index: index,
-                        path: dest
-                      });
-                      defers[_path].resolve(dest);
-                    },
-                    function(error) {
-                      defers[_path].reject(error);
-                    }
-                  )
-                  .finally(
-                    function() {
-                      index++;
-                    }
-                  );
+                  return downloadFile(_path);
                 }
-              }.bind(this));
-
-              Q.all(promises).then(
+              }.bind(this)))).then(
                 function() {
                   deferred.resolve(destDir);
                 },
@@ -1212,41 +1213,38 @@
 
             var totalLength = keys.length,
               currentIndex = 0,
-              defers = [],
-              promises = [];
+              qLimit = qlimit(4);
 
-            for (var i = 0; i < totalLength; i++) {
+            var uploadFile = function(key) {
               var d = Q.defer();
-              defers.push(d);
-              promises.push(d.promise);
+              var absolutePath = path.join(projectDir, key.substr(1));
+
+              this.uploadFile(projectId, absolutePath, key).then(
+                function(remotePath) {
+                  deferred.notify({
+                    path: remotePath,
+                    total: totalLength,
+                    index: currentIndex
+                  });
+                  d.resolve();
+                },
+                function(error) {
+                  d.reject(error);
+                }
+              )
+              .finally(
+                function() {
+                  currentIndex++;
+                }
+              );
+              return d.promise;
             }
 
-            keys.forEach(function(key) {
+            Q.all(keys.map(qLimit(function(key) {
               if (localFiles.hasOwnProperty(key)) {
-                var absolutePath = path.join(projectDir, key.substr(1));
-
-                this.uploadFile(projectId, absolutePath, key).then(
-                  function(remotePath) {
-                    deferred.notify({
-                      path: remotePath,
-                      total: totalLength,
-                      index: currentIndex
-                    });
-                    defers[currentIndex].resolve();
-                  },
-                  function(error) {
-                    defers[currentIndex].reject(error);
-                  }
-                )
-                .finally(
-                  function() {
-                    currentIndex++;
-                  }
-                );
+                uploadFile(key);
               }
-            }.bind(this));
-
-            Q.all(promises).then(
+            }.bind(this)))).then(
               function() {
                 deferred.resolve(projectId);
               },
@@ -1311,41 +1309,38 @@
 
             var totalLength = Object.keys(remoteFiles).length,
               currentIndex = 0,
-              defers = [],
-              promises = [];
-
-            for (var i = 0; i < totalLength; i++) {
+              qLimit = qlimit(4);
+            
+            var downloadFile = function(key) {
               var d = Q.defer();
-              defers.push(d);
-              promises.push(d.promise);
-            }
+              var absolutePath = path.join(projectDir, key.substr(1));
 
-            Object.keys(remoteFiles).forEach(function(key) {
+              this.downloadFile(projectId, key, absolutePath).then(
+                function(remotePath) {
+                  deferred.notify({
+                    path: remotePath,
+                    total: totalLength,
+                    index: currentIndex
+                  });
+                  d.resolve();
+                },
+                function(error) {
+                  d.reject(error);
+                }
+              )
+              .finally(
+                function() {
+                  currentIndex++;
+                }
+              );
+              return d.promise;
+            };
+
+            Q.all(Object.keys(remoteFiles).map(qLimit(function(key) {
               if (remoteFiles.hasOwnProperty(key)) {
-                var absolutePath = path.join(projectDir, key.substr(1));
-
-                this.downloadFile(projectId, key, absolutePath).then(
-                  function(remotePath) {
-                    deferred.notify({
-                      path: remotePath,
-                      total: totalLength,
-                      index: currentIndex
-                    });
-                    defers[currentIndex].resolve();
-                  },
-                  function(error) {
-                    defers[currentIndex].reject(error);
-                  }
-                )
-                .finally(
-                  function() {
-                    currentIndex++;
-                  }
-                );
+                return downloadFile(key);
               }
-            }.bind(this));
-
-            Q.all(promises).then(
+            }.bind(this)))).then(
               function() {
                 deferred.resolve(projectId);
               },
