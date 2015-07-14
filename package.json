@@ -1,6 +1,6 @@
 {
   "name": "monaca-lib",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "description": "Monaca cloud API bindings for JavaScript",
   "main": "./src/main.js",
   "scripts": {
@@ -39,6 +39,7 @@
     "padlock": "^1.1.2",
     "portfinder": "^0.4.0",
     "q": "^1.1.2",
+    "qlimit": "^0.1.1",
     "request": "^2.55.0",
     "rimraf": "^2.2.8",
     "shelljs": "^0.3.0",

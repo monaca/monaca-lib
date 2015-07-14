@@ -13,7 +13,7 @@
     throw new Error('Must define email and password using evironment variables MONACA_TEST_EMAIL and MONACA_TEST_PASSWORD to run tests!');
   }
 
-  var monaca = new Monaca();
+  var monaca = new Monaca(null, { debug: true} );
 
   var login = function() {
     var loggedIn = false;
