@@ -1238,11 +1238,11 @@
                 }
               );
               return d.promise;
-            }
+            }.bind(this);
 
             Q.all(keys.map(qLimit(function(key) {
               if (localFiles.hasOwnProperty(key)) {
-                uploadFile(key);
+                return uploadFile(key);
               }
             }.bind(this)))).then(
               function() {
@@ -1310,7 +1310,7 @@
             var totalLength = Object.keys(remoteFiles).length,
               currentIndex = 0,
               qLimit = qlimit(4);
-            
+
             var downloadFile = function(key) {
               var d = Q.defer();
               var absolutePath = path.join(projectDir, key.substr(1));
@@ -1334,7 +1334,7 @@
                 }
               );
               return d.promise;
-            };
+            }.bind(this);
 
             Q.all(Object.keys(remoteFiles).map(qLimit(function(key) {
               if (remoteFiles.hasOwnProperty(key)) {
