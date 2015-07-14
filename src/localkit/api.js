@@ -5,6 +5,8 @@
   var qs = require('querystring'),
     path = require('path'),
     fs = require('fs'),
+    crypto = require('crypto'),
+    Q = require('q'),
     rc4 = require(path.join(__dirname, 'rc4'));
 
   var PAIRING_KEYS_FILE = path.join(
@@ -14,16 +16,6 @@
 
   var Api = function(localkit) {
     this.localkit = localkit;
-    localkit.generateOneTimePassword(15 * 60 * 1000).then(
-      function(password) {
-        var pwds = this.localkit.localAuth.passwords;
-
-        var key = Object.keys(pwds)[0];
-        pwds['abc'] = pwds[key];
-        console.log(this.localkit.localAuth.passwords);
-
-      }.bind(this)
-    );
     this.monaca = localkit.monaca;
 
     this.routes = {
@@ -165,7 +157,7 @@
     if (remotePairingKey === pairingKey) {
       return true;
     }
-  
+
     if (this.localkit.verbose) {
       console.log('Invalid pairing key.');
     }
@@ -234,7 +226,7 @@
     request.on('data', function (data) {
       body += data;
 
-      if (body.length > 1e6) {
+      if (body.length > 1e8) {
         request.connection.destroy();
       }
     });
@@ -297,32 +289,129 @@
   Api.prototype.localAuthApi = function(request, response) {
     var passwordHash = request.headers['x-otp-hash'] || '';
 
+    var get = function(request) {
+      var body = '',
+        deferred = Q.defer();
+
+      request.on('data', function(data) {
+        body += data;
+
+        if (body.length > 1e8) {
+          request.connection.destroy();
+          deferred.reject({code: 500, message: ' too large.'});
+        }
+      });
+
+      request.on('end', function() {
+        deferred.resolve(body);
+      });
+
+      return deferred.promise;
+    };
+
+    var decrypt = function(body, otp) {
+      try {
+        return Q.resolve(rc4.decrypt(body, otp));
+      }
+      catch (e) {
+        return Q.reject({code: 400, message: 'Unable to decrypt body.'});
+      }
+    };
+
+    var parse = function(body) {
+      try {
+        return Q.resolve(JSON.parse(body));
+      }
+      catch (e) {
+        return Q.reject({code: 400, message: 'Unable to parse body.'});
+      }
+    };
+
+    var validate = function(data) {
+      if (!data.clientId) {
+        return Q.reject({code: 400, message: '"clientId" parameter missing.'});
+      }
+      else {
+        return Q.resolve(data);
+      }
+    };
+
+    var pairing = function(data) {
+      return this.localkit.generateLocalPairingKey()
+        .then(
+          function(pairingKey) {
+            var shasum = crypto.createHash('sha256');
+            shasum.update(data.clientId);
+            var clientIdHash = shasum.digest('hex');
+
+            this.localkit.pairingKeys[clientIdHash] = pairingKey;
+
+            var writeFile = Q.denodeify(fs.writeFile);
+
+            return writeFile(PAIRING_KEYS_FILE, JSON.stringify(this.localkit.pairingKeys))
+              .then(
+                function() {
+                  // Pairing completed.
+                  return Q.resolve({data: data, pairingKey: pairingKey});
+                },
+                function(error) {
+                  return Q.reject({code: 500, message: 'Unable to save pairing keys.'});
+                }
+              );
+          }.bind(this),
+          function() {
+            return Q.reject({code: 500, message: 'Unable to generate pairing key.'});
+          }
+        );
+    }.bind(this);
+
     this.localkit.validateOneTimePassword(passwordHash)
       .then(
         function(password) {
-          var body = '',
-            otp = password.data;
+          var otp = password.data;
 
-          request.on('data', function (data) {
-            body += data;
+          get(request)
+            .then(
+              function(body) {
+                return decrypt(body, otp);
+              }
+            )
+            .then(parse)
+            .then(validate)
+            .then(pairing)
+            .then(
+              function(param) {
+                var data = param.data,
+                  pairingKey = param.pairingKey;
 
-            if (body.length > 1e6) {
-              request.connection.destroy();
-            }
-          });
+                var serverInfo = this.localkit._getServerInfo(),
+                  userInfo = this.monaca.getCurrentUser();
 
-          request.on('end', function() {
-            try {
-              // var data = JSON.parse(rc4.decrypt(body, otp));
-              var data = JSON.parse(body);
-            }
-            catch (e) {
-              return this.sendJsonResponse(response, 400, 'This operation is rejected by the user.');
-            }
+                var ip = request.connection.localAddress.replace(/^:.*:/, '');;
 
-            // TODO: Generate pairing key, etc.
-          }.bind(this));
+                var data = {
+                  type: serverInfo.type,
+                  port: serverInfo.port,
+                  os: serverInfo.os,
+                  serverName: serverInfo.name,
+                  serverId: serverInfo.serverId,
+                  userHash: serverInfo.userHash,
+                  version: serverInfo.version,
+                  userId: userInfo.userId,
+                  username: userInfo.username,
+                  email: userInfo.email,
+                  url: {
+                    actionSseUrl: 'http://' + ip + ':' + serverInfo.port + '/events'
+                  },
+                  pairingKey: pairingKey.toString('base64')
+                };
 
+                this.sendJsonResponse(response, 200, 'Pairing successful.', data, true, otp);
+              }.bind(this),
+              function(error) {
+                this.sendJsonResponse(response, error.code, error.message);
+              }.bind(this)
+            );
         }.bind(this),
         function(error) {
           return this.sendJsonResponse(response, 401, 'Failed to process the request. The one-time password might have expired.');

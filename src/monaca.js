@@ -2093,5 +2093,18 @@
     );
   };
 
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Get info about current user.
+   * @return {Object}
+   */
+  Monaca.prototype.getCurrentUser = function() {
+    if (this._loggedIn) {
+      return this.loginBody;
+    }
+  };
+
   module.exports = Monaca;
 })();
