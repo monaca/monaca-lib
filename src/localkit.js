@@ -1086,7 +1086,7 @@
    *   Generate local pairing key
    * @return Promise
    */
-  LocalAuth.prototype.generateLocalPairingKey = function() {
+  Localkit.prototype.generateLocalPairingKey = function() {
     return this.localAuth.generateLocalPairingKey();
   };
 
