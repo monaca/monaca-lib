@@ -275,6 +275,7 @@
    * @memberof Localkit
    * @description
    *   <p>Returns HTTP Server information</p>
+   * @return {Promise} - Resolves to <code>{ ipaddr: IP_ADDRESS, port: PORT, status: TRUE if running }</code>.
    */
   Localkit.prototype.getHttpServerInfo = function() {
     var deferred = Q.defer();
@@ -1088,7 +1089,7 @@
    * @description
    *   Generate a One-Time Password.
    * @param {number} ttl Number of milliseconds the password should be valid.
-   * @return {Promise}
+   * @return {Promise} - Resolves to <code>{ url: Debugger URL, password: OTP, created: Created At, expires: Will Expire At }</code>.
    */
   Localkit.prototype.generateOneTimePassword = function(ttl) {
     var deferred = Q.defer();
