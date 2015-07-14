@@ -145,6 +145,9 @@
      * @type boolean
      */
     this.httpServerRunning = false;
+    
+    this.httpServerPort = null;
+    this.httpServerIpaddr = null;
 
     /**
      * @description
@@ -154,7 +157,7 @@
      */
     this.verbose = !!verbose;
 
-    this.localAuth = new LocalAuth();
+    this.localAuth = new LocalAuth(this);
     this.api = new Api(this);
   };
 
@@ -266,6 +269,25 @@
 
     return '0.0.0.0';
   };
+  
+  /**
+   * @method
+   * @memberof Localkit
+   * @description
+   *   <p>Returns HTTP Server information</p>
+   */
+  Localkit.prototype.getHttpServerInfo = function() {
+    var deferred = Q.defer();
+    
+    var result = {
+      ipaddr: this.httpServerIpaddr,
+      port: this.httpServerPort,
+      status: this.httpServerRunning
+    }
+    deferred.resolve(result);
+    
+    return deferred.promise;
+  }
 
   /**
    * @method
@@ -334,6 +356,9 @@
       else {
         this.projectEvents = new ProjectEvents(this);
         this.httpServerRunning = true;
+        this.httpServerPort = port;
+        this.httpServerIpaddr = this._getLocalIp();
+         
         deferred.resolve({
           address: this._getLocalIp(),
           port: port
@@ -369,6 +394,8 @@
       }
       else {
         this.httpServerRunning = false;
+        this.httpServerPort = null;
+        this.httpServerIpaddr = null;
         deferred.resolve();
       }
     }.bind(this));
@@ -453,11 +480,11 @@
             fileWatcher.onchange(function(changeType, filePath) {
               this.projectEvents.sendFileEvent(projectId, changeType, filePath);
               this.emit('live-reload', {
-	        projectId: projectId,
-		changeType: changeType,
-		filePath: filePath,
-		projectPath: projectPath
-	      });
+                projectId: projectId,
+                changeType: changeType,
+                filePath: filePath,
+                projectPath: projectPath
+              });
             }.bind(this));
 
             if (this.isWatching()) {
@@ -1064,7 +1091,29 @@
    * @return {Promise}
    */
   Localkit.prototype.generateOneTimePassword = function(ttl) {
-    return this.localAuth.generateOneTimePassword(ttl);
+    var deferred = Q.defer();
+
+    this.localAuth.generateOneTimePassword(ttl).then(function(password) {
+      this.getHttpServerInfo().then(function(serverInfo) {
+        password['url'] = [
+          'monaca-debugger://localkit-auth?LocalkitId=',
+          encodeURIComponent(this.monaca.loginBody.clientId),
+          '&authSecret=',
+          password.data.toString('hex'),
+          '&ipaddr=',
+          serverInfo.ipaddr,
+          '&port=',
+          serverInfo.port
+        ].join("");
+        deferred.resolve(password);
+      }.bind(this), function(error) {
+        deferred.reject(error);
+      });
+    }.bind(this), function(error) {
+      deferred.reject(error);
+    })
+
+    return deferred.promise;
   };
 
   /**
