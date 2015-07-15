@@ -320,7 +320,7 @@
 
     var parse = function(body) {
       try {
-        return Q.resolve(JSON.parse(body));
+        return Q.resolve(qs.parse(body));
       }
       catch (e) {
         return Q.reject({code: 400, message: 'Unable to parse body.'});
