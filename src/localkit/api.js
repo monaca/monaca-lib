@@ -400,10 +400,7 @@
                   userId: userInfo.userId,
                   username: userInfo.username,
                   email: userInfo.email,
-                  url: {
-                    actionSseUrl: 'http://' + ip + ':' + serverInfo.port + '/events'
-                  },
-                  pairingKey: pairingKey.toString('base64')
+                  pairingKey: pairingKey.toString('hex')
                 };
 
                 this.sendJsonResponse(response, 200, 'Pairing successful.', data, true, otp);
