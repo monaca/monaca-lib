@@ -146,15 +146,14 @@
       return false;
     }
 
-    var remotePairingKey;
+    var expectedClientCredential;
     try {
-      remotePairingKey = rc4.decrypt(request.headers['x-monaca-client-credential'], pairingKey);
-    }
-    catch (error) {
-      remotePairingKey = null;
+      expectedClientCredential = rc4.encrypt(pairingKey.toString("hex"), new Buffer(pairingKey.toString("hex"), "utf8"));
+    } catch (error) {
+      expectedClientCredential = null;
     }
 
-    if (remotePairingKey === pairingKey) {
+    if (expectedClientCredential === request.headers['x-monaca-client-credential']) {
       return true;
     }
 
