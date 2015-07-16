@@ -44,6 +44,11 @@
     }
 
     var msg = JSON.stringify(data);
+    
+    if (this.monaca.debug) {
+      console.debug("Local Response: " + msg);
+    }
+    
     if (encrypt) {
       response.end(rc4.encrypt(msg, pairingKey));
     }
@@ -86,6 +91,10 @@
   };
 
   Api.prototype.requestHandler = function(request, response) {
+    if (this.monaca.debug) {
+      console.debug("Local Request to: " + request.url);
+    }
+
     var keys = Object.keys(this.routes);
 
     for (var i = 0, l = keys.length; i < l; i ++) {

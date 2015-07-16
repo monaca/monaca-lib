@@ -91,9 +91,20 @@
       writable: false
     });
 
+    /**
+     * @description
+     *   Package name.
+     * @name Monaca#packageName
+     * @type string
+     */
+    Object.defineProperty(this, 'debug', {
+      value: (options && options.hasOwnProperty("debug") && options.debug === true),
+      writable: false
+    });
+
     this._loggedIn = false;
     
-    if (options && options.hasOwnProperty("debug") && options.debug === true) {
+    if (this.debug) {
       request.debug = true;
     }
   };
