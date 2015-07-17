@@ -94,8 +94,16 @@
    * @return Promise
    */
   LocalAuth.prototype.generateLocalPairingKey = function() {
+    var deferred = Q.defer();
+    
     var randomBytes = Q.denodeify(crypto.randomBytes);
-    return randomBytes(20);
+    randomBytes(20).then(function(pairingKeyInBytes) {
+      deferred.resolve(pairingKeyInBytes.toString('hex'));      
+    }, function(error) {
+      deferred.reject(error);
+    });
+    
+    return deferred.promise;
   };
 
   module.exports = LocalAuth;

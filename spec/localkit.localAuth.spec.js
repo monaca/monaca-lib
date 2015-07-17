@@ -146,11 +146,12 @@
         expect(Q.isPromise(rv)).toBe(true);
       });
 
-      it('should return a Promise that resolves to a buffer', function(done) {
+      it('should return a Promise that resolves to a string(40)', function(done) {
         var rv = localAuth.generateLocalPairingKey();
         rv.then(
           function(pairingKey) {
-            expect(pairingKey instanceof Buffer).toBe(true);
+            expect(typeof pairingKey).toEqual("string");
+            expect(pairingKey.length).toEqual(40);
             done();
           }
         );
