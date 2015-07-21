@@ -303,7 +303,7 @@
         }
         requestClient.post({
           url: this.apiRoot + resource,
-          formData: data
+          form: data
         }, function(error, response, body) {
           if (error) {
             deferred.reject(error.code);
