@@ -2,6 +2,16 @@
 CHANGELOG
 ====
 
+v1.1.5-rc.1
+----
+ * monaca: Added `Monaca.getCurrentUser()` API.
+ * localkit: Added `Localkit.generateOneTimePassword()`, `Localkit.validateOneTimePassword()`, `Localkit.generateLocalPairingKey()` API.
+ * monaca: Fixed the POST parameter not sent to the server for some reason. 
+
+v1.1.4
+----
+ * monaca: Fix the number of concurrent connections during the network requests.
+
 v1.1.3
 ----
  * monaca: Fix issue in `Monaca.cloneProject()` where promise was never resolved.
