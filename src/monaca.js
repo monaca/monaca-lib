@@ -11,7 +11,7 @@
     crc32 = require('buffer-crc32'),
     nconf = require('nconf'),
     rimraf = require('rimraf'),
-    exec = require('child_process').exec,
+    child_process = require('child_process'),
     async = require('async'),
     extend = require('extend'),
     crypto = require('crypto'),
@@ -2112,5 +2112,146 @@
     }
   };
 
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Starts remote build process in browser
+   * @param {Object} arg - Information about project which is to be built remotely.
+   * @param {Function} openRemoteBuildWindow - Specifies how browser will be opened with remote build url, returns promise.
+   * @return {Promise}
+   */
+  Monaca.prototype.startRemoteBuild = function(arg, openRemoteBuildWindow) {  
+    try {
+      var outerDeferred = Q.defer();
+      var getProjectId = function() {      
+        return this.getProjectId(arg.path)
+          .then(
+            function(projectId) {
+              if (typeof projectId === 'undefined') {
+                return Q.reject();
+              }
+              else {
+                return projectId;
+              }
+            }
+          );
+      }.bind(this)
+
+      var createProject = function() {      
+        return this.createProject({
+            name: arg.name,
+            description: arg.description || '',
+            templateId: 'minimum',
+            isBuildOnly: true
+          })
+          .then(
+            function(info) {
+              return info.projectId;
+            }
+          );
+      }.bind(this);
+
+      var uploadFiles = function() {      
+        outerDeferred.notify('Uploading files to the cloud...');
+        return this.uploadProject(arg.path);
+      }.bind(this);
+
+      var relogin = function() {      
+        return this.relogin()
+          .catch(
+            function() {
+              return Q.resolve();
+            }.bind(this)
+          );
+      }.bind(this);
+
+      var downloadProject = function() {
+        outerDeferred.notify('Downloading changes from the cloud...');      
+        return this.downloadProject(arg.path);
+      }.bind(this);
+      
+      this.isMonacaProject(arg.path)
+        .catch(
+          function() {          
+            return Q.reject('Could not build since project is not a Monaca project or does not exist on disk.');
+          }
+        )
+        .then(relogin)
+        .then(
+          function() {          
+            return getProjectId()
+              .then(
+                function(projectId) {
+                  return projectId;
+                },
+                function() {
+                  return createProject()
+                    .then(
+                      function(projectId) {
+                        return this.setProjectId(arg.path, projectId)
+                          .then(
+                            function() {
+                              return projectId;
+                            }
+                          );
+                      }.bind(this)
+                    );
+                }.bind(this)
+              );
+          }.bind(this)
+        )
+        .then(
+          function() {
+            return uploadFiles()
+              .catch(
+                function() {
+                  return createProject()
+                    .then(
+                      function(projectId) {
+                        return this.setProjectId(arg.path, projectId)
+                          .then(
+                            function() {
+                              return projectId;
+                            }
+                          )
+                          .then(uploadFiles);
+                      }.bind(this)
+                    );
+                }.bind(this)
+              )
+          }.bind(this)
+        )
+        .then(
+          function(projectId) {
+            if (arg.showSettings) {
+              return this.getSessionUrl('https://ide.monaca.mobi/project/' + projectId + '/build?page=settings');
+            }
+            else {
+              return this.getSessionUrl('https://ide.monaca.mobi/project/' + projectId + '/build');
+            }
+          }.bind(this)
+        )
+        .then(function(url) {
+          outerDeferred.notify('Waiting for the remote build window to close...');
+          return openRemoteBuildWindow(url);
+        })
+        .then(downloadProject)
+        .then(
+          function() {          
+            outerDeferred.resolve();
+          },
+          function(err) {          
+            outerDeferred.reject(err);
+          }
+        )
+    }
+    catch (e1) {
+      console.log("Error in monaca lib start remote build " + e1);
+      outerDeferred.reject(e1);
+    }
+    return outerDeferred.promise;  
+  };
+  
   module.exports = Monaca;
 })();
