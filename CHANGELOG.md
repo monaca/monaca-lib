@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v1.1.5-rc.2
+----
+ * monaca: Fixed `Monaca.uploadProject()` API to also upload platform specific files.
+ * localkit: Fixed nic address does not return a valid value in some cases.
+
 v1.1.5-rc.1
 ----
  * monaca: Added `Monaca.getCurrentUser()` API.
