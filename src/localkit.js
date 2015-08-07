@@ -259,7 +259,7 @@
       var addresses = ifaces[ifnames[i]];
 
       for (var j = 0; j < addresses.length; j++) {
-        var address = addresses[i];
+        var address = addresses[j];
 
         if (address && address.family === 'IPv4' && !address.internal) {
           return address.address;
