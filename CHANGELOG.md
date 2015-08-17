@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v1.1.5-rc.3
+----
+ * monaca: Fixed `Monaca.uploadFile()` API to upload using Base64 encoding to avoid data corruption.
+
 v1.1.5-rc.2
 ----
  * monaca: Fixed `Monaca.uploadProject()` API to also upload platform specific files.
