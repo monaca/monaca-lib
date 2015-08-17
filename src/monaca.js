@@ -410,7 +410,7 @@
           else {
             this._post('/project/' + projectId + '/file/save', {
               path: remotePath,
-              content: data
+              contentBase64: data.toString('base64')
             }).then(
               function() {
                 deferred.resolve(remotePath);
