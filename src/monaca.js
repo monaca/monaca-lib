@@ -1454,15 +1454,9 @@
     }
 
     var pollBuild = function(queueId) {
-      var deferred = Q.defer(),
-        counter = 0;
+      var deferred = Q.defer();
 
       var interval = setInterval(function() {
-        if (counter++ == 80) {
-          clearInterval(interval);
-          deferred.reject('Build timed out');
-        }
-
         this._post(buildRoot + '/status/' + queueId).then(
           function(response) {
             var result = JSON.parse(response).result;
