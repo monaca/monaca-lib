@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v1.1.5
+----
+ * monaca: Fixed `Monaca.uploadFile()` API to limit the number of concurrent connections.
+ * monaca: Removed `Monaca.buildProject()` API timeout.
+
 v1.1.5-rc.3
 ----
  * monaca: Fixed `Monaca.uploadFile()` API to upload using Base64 encoding to avoid data corruption.
