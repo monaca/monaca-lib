@@ -868,7 +868,8 @@
   Monaca.prototype.getLocalProjectFiles = function(projectDir) {
     var deferred = Q.defer();
 
-    var getFileChecksum = function(file) {
+    var qLimit = qlimit(100);
+    var getFileChecksum = qLimit(function(file) {
       var deferred = Q.defer();
 
       fs.readFile(file, function(error, data) {
@@ -881,7 +882,7 @@
       });
 
       return deferred.promise;
-    };
+    });
 
     fs.exists(projectDir, function(exists) {
       if (exists) {
