@@ -223,6 +223,15 @@
     }
   };
 
+  Monaca.prototype._getIgnoreList = function(projectDir) {
+    var ignore = [];
+    if (fs.existsSync(path.join(projectDir,".monacaignore"))) {
+      ignore = fs.readFileSync(path.join(projectDir,".monacaignore"), {"encoding" : "utf8"}).split("\n").filter(function(n){ return n != "" });
+    }
+    return ignore;
+  };
+
+
   Monaca.prototype._createRequestClient = function(data) {
     var deferred = Q.defer(),
       qs = {
@@ -1211,7 +1220,10 @@
             // Filter out directories and unchanged files.
             this._filterFiles(localFiles, remoteFiles);
 
-            var fileFilter = function(fn) {
+            //fetch list of ignored files/directories  if .monacaignore file exists
+            var ignore = this._getIgnoreList(projectDir);            
+
+            var fileFilter = function(fn) {              
               // Exclude hidden files and folders.
               if (fn.indexOf('/.') >= 0) {
                 return false;
@@ -1239,17 +1251,37 @@
             	if (/^\/platforms\/(chrome|winrt)\/[^\/]+$/.test(fn)) {
             		return true;
             	}
+
+              // apply file/directory ignore rules if any
+             if(ignore.length > 0) {                
+                for(var i=0; i< ignore.length; i++) {
+                  var a;
+                  // put a trailing '/' in regex if it is a directory
+                  if(fs.existsSync(ignore[i]) && fs.lstatSync(ignore[i]).isDirectory()) {
+                    a = new RegExp(ignore[i] + "/");
+                  }
+                  else {
+                    a = new RegExp(ignore[i]);
+                  }                  
+                  // if file matches the ignore rule, filter it out from the files being uploaded.         
+                  if (a.test(fn)) {
+                    return false;
+                  } 
+                }
+              }              
             	
             	// Only include files in /www, /merges and /plugins folders.
             	return /^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(fn);
-            };
-
+            };          
+            
             var keys = Object.keys(localFiles).filter(fileFilter);
+            
+            
 
             var totalLength = keys.length,
               currentIndex = 0,
               qLimit = qlimit(4);
-
+              
             var uploadFile = function(key) {
               var d = Q.defer();
               var absolutePath = path.join(projectDir, key.substr(1));
@@ -1330,8 +1362,7 @@
    *   );
    */
   Monaca.prototype.downloadProject = function(projectDir) {
-    var deferred = Q.defer();
-
+    var deferred = Q.defer();    
     localProperties.get(projectDir, 'project_id').then(
       function(projectId) {
         Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)]).then(
@@ -1341,7 +1372,34 @@
 
             // Filter out directories and unchanged files.
             this._filterFiles(remoteFiles, localFiles);
+            
+            // get the list of files/directories to be ignored.
+            var ignore = this._getIgnoreList(projectDir);
+            
+            var filterFiles = function() {
+              if(ignore.length > 0) {
+                for(var file in remoteFiles) {
+                  for(var i=0; i< ignore.length; i++) {
+                    var a;                    
+                    // if no extension found then it is a directory rule, append a trailing '/' in the regex
+                    if(!path.extname(ignore[i])) {
+                      a = new RegExp(ignore[i] + "/");
+                    }
+                    else {
+                      a = new RegExp(ignore[i]);
+                    }       
+                                 
+                    if (a.test(file)) {                    
+                      delete remoteFiles[file];
+                    }
+                  }  
+                }              
+              }              
+            }
 
+            // filter files to be downloaded according to .monacaignore file
+            filterFiles();            
+            
             var totalLength = Object.keys(remoteFiles).length,
               currentIndex = 0,
               qLimit = qlimit(4);
