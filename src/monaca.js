@@ -236,6 +236,10 @@
         });
     }
     if (ignoreList.length > 0) {
+      if (os.platform() == 'win32') {
+        projectDir = projectDir.replace(/\\/g,"/");
+      }
+
       // We have to append '/**' to get all the subdirectories recursively.
       allFiles = glob.sync(projectDir + "/**", 
         {
@@ -1278,7 +1282,7 @@
                   return false;
                 } else {
                   // Check if file is present in one of the /www, /merges and /plugins folders and also in list of allowed files.
-                  if (allowFiles.indexOf(path.join(projectDir,fn)) >= 0) {
+                  if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + fn) >= 0) {
                     return true;
                   } else {
                     return false;
@@ -1393,11 +1397,12 @@
             var filterFiles = function() {
               if (allowFiles.length > 0) {
                 for (var file in remoteFiles) {
-                  if (allowFiles.indexOf(path.join(projectDir,file)) >= 0) {
+                  if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + file) >= 0) {
                     // Allow this file since it exists in the allowed list of files.
                   } else {
                     // Check if this file already exists locally. 
                     // If yes then dont donwload it. If no, then download it.
+
                     if (fs.existsSync(path.join(projectDir,file))) {
                       delete remoteFiles[file];
                     }
