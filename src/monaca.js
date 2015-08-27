@@ -232,11 +232,11 @@
         })
         .split("\n")
         .filter(function(n) {
-          return n != ""
+          return n !== "" && n.indexOf("#") !== 0;
         });
     }
     if (ignoreList.length > 0) {
-      if (os.platform() == 'win32') {
+      if (os.platform() === 'win32') {
         projectDir = projectDir.replace(/\\/g,"/");
       }
 
