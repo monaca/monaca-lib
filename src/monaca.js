@@ -246,7 +246,7 @@
             return "**/" + rule;
           })
         }
-      )        
+      )
     }
     return allFiles;
   };
@@ -1242,7 +1242,7 @@
 
             // Fetch list of files after ignoring files/directories in .monacaignore file.
             var allowFiles = this._filterIgnoreList(projectDir);
-            
+
             var fileFilter = function(fn) {
               // Exclude hidden files and folders.
               if (fn.indexOf('/.') >= 0) {
@@ -1271,16 +1271,16 @@
             	if (/^\/platforms\/(chrome|winrt)\/[^\/]+$/.test(fn)) {
             		return true;
             	}
-              
+
               if (allowFiles.length > 0) {
                 // Only include files in /www, /merges and /plugins folders unless they are mentioned in .monacaignore file.
-                if (!/^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(fn)) {                
+                if (!/^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(fn)) {
                   return false;
                 } else {
                   // Check if file is present in one of the /www, /merges and /plugins folders and also in list of allowed files.
-                  if (allowFiles.indexOf(path.join(projectDir,fn)) >= 0) {                    
+                  if (allowFiles.indexOf(path.join(projectDir,fn)) >= 0) {
                     return true;
-                  } else {                    
+                  } else {
                     return false;
                   }
                 }
@@ -1392,13 +1392,13 @@
 
             var filterFiles = function() {
               if (allowFiles.length > 0) {
-                for (var file in remoteFiles) {                  
+                for (var file in remoteFiles) {
                   if (allowFiles.indexOf(path.join(projectDir,file)) >= 0) {
                     // Allow this file since it exists in the allowed list of files.
                   } else {
                     // Check if this file already exists locally. 
                     // If yes then dont donwload it. If no, then download it.
-                    if (fs.existsSync(path.join(projectDir,file))) {                      
+                    if (fs.existsSync(path.join(projectDir,file))) {
                       delete remoteFiles[file];
                     }
                   }
