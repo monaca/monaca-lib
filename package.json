@@ -34,6 +34,7 @@
     "decompress": "^2.3.0",
     "decompress-unzip": "^3.2.2",
     "extend": "^2.0.0",
+    "glob": "^5.0.14",
     "lockfile": "^1.0.0",
     "nconf": "^0.7.1",
     "padlock": "^1.1.2",
