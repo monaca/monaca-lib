@@ -224,24 +224,29 @@
     }
   };
 
-  Monaca.prototype._getIgnoreList = function(projectDir) {
+  Monaca.prototype._filterIgnoreList = function(projectDir) {
     var ignoreList = [], allFiles=[];
-    if (fs.existsSync(path.join(projectDir,".monacaignore"))) {
-      ignoreList = fs.readFileSync(path.join(projectDir, ".monacaignore"), {"encoding" : "utf8"})
-                            .split("\n")
-                            .filter(function(n) { return n != "" });
+    if (fs.existsSync(path.join(projectDir, ".monacaignore"))) {
+      ignoreList = fs.readFileSync(path.join(projectDir, ".monacaignore"), {
+          "encoding": "utf8"
+        })
+        .split("\n")
+        .filter(function(n) {
+          return n != ""
+        });
     }
     if (ignoreList.length > 0) {
-      allFiles = ignoreList
-        .map(function(rule) {
-          return glob.sync(rule,{});
-        })
-        .reduce(function(a, b) {
-          return a.concat(b);
-        }, [])
-        .map(function(file) {
-          return path.join("/" , file);
-        })
+      // We have to append '/**' to get all the subdirectories recursively.
+      allFiles = glob.sync(projectDir + "/**", 
+        {
+          ignore: ignoreList
+          .map(function(rule) {
+            // Since we are finding files with 'projectDir' which is an absolute path, we need to prepend '**/' for
+            // ignore patterns to match actual pattern.
+            return "**/" + rule;
+          })
+        }
+      )        
     }
     return allFiles;
   };
@@ -1235,9 +1240,9 @@
             // Filter out directories and unchanged files.
             this._filterFiles(localFiles, remoteFiles);
 
-            // Fetch list of ignored files/directories  if .monacaignore file exists.
-            var ignore = this._getIgnoreList(projectDir);
-
+            // Fetch list of files after ignoring files/directories in .monacaignore file.
+            var allowFiles = this._filterIgnoreList(projectDir);
+            
             var fileFilter = function(fn) {
               // Exclude hidden files and folders.
               if (fn.indexOf('/.') >= 0) {
@@ -1266,16 +1271,23 @@
             	if (/^\/platforms\/(chrome|winrt)\/[^\/]+$/.test(fn)) {
             		return true;
             	}
-
-             // Apply file/directory ignore rules if any.
-             if (ignore.length > 0) {
-                if (ignore.indexOf(fn) >= 0) {
+              
+              if (allowFiles.length > 0) {
+                // Only include files in /www, /merges and /plugins folders unless they are mentioned in .monacaignore file.
+                if (!/^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(fn)) {                
                   return false;
+                } else {
+                  // Check if file is present in one of the /www, /merges and /plugins folders and also in list of allowed files.
+                  if (allowFiles.indexOf(path.join(projectDir,fn)) >= 0) {                    
+                    return true;
+                  } else {                    
+                    return false;
+                  }
                 }
-              }
+              } else {
+                return true;
+              }            	
             	
-            	// Only include files in /www, /merges and /plugins folders.
-            	return /^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(fn);
             };
 
             var keys = Object.keys(localFiles).filter(fileFilter);
@@ -1375,14 +1387,20 @@
             // Filter out directories and unchanged files.
             this._filterFiles(remoteFiles, localFiles);
 
-            // Get the list of files/directories to be ignored.
-            var ignore = this._getIgnoreList(projectDir);
+            // Fetch list of files after ignoring files/directories in .monacaignore file.
+            var allowFiles = this._filterIgnoreList(projectDir);
 
             var filterFiles = function() {
-              if (ignore.length > 0) {
-                for (var file in remoteFiles) {
-                  if (ignore.indexOf(file) >= 0) {
-                    delete remoteFiles[file];
+              if (allowFiles.length > 0) {
+                for (var file in remoteFiles) {                  
+                  if (allowFiles.indexOf(path.join(projectDir,file)) >= 0) {
+                    // Allow this file since it exists in the allowed list of files.
+                  } else {
+                    // Check if this file already exists locally. 
+                    // If yes then dont donwload it. If no, then download it.
+                    if (fs.existsSync(path.join(projectDir,file))) {                      
+                      delete remoteFiles[file];
+                    }
                   }
                 }
               }
