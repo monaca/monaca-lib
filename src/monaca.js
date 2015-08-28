@@ -1231,7 +1231,7 @@
    *     }
    *   );
    */
-  Monaca.prototype.uploadProject = function(projectDir) {
+  Monaca.prototype.uploadProject = function(projectDir, options) {
     var deferred = Q.defer();
 
     localProperties.get(projectDir, 'project_id').then(
@@ -1295,6 +1295,17 @@
             };
 
             var keys = Object.keys(localFiles).filter(fileFilter);
+
+            // If dryrun option is set, just return the files to be uploaded.
+            if (options && options.dryrun) {
+              var data = {};
+              for(var i in keys) {
+                if (localFiles[keys[i]]) {
+                  data[keys[i]] = localFiles[keys[i]];
+                }
+              }
+              return deferred.resolve(data);
+            }
 
             var totalLength = keys.length,
               currentIndex = 0,
@@ -1379,7 +1390,7 @@
    *     }
    *   );
    */
-  Monaca.prototype.downloadProject = function(projectDir) {
+  Monaca.prototype.downloadProject = function(projectDir, options) {
     var deferred = Q.defer();
     localProperties.get(projectDir, 'project_id').then(
       function(projectId) {
@@ -1413,6 +1424,11 @@
 
             // Filter files to be downloaded according to .monacaignore file.
             filterFiles();
+
+            // If dryrun option is set, just return the files to be downloaded.
+            if (options && options.dryrun) {
+              return deferred.resolve(remoteFiles);
+            }
 
             var totalLength = Object.keys(remoteFiles).length,
               currentIndex = 0,
