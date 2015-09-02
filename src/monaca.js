@@ -460,6 +460,21 @@
     return deferred.promise;
   };
 
+ Monaca.prototype._deleteFileFromCloud = function(projectId, remotePath) {
+    var deferred = Q.defer();
+    this._post('/project/' + projectId + '/file/delete', {
+      path: remotePath
+    }).then(
+      function() {
+        deferred.resolve(remotePath);
+      },
+      function(error) {
+        deferred.reject(error);
+      }
+    );
+    return deferred.promise;
+  };
+
   Monaca.prototype._login = function() {
     var deferred = Q.defer(),
       options;
@@ -1241,11 +1256,32 @@
             var localFiles = files[0],
               remoteFiles = files[1];
 
-            // Filter out directories and unchanged files.
-            this._filterFiles(localFiles, remoteFiles);
-
             // Fetch list of files after ignoring files/directories in .monacaignore file.
             var allowFiles = this._filterIgnoreList(projectDir);
+
+              var filesToBeDeleted = {};
+
+              for(var f in remoteFiles) {
+                // If file on Monaca Cloud doesn't exist locally then it should be deleted from Cloud.
+                if (!localFiles.hasOwnProperty(f) && remoteFiles[f].type !== 'dir') {
+                  filesToBeDeleted[f] = remoteFiles[f];
+                  if (options && !options.dryrun && options.delete) {
+                    (function(file){
+                        this._deleteFileFromCloud(projectId, f).then(
+                        function() {
+                          console.log("deleted -> " + file);
+                        },
+                        function(err) {
+                          console.log("delete error -> " + file + " : " + JSON.stringify(err));
+                        }
+                      )
+                    }.bind(this)(f));
+                  }
+                }
+              }
+
+            // Filter out directories and unchanged files.
+            this._filterFiles(localFiles, remoteFiles);
 
             var fileFilter = function(fn) {
               // Exclude hidden files and folders.
@@ -1304,7 +1340,7 @@
                   data[keys[i]] = localFiles[keys[i]];
                 }
               }
-              return deferred.resolve(data);
+              return deferred.resolve({ uploaded: data, deleted: filesToBeDeleted});
             }
 
             var totalLength = keys.length,
@@ -1399,11 +1435,26 @@
             var localFiles = files[0],
               remoteFiles = files[1];
 
-            // Filter out directories and unchanged files.
-            this._filterFiles(remoteFiles, localFiles);
+            var filesToBeDeleted = {};
 
             // Fetch list of files after ignoring files/directories in .monacaignore file.
             var allowFiles = this._filterIgnoreList(projectDir);
+
+            for(var f in localFiles) {
+              // If file is not present on Monaca cloud but is present locally and it is not listed under .monacaignore, then it must be deleted.
+              if (!remoteFiles.hasOwnProperty(f) && localFiles[f].type !== 'dir'  && allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + f) >= 0) {
+                filesToBeDeleted[f] = localFiles[f];
+                if(options && !options.dryrun && options.delete) {
+                  fs.unlinkSync(path.join(projectDir, f));
+                  console.log("deleted -> " + path.join(projectDir, f));
+                }
+              }
+            }
+
+            // Filter out directories and unchanged files.
+            this._filterFiles(remoteFiles, localFiles);
+
+
 
             var filterFiles = function() {
               if (allowFiles.length > 0) {
@@ -1425,9 +1476,9 @@
             // Filter files to be downloaded according to .monacaignore file.
             filterFiles();
 
-            // If dryrun option is set, just return the files to be downloaded.
+            // If dryrun option is set, just return the files to be downloaded and deleted.
             if (options && options.dryrun) {
-              return deferred.resolve(remoteFiles);
+              return deferred.resolve({ remoteFiles: remoteFiles, deleted: filesToBeDeleted} );
             }
 
             var totalLength = Object.keys(remoteFiles).length,
