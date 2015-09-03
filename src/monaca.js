@@ -19,7 +19,8 @@
     lockfile = require('lockfile'),
     tmp = require('tmp'),
     Decompress = require('decompress'),
-    zip = require('decompress-unzip');
+    zip = require('decompress-unzip'),
+    glob = require('glob');
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -223,6 +224,38 @@
     }
   };
 
+  Monaca.prototype._filterIgnoreList = function(projectDir) {
+    var ignoreList = [], allFiles=[];
+    if (fs.existsSync(path.join(projectDir, ".monacaignore"))) {
+      ignoreList = fs.readFileSync(path.join(projectDir, ".monacaignore"), {
+          "encoding": "utf8"
+        })
+        .split("\n")
+        .filter(function(n) {
+          return n !== "" && n.indexOf("#") !== 0;
+        });
+    }
+    if (ignoreList.length > 0) {
+      if (os.platform() === 'win32') {
+        projectDir = projectDir.replace(/\\/g,"/");
+      }
+
+      // We have to append '/**' to get all the subdirectories recursively.
+      allFiles = glob.sync(projectDir + "/**", 
+        {
+          ignore: ignoreList
+          .map(function(rule) {
+            // Since we are finding files with 'projectDir' which is an absolute path, we need to prepend '**/' for
+            // ignore patterns to match actual pattern.
+            return "**/" + rule;
+          })
+        }
+      )
+    }
+    return allFiles;
+  };
+
+
   Monaca.prototype._createRequestClient = function(data) {
     var deferred = Q.defer(),
       qs = {
@@ -424,6 +457,21 @@
       }
     }.bind(this));
 
+    return deferred.promise;
+  };
+
+ Monaca.prototype._deleteFileFromCloud = function(projectId, remotePath) {
+    var deferred = Q.defer();
+    this._post('/project/' + projectId + '/file/remove', {
+      paths: remotePath
+    }).then(
+      function() {
+        deferred.resolve(remotePath);
+      },
+      function(error) {
+        deferred.reject(error);
+      }
+    );
     return deferred.promise;
   };
 
@@ -1010,7 +1058,7 @@
                   return a + b;
                 }
               );
-              
+
               var downloadFile = function(_path) {
                 var d = Q.defer();
                 this.downloadFile(projectId, _path, path.join(destDir, _path)).then(
@@ -1198,7 +1246,7 @@
    *     }
    *   );
    */
-  Monaca.prototype.uploadProject = function(projectDir) {
+  Monaca.prototype.uploadProject = function(projectDir, options) {
     var deferred = Q.defer();
 
     localProperties.get(projectDir, 'project_id').then(
@@ -1207,6 +1255,33 @@
           function(files) {
             var localFiles = files[0],
               remoteFiles = files[1];
+
+            // Fetch list of files after ignoring files/directories in .monacaignore file.
+            var allowFiles = this._filterIgnoreList(projectDir);
+
+              var filesToBeDeleted = {};
+
+              for (var f in remoteFiles) {
+                // If file on Monaca Cloud doesn't exist locally then it should be deleted from Cloud.
+                if (!localFiles.hasOwnProperty(f) && remoteFiles[f].type !== 'dir') {
+                  filesToBeDeleted[f] = remoteFiles[f];
+                }
+              }
+              if (options && !options.dryrun && options.delete) {                
+                    this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted)).then(
+                    function() {
+                      console.log(Object.keys(filesToBeDeleted)
+                      .map(function(f) {
+                        return "deleted -> " + f;
+                      })
+                      .join("\n")
+                      );
+                    },
+                    function(err) {
+                      console.log("\nfile delete error ->  : " + JSON.stringify(err));
+                    }
+                  )                
+              }
 
             // Filter out directories and unchanged files.
             this._filterFiles(localFiles, remoteFiles);
@@ -1217,7 +1292,7 @@
                 return false;
               }
 
-              // Platform specific files
+              // Platform specific files.
             	if (fn.indexOf('/platforms/ios/MonacaApp-Info.plist') >= 0) {
             		return true;
             	}
@@ -1239,12 +1314,37 @@
             	if (/^\/platforms\/(chrome|winrt)\/[^\/]+$/.test(fn)) {
             		return true;
             	}
+
+              if (allowFiles.length > 0) {
+                // Only include files in /www, /merges and /plugins folders unless they are mentioned in .monacaignore file.
+                if (!/^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(fn)) {
+                  return false;
+                } else {
+                  // Check if file is present in one of the /www, /merges and /plugins folders and also in list of allowed files.
+                  if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + fn) >= 0) {
+                    return true;
+                  } else {
+                    return false;
+                  }
+                }
+              } else {
+                return true;
+              }            	
             	
-            	// Only include files in /www, /merges and /plugins folders.
-            	return /^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(fn);
             };
 
             var keys = Object.keys(localFiles).filter(fileFilter);
+
+            // If dryrun option is set, just return the files to be uploaded.
+            if (options && options.dryrun) {
+              var data = {};
+              for (var i in keys) {
+                if (localFiles[keys[i]]) {
+                  data[keys[i]] = localFiles[keys[i]];
+                }
+              }
+              return deferred.resolve({ uploaded: data, deleted: filesToBeDeleted});
+            }
 
             var totalLength = keys.length,
               currentIndex = 0,
@@ -1329,9 +1429,8 @@
    *     }
    *   );
    */
-  Monaca.prototype.downloadProject = function(projectDir) {
+  Monaca.prototype.downloadProject = function(projectDir, options) {
     var deferred = Q.defer();
-
     localProperties.get(projectDir, 'project_id').then(
       function(projectId) {
         Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)]).then(
@@ -1339,8 +1438,51 @@
             var localFiles = files[0],
               remoteFiles = files[1];
 
+            var filesToBeDeleted = {};
+
+            // Fetch list of files after ignoring files/directories in .monacaignore file.
+            var allowFiles = this._filterIgnoreList(projectDir);
+
+            for (var f in localFiles) {
+              // If file is not present on Monaca cloud but is present locally and it is not listed under .monacaignore, then it must be deleted.
+              if (!remoteFiles.hasOwnProperty(f) && localFiles[f].type !== 'dir'  && allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + f) >= 0) {
+                filesToBeDeleted[f] = localFiles[f];
+                if (options && !options.dryrun && options.delete) {
+                  fs.unlinkSync(path.join(projectDir, f));
+                  console.log("deleted -> " + path.join(projectDir, f));
+                }
+              }
+            }
+
             // Filter out directories and unchanged files.
             this._filterFiles(remoteFiles, localFiles);
+
+
+
+            var filterFiles = function() {
+              if (allowFiles.length > 0) {
+                for (var file in remoteFiles) {
+                  if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + file) >= 0) {
+                    // Allow this file since it exists in the allowed list of files.
+                  } else {
+                    // Check if this file already exists locally. 
+                    // If yes then dont donwload it. If no, then download it.
+
+                    if (fs.existsSync(path.join(projectDir,file))) {
+                      delete remoteFiles[file];
+                    }
+                  }
+                }
+              }
+            }
+
+            // Filter files to be downloaded according to .monacaignore file.
+            filterFiles();
+
+            // If dryrun option is set, just return the files to be downloaded and deleted.
+            if (options && options.dryrun) {
+              return deferred.resolve({ remoteFiles: remoteFiles, deleted: filesToBeDeleted} );
+            }
 
             var totalLength = Object.keys(remoteFiles).length,
               currentIndex = 0,
