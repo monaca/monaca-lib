@@ -462,8 +462,8 @@
 
  Monaca.prototype._deleteFileFromCloud = function(projectId, remotePath) {
     var deferred = Q.defer();
-    this._post('/project/' + projectId + '/file/delete', {
-      path: remotePath
+    this._post('/project/' + projectId + '/file/remove', {
+      paths: remotePath
     }).then(
       function() {
         deferred.resolve(remotePath);
@@ -1265,19 +1265,19 @@
                 // If file on Monaca Cloud doesn't exist locally then it should be deleted from Cloud.
                 if (!localFiles.hasOwnProperty(f) && remoteFiles[f].type !== 'dir') {
                   filesToBeDeleted[f] = remoteFiles[f];
-                  if (options && !options.dryrun && options.delete) {
-                    (function(file){
-                        this._deleteFileFromCloud(projectId, f).then(
-                        function() {
-                          console.log("deleted -> " + file);
-                        },
-                        function(err) {
-                          console.log("delete error -> " + file + " : " + JSON.stringify(err));
-                        }
-                      )
-                    }.bind(this)(f));
-                  }
                 }
+              }
+              if (options && !options.dryrun && options.delete) {
+                (function(file){
+                    this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted)).then(
+                    function() {
+                      console.log("\nDeleted following files.\n" + Object.keys(filesToBeDeleted).join("\n"));
+                    },
+                    function(err) {
+                      console.log("\ndelete error -> " + file + " : " + JSON.stringify(err));
+                    }
+                  )
+                }.bind(this)(f));
               }
 
             // Filter out directories and unchanged files.
