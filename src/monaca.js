@@ -1271,7 +1271,12 @@
                 (function(file){
                     this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted)).then(
                     function() {
-                      console.log("\nDeleted following files.\n" + Object.keys(filesToBeDeleted).join("\n"));
+                      console.log(Object.keys(filesToBeDeleted)
+                      .map(function(f) {
+                        return "deleted -> " + f;
+                      })
+                      .join("\n")
+                      );
                     },
                     function(err) {
                       console.log("\ndelete error -> " + file + " : " + JSON.stringify(err));
