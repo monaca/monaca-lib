@@ -1267,8 +1267,7 @@
                   filesToBeDeleted[f] = remoteFiles[f];
                 }
               }
-              if (options && !options.dryrun && options.delete) {
-                (function(file){
+              if (options && !options.dryrun && options.delete) {                
                     this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted)).then(
                     function() {
                       console.log(Object.keys(filesToBeDeleted)
@@ -1279,10 +1278,9 @@
                       );
                     },
                     function(err) {
-                      console.log("\ndelete error -> " + file + " : " + JSON.stringify(err));
+                      console.log("\nfile delete error ->  : " + JSON.stringify(err));
                     }
-                  )
-                }.bind(this)(f));
+                  )                
               }
 
             // Filter out directories and unchanged files.
