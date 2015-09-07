@@ -2270,6 +2270,27 @@
     }
     return outerDeferred.promise;  
   };
-  
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Gets latest version information about all Monaca platform tools from Monaca Cloud.
+   * @return {Promise}
+   */
+  Monaca.prototype.getLatestVersionInfo = function() {
+    var deferred = Q.defer();
+    this._get('/public/versions', {}).then(
+      function(response) {
+        deferred.resolve(JSON.parse(response));
+      },
+      function(error) {
+        deferred.reject(error);
+      }
+    );
+    return deferred.promise;
+  }
+
+
   module.exports = Monaca;
 })();
