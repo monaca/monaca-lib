@@ -2280,14 +2280,14 @@
    */
   Monaca.prototype.getLatestVersionInfo = function() {
     var deferred = Q.defer();
-    this._get('/public/versions', {}).then(
-      function(response) {
-        deferred.resolve(JSON.parse(response));
-      },
-      function(error) {
+    // Since this is a public api, directly call it without any authentication parameters in request header.
+    request(this.apiRoot + '/public/versions', function (error, response, body) {    
+      if (!error && response.statusCode == 200) {
+        deferred.resolve(JSON.parse(body));
+      } else {
         deferred.reject(error);
       }
-    );
+    })
     return deferred.promise;
   }
 
