@@ -18,8 +18,7 @@
     xml2js = require('xml2js'),
     lockfile = require('lockfile'),
     tmp = require('tmp'),
-    Decompress = require('decompress'),
-    zip = require('decompress-unzip');
+    unzip = require('unzip2');
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -1617,21 +1616,14 @@
         .then(
           function(path) {
             var deferred = Q.defer();
-
-            var decompress = new Decompress()
-              .src(path)
-              .dest(destinationDir)
-              .use(zip({strip: 0}));
-
-            decompress.run(function(err) {
-              if (err) {
-                deferred.reject(err);
-              }
-              else {
-                deferred.resolve(destinationDir);
-              }
+            fs.createReadStream(path)
+            .pipe(unzip.Extract({ path: destinationDir }))
+            .on('error', function(error) {
+              deferred.reject(error);
+            })
+            .on('close', function() {
+              deferred.resolve(destinationDir);
             });
-
             return deferred.promise;
           }
         );
