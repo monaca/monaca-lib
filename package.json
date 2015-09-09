@@ -31,8 +31,6 @@
     "adbkit": "^2.2.1",
     "async": "^0.9.0",
     "buffer-crc32": "^0.2.4",
-    "decompress": "^2.3.0",
-    "decompress-unzip": "^3.2.2",
     "extend": "^2.0.0",
     "lockfile": "^1.0.0",
     "nconf": "^0.7.1",
@@ -45,6 +43,7 @@
     "shelljs": "^0.3.0",
     "sse": "0.0.6",
     "tmp": "0.0.26",
+    "unzip2": "^0.2.5",
     "watch": "^0.13.0",
     "xml2js": "^0.4.6"
   }
