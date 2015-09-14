@@ -1319,7 +1319,7 @@
             	}
 
               if (allowFiles.length > 0) {
-                // Only include files in /www, /merges and /plugins folders unless they are mentioned in .monacaignore file.
+                // Only include files in /www, /merges and /plugins folders.
                 if (!/^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(fn)) {
                   return false;
                 } else {
