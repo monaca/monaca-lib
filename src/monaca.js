@@ -230,11 +230,14 @@
       ignoreList = fs.readFileSync(path.join(projectDir, ".monacaignore"), {
           "encoding": "utf8"
         })
-        .split("\n")
+        .split("\r\n") // Split by \r\n.
+        .map(function(ele) { return ele.split("\n")}) // Split each array element from previous step by \n again.
+        .reduce(function(a,b) { return a.concat(b)}) // Now concat them into one array.
         .filter(function(n) {
-          return n !== "" && n.indexOf("#") !== 0;
+          return n.trim() !== "" && n.indexOf("#") !== 0;
         });
     }
+    console.log("ignoreList " + JSON.stringify(ignoreList,null,2));
     if (ignoreList.length > 0) {
       if (os.platform() === 'win32') {
         projectDir = projectDir.replace(/\\/g,"/");
@@ -1267,7 +1270,7 @@
                   filesToBeDeleted[f] = remoteFiles[f];
                 }
               }
-              if (options && !options.dryrun && options.delete) {                
+              if (options && !options.dryrun && options.delete) {
                     this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted)).then(
                     function() {
                       console.log(Object.keys(filesToBeDeleted)
@@ -1280,7 +1283,7 @@
                     function(err) {
                       console.log("\nfile delete error ->  : " + JSON.stringify(err));
                     }
-                  )                
+                  )
               }
 
             // Filter out directories and unchanged files.
@@ -1466,8 +1469,7 @@
                     // Allow this file since it exists in the allowed list of files.
                   } else {
                     // Check if this file already exists locally. 
-                    // If yes then dont donwload it. If no, then download it.
-
+                    // If yes then don't donwload it. If no, then download it.
                     if (fs.existsSync(path.join(projectDir,file))) {
                       delete remoteFiles[file];
                     }
