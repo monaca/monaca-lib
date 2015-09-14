@@ -2262,6 +2262,27 @@
     }
     return outerDeferred.promise;  
   };
-  
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Gets latest version information about all Monaca platform tools from Monaca Cloud.
+   * @return {Promise}
+   */
+  Monaca.prototype.getLatestVersionInfo = function() {
+    var deferred = Q.defer();
+    // Since this is a public api, directly call it without any authentication parameters in request header.
+    request(this.apiRoot + '/public/versions', function (error, response, body) {
+      if (!error && response.statusCode == 200) {
+        deferred.resolve(JSON.parse(body));
+      } else {
+        deferred.reject(error);
+      }
+    })
+    return deferred.promise;
+  }
+
+
   module.exports = Monaca;
 })();
