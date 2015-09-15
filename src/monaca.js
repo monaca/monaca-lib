@@ -1264,7 +1264,7 @@
 
               for (var f in remoteFiles) {
                 // If file on Monaca Cloud doesn't exist locally then it should be deleted from Cloud.
-                if (!localFiles.hasOwnProperty(f) && remoteFiles[f].type !== 'dir') {
+                if (!localFiles.hasOwnProperty(f)) {
                   filesToBeDeleted[f] = remoteFiles[f];
                 }
               }
