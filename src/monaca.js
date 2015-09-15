@@ -236,7 +236,6 @@
           return n.trim() !== "" && n.indexOf("#") !== 0;
         });
     }
-    console.log("ignoreList " + JSON.stringify(ignoreList,null,2));
     if (ignoreList.length > 0) {
       if (os.platform() === 'win32') {
         projectDir = projectDir.replace(/\\/g,"/");
@@ -1289,33 +1288,38 @@
             this._filterFiles(localFiles, remoteFiles);
 
             var fileFilter = function(fn) {
-              // Exclude hidden files and folders.
+	      // Upload .monaca/project_info.json
+	      if (fn.indexOf('/.monaca/project_info.json') == 0) {
+	        return true;
+	      }
+
+              // Exclude other hidden files and folders.
               if (fn.indexOf('/.') >= 0) {
                 return false;
               }
 
               // Platform specific files.
-            	if (fn.indexOf('/platforms/ios/MonacaApp-Info.plist') >= 0) {
-            		return true;
-            	}
-            	if (/^\/platforms\/ios\/MonacaApp\/Resources\/icons\/icon[\.a-z0-9@x-]*\.png$/.test(fn)) {
-            		return true;
-            	}
-            	if (/^\/platforms\/ios\/MonacaApp\/Resources\/splash\/Default[a-zA-Z0-9@\-\.~]+\.png$/.test(fn)) {
-            		return true;
-            	}
-            	if (fn.indexOf('/platforms/android/AndroidManifest.xml') >= 0) {
-            		return true;
-            	}
-            	if (/^\/platforms\/android\/res\/drawable\-[a-z]+\/(icon|screen[\.9]*)\.png$/.test(fn)) {
-            		return true;
-            	}
-            	if (/^\/platforms\/android\/res\/drawable.+\/screen.+.png$/.test(fn)) {
-            		return true;
-            	}
-            	if (/^\/platforms\/(chrome|winrt)\/[^\/]+$/.test(fn)) {
-            		return true;
-            	}
+              if (fn.indexOf('/platforms/ios/MonacaApp-Info.plist') >= 0) {
+                return true;
+              }
+              if (/^\/platforms\/ios\/MonacaApp\/Resources\/icons\/icon[\.a-z0-9@x-]*\.png$/.test(fn)) {
+                return true;
+              }
+              if (/^\/platforms\/ios\/MonacaApp\/Resources\/splash\/Default[a-zA-Z0-9@\-\.~]+\.png$/.test(fn)) {
+                return true;
+              }
+              if (fn.indexOf('/platforms/android/AndroidManifest.xml') >= 0) {
+                return true;
+              }
+              if (/^\/platforms\/android\/res\/drawable\-[a-z]+\/(icon|screen[\.9]*)\.png$/.test(fn)) {
+                return true;
+              }
+              if (/^\/platforms\/android\/res\/drawable.+\/screen.+.png$/.test(fn)) {
+                return true;
+              }
+              if (/^\/platforms\/(chrome|winrt)\/[^\/]+$/.test(fn)) {
+                return true;
+              }
 
               if (allowFiles.length > 0) {
                 // Only include files in /www, /merges and /plugins folders.
@@ -1331,8 +1335,7 @@
                 }
               } else {
                 return true;
-              }            	
-            	
+              }              
             };
 
             var keys = Object.keys(localFiles).filter(fileFilter);
