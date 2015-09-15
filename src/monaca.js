@@ -1334,8 +1334,9 @@
                   }
                 }
               } else {
-                return true;
-              }              
+                // Only include files in /www, /merges and /plugins folders.
+                return /^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(fn);
+              }
             };
 
             var keys = Object.keys(localFiles).filter(fileFilter);
