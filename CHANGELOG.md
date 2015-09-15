@@ -2,6 +2,13 @@
 CHANGELOG
 ====
 
+v1.1.6
+----
+ * monaca: Added `Monaca.getLatestVersionInfo()` API to get the latest version information.
+ * monaca: Support for .monacaignore so that the user can specify what file to ignore when upload/download from the Cloud.
+ * monaca: Added support for `--dry-run` and `--delete` when upload/downloading from the Cloud.
+ * monaca: Changed to unzip2 npm module for unzipping the archive.
+
 v1.1.5
 ----
  * monaca: Fixed `Monaca.uploadFile()` API to limit the number of concurrent connections.
