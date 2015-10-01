@@ -236,23 +236,23 @@
           return n.trim() !== "" && n.indexOf("#") !== 0;
         });
     }
-    if (ignoreList.length > 0) {
-      if (os.platform() === 'win32') {
-        projectDir = projectDir.replace(/\\/g,"/");
-      }
 
-      // We have to append '/**' to get all the subdirectories recursively.
-      allFiles = glob.sync(projectDir + "/**", 
-        {
-          ignore: ignoreList
-          .map(function(rule) {
-            // Since we are finding files with 'projectDir' which is an absolute path, we need to prepend '**/' for
-            // ignore patterns to match actual pattern.
-            return "**/" + rule;
-          })
-        }
-      )
+    if (os.platform() === 'win32') {
+      projectDir = projectDir.replace(/\\/g,"/");
     }
+
+    // We have to append '/**' to get all the subdirectories recursively.
+    allFiles = glob.sync(projectDir + "/**", 
+      {
+        ignore: ignoreList
+        .map(function(rule) {
+          // Since we are finding files with 'projectDir' which is an absolute path, we need to prepend '**/' for
+          // ignore patterns to match actual pattern.
+          return "**/" + rule;
+        })
+      }
+    )
+
     return allFiles;
   };
 
