@@ -492,10 +492,15 @@
 
     var form = {
       language: options.language || 'en',
-      clientType: 'local',
+      clientType: options.clientType || 'local',
       version: options.version || this.packageName + ' ' + this.version,
       os: os.platform()
     };
+    
+    // Edition option is for Visual Studio only.
+    if (options.edition) {
+      form.edition = options.edition;
+    }
 
     if (arguments.length === 1 || typeof arguments[1] === 'object') {
       form.token = arguments[0];
