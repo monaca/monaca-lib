@@ -1,7 +1,7 @@
 {
   "name": "monaca-lib",
-  "version": "1.1.6",
-  "description": "Monaca cloud API bindings for JavaScript",
+  "version": "1.1.7",
+  "description": "Monaca cloud and localkit API bindings for JavaScript",
   "main": "./src/main.js",
   "scripts": {
     "test": "jasmine-node --color spec/"
