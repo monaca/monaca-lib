@@ -103,7 +103,7 @@
     });
 
     this._loggedIn = false;
-    
+
     if (this.debug) {
       request.debug = true;
     }
@@ -242,7 +242,7 @@
     }
 
     // We have to append '/**' to get all the subdirectories recursively.
-    allFiles = glob.sync(projectDir + "/**", 
+    allFiles = glob.sync(projectDir + "/**",
       {
         ignore: ignoreList
         .map(function(rule) {
@@ -496,7 +496,7 @@
       version: options.version || this.packageName + ' ' + this.version,
       os: os.platform()
     };
-    
+
     // Edition option is for Visual Studio only.
     if (options.edition) {
       form.edition = options.edition;
@@ -1476,7 +1476,7 @@
                   if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + file) >= 0) {
                     // Allow this file since it exists in the allowed list of files.
                   } else {
-                    // Check if this file already exists locally. 
+                    // Check if this file already exists locally.
                     // If yes then don't donwload it. If no, then download it.
                     if (fs.existsSync(path.join(projectDir,file))) {
                       delete remoteFiles[file];
@@ -2096,13 +2096,13 @@
    * @example
    *   var proxy = monaca.getConfigSync('http_proxy');
    */
-  Monaca.prototype.getConfigSync = function(key) {    
+  Monaca.prototype.getConfigSync = function(key) {
     var config;
-    var configFile = this._configFile || CONFIG_FILE;    
-    if (typeof key === 'undefined') {      
+    var configFile = this._configFile || CONFIG_FILE;
+    if (typeof key === 'undefined') {
       throw new Error('"key" must exist.');
     }
-    else if (typeof key !== 'string') {      
+    else if (typeof key !== 'string') {
       throw new Error('"key" must be a string.');
     }
     try {
@@ -2284,10 +2284,10 @@
    * @param {Function} openRemoteBuildWindow - Specifies how browser will be opened with remote build url, returns promise.
    * @return {Promise}
    */
-  Monaca.prototype.startRemoteBuild = function(arg, openRemoteBuildWindow) {  
+  Monaca.prototype.startRemoteBuild = function(arg, openRemoteBuildWindow) {
     try {
       var outerDeferred = Q.defer();
-      var getProjectId = function() {      
+      var getProjectId = function() {
         return this.getProjectId(arg.path)
           .then(
             function(projectId) {
@@ -2301,7 +2301,7 @@
           );
       }.bind(this)
 
-      var createProject = function() {      
+      var createProject = function() {
         return this.createProject({
             name: arg.name,
             description: arg.description || '',
@@ -2324,7 +2324,7 @@
         return this.uploadProject(arg.path, options);
       }.bind(this);
 
-      var relogin = function() {      
+      var relogin = function() {
         return this.relogin()
           .catch(
             function() {
@@ -2334,19 +2334,19 @@
       }.bind(this);
 
       var downloadProject = function() {
-        outerDeferred.notify('Downloading changes from the cloud...');      
+        outerDeferred.notify('Downloading changes from the cloud...');
         return this.downloadProject(arg.path);
       }.bind(this);
-      
+
       this.isMonacaProject(arg.path)
         .catch(
-          function() {          
+          function() {
             return Q.reject('Could not build since project is not a Monaca project or does not exist on disk.');
           }
         )
         .then(relogin)
         .then(
-          function() {          
+          function() {
             return getProjectId()
               .then(
                 function(projectId) {
@@ -2405,10 +2405,10 @@
         })
         .then(downloadProject)
         .then(
-          function() {          
+          function() {
             outerDeferred.resolve();
           },
-          function(err) {          
+          function(err) {
             outerDeferred.reject(err);
           }
         )
@@ -2417,7 +2417,7 @@
       console.log("Error in monaca lib start remote build " + e1);
       outerDeferred.reject(e1);
     }
-    return outerDeferred.promise;  
+    return outerDeferred.promise;
   };
 
   /**
