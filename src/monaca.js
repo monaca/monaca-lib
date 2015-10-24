@@ -2315,9 +2315,13 @@
           );
       }.bind(this);
 
-      var uploadFiles = function() {      
+      var uploadFiles = function() {
         outerDeferred.notify('Uploading files to the cloud...');
-        return this.uploadProject(arg.path);
+        var options = null;
+        if (arg.delete) {
+          options = {'delete' : true};
+        }
+        return this.uploadProject(arg.path, options);
       }.bind(this);
 
       var relogin = function() {      
