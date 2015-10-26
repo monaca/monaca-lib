@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v1.1.7
+----
+ * monaca: added `delete` argument to `uploadFiles` method.
+
 v1.1.6
 ----
  * monaca: Added `Monaca.getLatestVersionInfo()` API to get the latest version information.
