@@ -947,7 +947,22 @@
           return name.indexOf('node_modules') !== 0;
         });
 
-        list.forEach(function(file) {
+        var filterFiles = function(fn) {
+            var key = path.join('/', fn);
+            key = key.split(path.sep).join('/');
+
+            // Exclude hidden files and folders.
+            if (fn.indexOf('/.') >= 0) {
+              return false;
+            }
+
+            // Only include files in /www folder.
+            return /^\/(www\/|[^/]*$)/.test(key);
+        };
+
+        var filteredList = list.filter(filterFiles);
+
+        filteredList.forEach(function(file) {
           var obj = {},
             key = path.join('/', file);
 
