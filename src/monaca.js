@@ -948,16 +948,16 @@
         });
 
         var filterFiles = function(fn) {
-            var key = path.join('/', fn);
-            key = key.split(path.sep).join('/');
+          var key = path.join('/', fn);
+          key = key.split(path.sep).join('/');
 
-            // Exclude hidden files and folders.
-            if (fn.indexOf('/.') >= 0) {
-              return false;
-            }
+          // Exclude hidden files and folders.
+          if (fn.indexOf('/.') >= 0) {
+            return false;
+          }
 
-            // Only include files in /www folder.
-            return /^\/(www\/|[^/]*$)/.test(key);
+          // Only include files in /www folder.
+          return /^\/(www\/|[^/]*$)/.test(key);
         };
 
         var filteredList = list.filter(filterFiles);
