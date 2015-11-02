@@ -2,9 +2,14 @@
 CHANGELOG
 ====
 
+v1.1.8
+----
+ * localkit: Added Cordova Version when getting project list.
+ * localkit: Added a filter to the files when getting project file tree.
+
 v1.1.7
 ----
- * monaca: added `delete` argument to `uploadFiles` method.
+ * monaca: Added `delete` argument to `uploadFiles` method.
 
 v1.1.6
 ----
