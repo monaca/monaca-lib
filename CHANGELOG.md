@@ -6,6 +6,7 @@ v1.1.8
 ----
  * localkit: Added Cordova Version when getting project list.
  * localkit: Added a filter to the files when getting project file tree.
+ * monaca: Added `showUrl` argument to `Monaca.buildProject()` API.
 
 v1.1.7
 ----
