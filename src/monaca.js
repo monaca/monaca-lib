@@ -908,6 +908,7 @@
    * @description
    *   Fetch a list of files and directories for a local project.
    * @param {string} projectDir - Path to project.
+   * @param {Object} [options] Parameters like filter to filter from list of files.   
    * @return {Promise}
    * @example
    *   monaca.getLocalProjectFiles = function('/some/directory').then(
@@ -919,7 +920,7 @@
    *     }
    *   );
    */
-  Monaca.prototype.getLocalProjectFiles = function(projectDir) {
+  Monaca.prototype.getLocalProjectFiles = function(projectDir, options) {
     var deferred = Q.defer();
 
     var qLimit = qlimit(100);
@@ -947,21 +948,10 @@
           return name.indexOf('node_modules') !== 0;
         });
 
-        var filterFiles = function(fn) {
-          var key = path.join('/', fn);
-          key = key.split(path.sep).join('/');
-
-          // Exclude hidden files and folders.
-          if (fn.indexOf('/.') >= 0) {
-            return false;
-          }
-
-          // Only include files in /www folder.
-          return /^\/(www\/|[^/]*$)/.test(key);
-        };
-
-        var filteredList = list.filter(filterFiles);
-
+        var filteredList = list;
+        if (options && options.filter && typeof options.filter === 'function') {
+          filteredList = list.filter(options.filter);
+        }
         filteredList.forEach(function(file) {
           var obj = {},
             key = path.join('/', file);
