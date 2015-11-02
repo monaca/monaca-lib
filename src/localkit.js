@@ -919,23 +919,24 @@
     var deferred = Q.defer();
 
     if (this.projects.hasOwnProperty(projectId)) {
+      this.monaca.getLocalProjectFiles(this.projects.getProjectById(projectId).path, {
+        filter : function(fn) {
+          var key = path.join('/', fn);
+          key = key.split(path.sep).join('/');
 
-      this.monaca.getLocalProjectFiles(this.projects.getProjectById(projectId).path).then(
+          // Exclude hidden files and folders.
+          if (key.indexOf('/.') >= 0) {
+            return false;
+          }
+
+          // Only include files in /www folder.
+          return /^\/(www\/|[^/]*$)/.test(key);
+          }
+        }).then(
         function(files) {
           var tmp = {};
 
-          var fileFilter = function(fn) {
-            // Exclude hidden files and folders.
-            if (fn.indexOf('/.') >= 0) {
-              return false;
-            }
-
-            // Only include files in /www folder.
-            return /^\/(www\/|[^/]*$)/.test(fn);
-          };
-
-          var filenames = Object.keys(files).filter(fileFilter);
-
+          var filenames = Object.keys(files);
           for (var i = 0, l = filenames.length; i < l; i ++) {
             var filename = filenames[i];
 
