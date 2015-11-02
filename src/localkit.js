@@ -887,6 +887,10 @@
                 try {
                   project.frameworkVersion = require(path.join(_project.path, '.monaca', 'project_info.json'))["framework_version"]
                 } catch(e) {}
+                project.cordovaVersion = "";
+                try {
+                  project.cordovaVersion = require(path.join(_project.path, '.monaca', 'project_info.json'))["cordova_version"]
+                } catch(e) {}
 
                 deferred.resolve(project);
               },
