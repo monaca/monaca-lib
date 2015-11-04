@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v1.1.9
+----
+ * monaca: Fixed `Monaca.startRemoteBuild()` API to support placeholders.
+
 v1.1.8
 ----
  * localkit: Added Cordova Version when getting project list.
