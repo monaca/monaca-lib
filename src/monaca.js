@@ -2399,9 +2399,9 @@
             if (arg.showSettings) {
               return this.getSessionUrl('https://ide.monaca.mobi/project/' + projectId + '/build?page=settings');
             }
-	    else if (arg.showUrl) {
-              return this.getSessionUrl(arg.showUrl);
-	    }
+            else if (arg.showUrl) {
+              return this.getSessionUrl(arg.showUrl.replace('%%PROJECT_ID%%', projectId));
+            }
             else {
               return this.getSessionUrl('https://ide.monaca.mobi/project/' + projectId + '/build');
             }
