@@ -1460,25 +1460,24 @@
             var allowFiles = this._filterIgnoreList(projectDir);
 
             // Temporary array for reverse loop.
-            var TempArr = [];
-
-            for (var Key in localFiles){
-                TempArr.push(Key);
+            var tempArr = [];
+            for (var key in localFiles){
+                tempArr.push(key);
             }
 
             // Reverse loop needed to first delete the files, then the folders.
-            for (var f = TempArr.length-1; f>=0; f--) {
+            for (var f = tempArr.length-1; f >= 0; f--) {
               // If file is not present on Monaca cloud but is present locally and it is not listed under .monacaignore, then it must be deleted.
-              if (!remoteFiles.hasOwnProperty(TempArr[f]) && allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + TempArr[f]) >= 0) {
-                filesToBeDeleted[TempArr[f]] = localFiles[TempArr[f]];
+              if (!remoteFiles.hasOwnProperty(tempArr[f]) && allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + tempArr[f]) >= 0) {
+                filesToBeDeleted[tempArr[f]] = localFiles[tempArr[f]];
                 if (options && !options.dryrun && options.delete) {
-                  try {
-                    fs.unlinkSync(path.join(projectDir, TempArr[f]));
-                    console.log("deleted file-> " + path.join(projectDir, TempArr[f]));
+                  if (localFiles[tempArr[f]].type === 'file') {
+                    fs.unlinkSync(path.join(projectDir, tempArr[f]));
+                    console.log("deleted file-> " + path.join(projectDir, tempArr[f]));
                   }
-                  catch(err) {
-                    fs.rmdir(path.join(projectDir, TempArr[f]));
-                    console.log("deleted folder-> " + path.join(projectDir, TempArr[f]));
+                  else if (localFiles[tempArr[f]].type === 'dir') {
+                    fs.rmdir(path.join(projectDir, tempArr[f]));
+                    console.log("deleted folder-> " + path.join(projectDir, tempArr[f]));
                   }
                 }
               }
