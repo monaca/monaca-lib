@@ -1459,13 +1459,26 @@
             // Fetch list of files after ignoring files/directories in .monacaignore file.
             var allowFiles = this._filterIgnoreList(projectDir);
 
-            for (var f in localFiles) {
+            // Temporary array for reverse loop.
+            var tempArr = [];
+            for (var key in localFiles){
+                tempArr.push(key);
+            }
+
+            // Reverse loop needed to first delete the files, then the folders.
+            for (var f = tempArr.length-1; f >= 0; f--) {
               // If file is not present on Monaca cloud but is present locally and it is not listed under .monacaignore, then it must be deleted.
-              if (!remoteFiles.hasOwnProperty(f) && localFiles[f].type !== 'dir'  && allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + f) >= 0) {
-                filesToBeDeleted[f] = localFiles[f];
+              if (!remoteFiles.hasOwnProperty(tempArr[f]) && allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + tempArr[f]) >= 0) {
+                filesToBeDeleted[tempArr[f]] = localFiles[tempArr[f]];
                 if (options && !options.dryrun && options.delete) {
-                  fs.unlinkSync(path.join(projectDir, f));
-                  console.log("deleted -> " + path.join(projectDir, f));
+                  if (localFiles[tempArr[f]].type === 'file') {
+                    fs.unlinkSync(path.join(projectDir, tempArr[f]));
+                    console.log("deleted file-> " + path.join(projectDir, tempArr[f]));
+                  }
+                  else if (localFiles[tempArr[f]].type === 'dir') {
+                    fs.rmdir(path.join(projectDir, tempArr[f]));
+                    console.log("deleted folder-> " + path.join(projectDir, tempArr[f]));
+                  }
                 }
               }
             }
@@ -2340,7 +2353,7 @@
 
       var downloadProject = function() {
         outerDeferred.notify('Downloading changes from the cloud...');
-        return this.downloadProject(arg.path);
+        return this.downloadProject(arg.path, { 'delete' : true });
       }.bind(this);
 
       this.isMonacaProject(arg.path)
