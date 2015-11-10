@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v1.1.10
+
+* monaca: Fixed local files deletion.
+
 v1.1.9
 ----
  * monaca: Fixed `Monaca.startRemoteBuild()` API to support placeholders.
@@ -41,7 +45,7 @@ v1.1.5-rc.1
 ----
  * monaca: Added `Monaca.getCurrentUser()` API.
  * localkit: Added `Localkit.generateOneTimePassword()`, `Localkit.validateOneTimePassword()`, `Localkit.generateLocalPairingKey()` API.
- * monaca: Fixed the POST parameter not sent to the server for some reason. 
+ * monaca: Fixed the POST parameter not sent to the server for some reason.
 
 v1.1.4
 ----
