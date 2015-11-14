@@ -1459,13 +1459,25 @@
             // Fetch list of files after ignoring files/directories in .monacaignore file.
             var allowFiles = this._filterIgnoreList(projectDir);
 
-            for (var f in localFiles) {
-              // If file is not present on Monaca cloud but is present locally and it is not listed under .monacaignore, then it must be deleted.
-              if (!remoteFiles.hasOwnProperty(f) && localFiles[f].type !== 'dir'  && allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + f) >= 0) {
+            // Needed to delete first the leafs of the dir tree
+            var tempArr = Object.keys(localFiles);
+            tempArr.sort();
+            tempArr.reverse();
+
+            for (var i = 0; i < tempArr.length; i++) {
+              var f = tempArr[i];
+              // If the file is not present on Monaca cloud but is present locally and it is not listed under .monacaignore, then it must be deleted.
+              if (!remoteFiles.hasOwnProperty(f) && allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + f) >= 0) {
                 filesToBeDeleted[f] = localFiles[f];
                 if (options && !options.dryrun && options.delete) {
-                  fs.unlinkSync(path.join(projectDir, f));
-                  console.log("deleted -> " + path.join(projectDir, f));
+                  if (localFiles[f].type === 'file') {
+                    fs.unlinkSync(path.join(projectDir, f));
+                    console.log("deleted file-> " + path.join(projectDir, f));
+                  }
+                  else if (localFiles[f].type === 'dir') {
+                    fs.rmdirSync(path.join(projectDir, f));
+                    console.log("deleted folder-> " + path.join(projectDir, f));
+                  }
                 }
               }
             }
