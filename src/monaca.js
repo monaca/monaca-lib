@@ -244,6 +244,7 @@
     // We have to append '/**' to get all the subdirectories recursively.
     allFiles = glob.sync(projectDir + "/**",
       {
+        dot: true,
         ignore: ignoreList
         .map(function(rule) {
           // Since we are finding files with 'projectDir' which is an absolute path, we need to prepend '**/' for
