@@ -1471,13 +1471,17 @@
               if (!remoteFiles.hasOwnProperty(f) && allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + f) >= 0) {
                 filesToBeDeleted[f] = localFiles[f];
                 if (options && !options.dryrun && options.delete) {
-                  if (localFiles[f].type === 'file') {
-                    fs.unlinkSync(path.join(projectDir, f));
-                    console.log("deleted file-> " + path.join(projectDir, f));
-                  }
-                  else if (localFiles[f].type === 'dir') {
-                    fs.rmdirSync(path.join(projectDir, f));
-                    console.log("deleted folder-> " + path.join(projectDir, f));
+                  try {
+                    if (localFiles[f].type === 'file') {
+                      fs.unlinkSync(path.join(projectDir, f));
+                      console.log("deleted file-> " + path.join(projectDir, f));
+                    }
+                    else if (localFiles[f].type === 'dir') {
+                      fs.rmdirSync(path.join(projectDir, f));
+                      console.log("deleted folder-> " + path.join(projectDir, f));
+                    }
+                  } catch (err) {
+                    console.log("Error deleting " + localFiles[f].type + ": " + f);
                   }
                 }
               }
