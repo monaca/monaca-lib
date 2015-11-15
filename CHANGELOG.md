@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v1.1.10
+----
+ * monaca: Fixed .monaca/project_info.json not updated when syncing back from the Cloud.
+ * monaca: Fixed to delete unnecessary files after the build process.
+
 v1.1.9
 ----
  * monaca: Fixed `Monaca.startRemoteBuild()` API to support placeholders.
