@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v1.1.11
+----
+* monaca: Added missing `options` to `downloadProject` method in `Monaca.startRemoteBuild` API.
+
 v1.1.10
 ----
  * monaca: Fixed .monaca/project_info.json not updated when syncing back from the Cloud.
