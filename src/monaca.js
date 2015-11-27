@@ -2357,7 +2357,11 @@
 
       var downloadProject = function() {
         outerDeferred.notify('Downloading changes from the cloud...');
-        return this.downloadProject(arg.path);
+        var options = null;
+        if (arg.delete) {
+          options = {'delete' : true};
+        }
+        return this.downloadProject(arg.path, options);
       }.bind(this);
 
       this.isMonacaProject(arg.path)
