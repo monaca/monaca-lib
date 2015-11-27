@@ -1,0 +1,17 @@
+general:
+  branches:
+    only:
+      - master
+machine:
+  node:
+    version: 0.12.7
+checkout:
+  pre:
+    - git fetch --tags
+deployment:
+  release:
+    tag: /[0-9]+\.[0-9]\+\.[0-9]+/
+    commands:
+      - echo -e "$NPMUSER\n$NPMPASSWORD\n$NPMEMAIL" | npm login
+      - npm publish
+
