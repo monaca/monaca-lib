@@ -6,7 +6,7 @@ machine:
   node:
     version: 0.12.7
 checkout:
-  pre:
+  post:
     - git fetch --tags
 deployment:
   release:
