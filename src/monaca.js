@@ -1465,12 +1465,18 @@
             tempArr.sort();
             tempArr.reverse();
 
+            var excludeFiles = function(f) {
+              // True if the file/dir is not into /www /merges or /plugins dir
+              var regEx = /^\/(?!www\/|www$|merges\/|merges$|plugins\/|plugins$).*/;
+              return regEx.test(f);
+            }
+
             for (var i = 0; i < tempArr.length; i++) {
               var f = tempArr[i];
               // If the file is not present on Monaca cloud but is present locally and it is not listed under .monacaignore, then it must be deleted.
               if (!remoteFiles.hasOwnProperty(f) && allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + f) >= 0) {
                 filesToBeDeleted[f] = localFiles[f];
-                if (options && !options.dryrun && options.delete) {
+                if (options && !options.dryrun && options.delete && !excludeFiles(f)) {
                   try {
                     if (localFiles[f].type === 'file') {
                       fs.unlinkSync(path.join(projectDir, f));
