@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v1.1.12
+----
+* monaca: Fixed wrong files deletion in `downloadProject()`.
+
 v1.1.11
 ----
 * monaca: Added missing `options` to `downloadProject` method in `Monaca.startRemoteBuild` API.
