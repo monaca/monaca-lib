@@ -204,6 +204,59 @@
     return deferred.promise;
   };
 
+  //Used to filter the uploaded/downloaded files/dirs based on patterns
+  Monaca.prototype._fileFilter = function(f, allowFiles, projectDir, source) {
+    // Upload/download .monaca/project_info.json
+    if (f.indexOf('/.monaca/project_info.json') == 0) {
+      return true;
+    }
+
+    // Exclude other hidden files and folders from being uploaded.
+    if (f.indexOf('/.') >= 0 && source === "uploadProject") {
+      return false;
+    }
+
+    // Platform specific files.
+    if (f.indexOf('/platforms/ios/MonacaApp-Info.plist') >= 0) {
+      return true;
+    }
+    if (/^\/platforms\/ios\/MonacaApp\/Resources\/icons\/icon[\.a-z0-9@x-]*\.png$/.test(f)) {
+      return true;
+    }
+    if (/^\/platforms\/ios\/MonacaApp\/Resources\/splash\/Default[a-zA-Z0-9@\-\.~]+\.png$/.test(f)) {
+      return true;
+    }
+    if (f.indexOf('/platforms/android/AndroidManifest.xml') >= 0) {
+      return true;
+    }
+    if (/^\/platforms\/android\/res\/drawable\-[a-z]+\/(icon|screen[\.9]*)\.png$/.test(f)) {
+      return true;
+    }
+    if (/^\/platforms\/android\/res\/drawable.+\/screen.+.png$/.test(f)) {
+      return true;
+    }
+    if (/^\/platforms\/(chrome|winrt)\/[^\/]+$/.test(f)) {
+      return true;
+    }
+
+    if (allowFiles.length > 0) {
+      // Only include files in /www, /merges and /plugins folders.
+      if (/^\/(?!www\/|www$|merges\/|merges$|plugins\/|plugins$).*/.test(f)) {
+        return false;
+      } else {
+        // Check if file is present in one of the /www, /merges and /plugins folders and also in list of allowed files.
+        if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + f) >= 0) {
+          return true;
+        } else {
+          return false;
+        }
+      }
+    } else {
+      // Only include files in /www, /merges and /plugins folders.
+      return !/^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(f);
+    }
+  };
+
   Monaca.prototype._filterFiles = function(dst, src) {
     for (var key in dst) {
       if (dst.hasOwnProperty(key)) {
@@ -909,7 +962,7 @@
    * @description
    *   Fetch a list of files and directories for a local project.
    * @param {string} projectDir - Path to project.
-   * @param {Object} [options] Parameters like filter to filter from list of files.   
+   * @param {Object} [options] Parameters like filter to filter from list of files.
    * @return {Promise}
    * @example
    *   monaca.getLocalProjectFiles = function('/some/directory').then(
@@ -1298,59 +1351,14 @@
             // Filter out directories and unchanged files.
             this._filterFiles(localFiles, remoteFiles);
 
-            var fileFilter = function(fn) {
-	      // Upload .monaca/project_info.json
-	      if (fn.indexOf('/.monaca/project_info.json') == 0) {
-	        return true;
-	      }
+            var keys = [];
 
-              // Exclude other hidden files and folders.
-              if (fn.indexOf('/.') >= 0) {
-                return false;
+            // Checks if the file/dir are included in a directory that can be uploaded.
+            for (var file in localFiles) {
+              if (this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
+                keys.push(file);
               }
-
-              // Platform specific files.
-              if (fn.indexOf('/platforms/ios/MonacaApp-Info.plist') >= 0) {
-                return true;
-              }
-              if (/^\/platforms\/ios\/MonacaApp\/Resources\/icons\/icon[\.a-z0-9@x-]*\.png$/.test(fn)) {
-                return true;
-              }
-              if (/^\/platforms\/ios\/MonacaApp\/Resources\/splash\/Default[a-zA-Z0-9@\-\.~]+\.png$/.test(fn)) {
-                return true;
-              }
-              if (fn.indexOf('/platforms/android/AndroidManifest.xml') >= 0) {
-                return true;
-              }
-              if (/^\/platforms\/android\/res\/drawable\-[a-z]+\/(icon|screen[\.9]*)\.png$/.test(fn)) {
-                return true;
-              }
-              if (/^\/platforms\/android\/res\/drawable.+\/screen.+.png$/.test(fn)) {
-                return true;
-              }
-              if (/^\/platforms\/(chrome|winrt)\/[^\/]+$/.test(fn)) {
-                return true;
-              }
-
-              if (allowFiles.length > 0) {
-                // Only include files in /www, /merges and /plugins folders.
-                if (!/^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(fn)) {
-                  return false;
-                } else {
-                  // Check if file is present in one of the /www, /merges and /plugins folders and also in list of allowed files.
-                  if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + fn) >= 0) {
-                    return true;
-                  } else {
-                    return false;
-                  }
-                }
-              } else {
-                // Only include files in /www, /merges and /plugins folders.
-                return /^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(fn);
-              }
-            };
-
-            var keys = Object.keys(localFiles).filter(fileFilter);
+            }
 
             // If dryrun option is set, just return the files to be uploaded.
             if (options && options.dryrun) {
@@ -1459,16 +1467,23 @@
 
             // Fetch list of files after ignoring files/directories in .monacaignore file.
             var allowFiles = this._filterIgnoreList(projectDir);
+            var tempArr = [];
+
+            // Checks if the file/dir are included in a directory that can be downloaded.
+            for (var file in localFiles){
+              if (this._fileFilter(file, allowFiles, projectDir, "downloadProject")) {
+                tempArr.push(file);
+              }
+            }
 
             // Needed to delete first the leafs of the dir tree
-            var tempArr = Object.keys(localFiles);
             tempArr.sort();
             tempArr.reverse();
 
             for (var i = 0; i < tempArr.length; i++) {
               var f = tempArr[i];
               // If the file is not present on Monaca cloud but is present locally and it is not listed under .monacaignore, then it must be deleted.
-              if (!remoteFiles.hasOwnProperty(f) && allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + f) >= 0) {
+              if (!remoteFiles.hasOwnProperty(f)) {
                 filesToBeDeleted[f] = localFiles[f];
                 if (options && !options.dryrun && options.delete) {
                   try {
