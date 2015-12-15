@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v1.1.13
+----
+* monaca: Allowed upload/download for config files inside the root directory.
+
 v1.1.12
 ----
 * monaca: Fixed wrong files deletion in `downloadProject()`.
