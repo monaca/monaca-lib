@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v1.1.14
+----
+* monaca: Fixed delete parameter in `uploadProject` method, needed for Monaca CLI.
+
 v1.1.13
 ----
 * monaca: Allowed upload/download for config files inside the root directory.
