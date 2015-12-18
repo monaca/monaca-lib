@@ -1335,8 +1335,6 @@
                 // If file on Monaca Cloud doesn't exist locally then it should be deleted from Cloud.
                 if (!localFiles.hasOwnProperty(f)) {
                   filesToBeDeleted[f] = remoteFiles[f];
-                  // Needed for CLI, Localkit already does this in startRemoteBuild.
-                  options.delete = true;
                 }
               }
               if (options && !options.dryrun && options.delete) {
