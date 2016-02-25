@@ -808,7 +808,7 @@
           var file = fs.createWriteStream(dest);
           response.pipe(file);
           file.on('finish', function() {
-            deferred.resolve(filename);
+            deferred.resolve(dest);
           });
           file.on('error', function(error) {
             deferred.reject(error);
