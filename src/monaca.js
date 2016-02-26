@@ -759,6 +759,88 @@
    * @method
    * @memberof Monaca
    * @description
+   *   Checks if the project can be built.
+   * @return {Promise}
+   * @example
+   *   monaca.checkBuildAvailability('myProjectID', 'android', 'debug').then(
+   *     function() {
+   *       //Build the project
+   *     },
+   *     function(err) {
+   *       //Cannot build the project
+   *     }
+   *   );
+   */
+  Monaca.prototype.checkBuildAvailability = function(projectId, platform, buildType) {
+    var deferred = Q.defer();
+
+    if (typeof platform === 'undefined') {
+      deferred.resolve();
+      return deferred.promise;
+    } else if (typeof buildType === 'undefined') {
+      deferred.reject(new Error("Missing --build-type parameter."));
+      return deferred.promise;
+    }
+
+    this._get('/project/' + projectId + '/can_build_app')
+    .then(
+      function(response) {
+        try {
+          var data = JSON.parse(response);
+        } catch (err) {
+          return deferred.reject(new Error(err));
+        }
+
+        if (data.status === 'ok') {
+          var platformContent = data.result[platform];
+
+          if (!platformContent) {
+            return deferred.reject(new Error("Specified platform is not supported or doesn\'t exist."));
+          } else if (platformContent.has_remaining_slot !== true) {
+            return deferred.reject(new Error("Your plan does not allow further builds at the moment. Please upgrade your account to start build, or try again later."));
+          } else if (platformContent.is_start_file_exist !== true) {
+            return deferred.reject(new Error("Your project is missing the start up file (usually index.html)."));
+          } else if (platformContent.manifest_error) {
+            return deferred.reject(new Error("Your AndroidManifest.xml has an invalid value. Please fix it and try again."));
+          } else if (typeof(platformContent.can_build_for[buildType]) === 'undefined') {
+            return deferred.reject(new Error(platform + " " + buildType + " build is not supported or doesn\'t exist."));
+          } else if (platform === 'android') {
+            if (platformContent.is_versionname_valid !== true) {
+              return deferred.reject(new Error("Version name is invalid."));
+            } else if (buildType === 'release' && platformContent.has_keysetting !== true) {
+              return deferred.reject(new Error("Missing KeyStore configuration. Configure remote build and try again."));
+            }
+          } else if (platform === 'ios') {
+            if (platformContent.info_plist_error) {
+              return deferred.reject(new Error("Your Info.plist file has an invalid content. Please fix it and try again."));
+            } else if (platformContent.has_splash_and_icons !== true) {
+              return deferred.reject(new Error("Your project is missing splash screens and/or icons. Please open remote build settings to configure."));
+            } else if (platformContent['has_' + buildType +'_provisioning'] !== true) {
+              return deferred.reject(new Error("Missing " + buildType + " provisioning file. Please upload it from remote build settings."));
+            } else if (platformContent[buildType +'_provisioning_error'] === true) {
+              return deferred.reject(new Error("Error in" + buildType + " provisioning file. Please upload again from remote build settings."));
+            }
+          }
+          deferred.resolve(data);
+        } else {
+          return deferred.reject(new Error(data.status + " - " + data.message));
+        }
+      },
+      function(err) {
+        if (err.code = "404") {
+          return deferred.reject(new Error("Cannot reach the server, contact Monaca Support. Error code: " + err.code));
+        } else {
+          return deferred.reject(new Error("Internal server error, contact Monaca Support. Error code: " + err.code));
+        }
+      }
+    );
+    return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *   Generate a one time token for an URL.
    * @param {string} url
    * @return {Promise}
