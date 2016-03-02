@@ -799,7 +799,7 @@
           } else if (platformContent.has_remaining_slot !== true) {
             return deferred.reject(new Error("Your plan does not allow further builds at the moment. Please upgrade your account to start build, or try again later."));
           } else if (platformContent.is_start_file_exist !== true) {
-            return deferred.reject(new Error("Your project is missing the start up file (usually index.html)."));
+            return deferred.reject(new Error("Your project is missing the startup file (usually index.html)."));
           } else if (platformContent.manifest_error) {
             return deferred.reject(new Error("Your AndroidManifest.xml has an invalid value. Please fix it and try again."));
           } else if (typeof(platformContent.can_build_for[buildType]) === 'undefined') {
@@ -815,9 +815,21 @@
               return deferred.reject(new Error("Your Info.plist file has an invalid content. Please fix it and try again."));
             } else if (platformContent.has_splash_and_icons !== true) {
               return deferred.reject(new Error("Your project is missing splash screens and/or icons. Please open remote build settings to configure."));
-            } else if (platformContent['has_' + buildType +'_provisioning'] !== true) {
+            } else if (buildType === "debug") {
+              if (platformContent['has_dev_provisioning'] !== true) {
+                return deferred.reject(new Error("Missing dev provisioning file. Please upload it from remote build settings."));
+              } else if (platformContent['dev_provisioning_error'] === true) {
+                return deferred.reject(new Error("Error in dev provisioning file. Please upload again from remote build settings."));
+              }
+            } else if (buildType === "debugger") {
+              if (platformContent['has_debug_provisioning'] !== true) {
+                return deferred.reject(new Error("Missing debug provisioning file. Please upload it from remote build settings."));
+              } else if (platformContent['debug_provisioning_error'] === true) {
+                return deferred.reject(new Error("Error in debug provisioning file. Please upload again from remote build settings."));
+              }
+            } else if (platformContent['has_' + buildType + '_provisioning'] !== true) {
               return deferred.reject(new Error("Missing " + buildType + " provisioning file. Please upload it from remote build settings."));
-            } else if (platformContent[buildType +'_provisioning_error'] === true) {
+            } else if (platformContent[buildType + '_provisioning_error'] === true) {
               return deferred.reject(new Error("Error in" + buildType + " provisioning file. Please upload again from remote build settings."));
             }
           }
@@ -827,7 +839,7 @@
         }
       },
       function(err) {
-        if (err.code = "404") {
+        if (err.code === 404) {
           return deferred.reject(new Error("Cannot reach the server, contact Monaca Support. Error code: " + err.code));
         } else {
           return deferred.reject(new Error("Internal server error, contact Monaca Support. Error code: " + err.code));
