@@ -76,10 +76,10 @@
       now = Date.now();
 
     if (typeof password === 'undefined') {
-      return Q.reject('No such password.');
+      return Q.reject(new Error('No such password.'));
     }
     else if (now > password.expires) {
-      return Q.reject('Password has expired.');
+      return Q.reject(new Error('Password has expired.'));
     }
 
     delete this.passwords[passwordHash];

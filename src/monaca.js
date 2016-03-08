@@ -327,7 +327,7 @@
     }
 
     if (!this._loggedIn) {
-      deferred.reject('Must be logged in to use this method.');
+      deferred.reject(new Error('Must be logged in to use this method.'));
     }
     else {
       this.getConfig('http_proxy').then(
@@ -408,7 +408,7 @@
                 deferred.reject(JSON.parse(body));
               }
               catch (e) {
-                deferred.reject('Error code: ' + response.statusCode);
+                deferred.reject(new Error('Error code: ' + response.statusCode));
               }
             }
           }
@@ -493,7 +493,7 @@
 
     fs.exists(localPath, function(exists) {
       if (!exists) {
-        deferred.reject('File does not exist.');
+        deferred.reject(new Error('File does not exist.'));
       }
       else {
         fs.readFile(localPath, function(error, data) {
@@ -586,7 +586,7 @@
           try {
             var _body = JSON.parse(body || '{}');
           } catch (e) {
-            deferred.reject("Not a JSON response");
+            deferred.reject(new Error('Not a JSON response.'));
           }
           if (error) {
             deferred.reject(error.code);
@@ -673,7 +673,7 @@
     this.getData('reloginToken').then(
       function(reloginToken) {
         if (typeof(reloginToken) !== 'string' || reloginToken === '') {
-          return deferred.reject("Not a valid relogin token.");
+          return deferred.reject(new Error('Not a valid relogin token.'));
         }
 
         this._login(reloginToken, options).then(
@@ -933,7 +933,7 @@
             deferred.reject(error);
           });
         } else {
-          deferred.reject("Not a valid file name");
+          deferred.reject(new Error('Not a valid file name.'));
         }
       })
 
@@ -1217,7 +1217,7 @@
     var deferred = Q.defer();
     fs.exists(destDir, function(exists) {
       if (exists && shell.ls(destDir).length > 0) {
-        deferred.reject('File or directory already exists and it contains files.');
+        deferred.reject(new Error('File or directory already exists and it contains files.'));
       }
       else {
         var success = true;
@@ -1764,7 +1764,7 @@
     }
 
     if (!params.platform) {
-      deferred.reject('Must specify build platform.');
+      deferred.reject(new Error('Must specify build platform.'));
     }
 
     var pollBuild = function(queueId) {
@@ -1892,7 +1892,7 @@
 
       fs.exists(destinationDir, function(exists) {
         if (exists) {
-          deferred.reject('Directory already exists');
+          deferred.reject(new Error('Directory already exists'));
         }
         else {
           deferred.resolve(destinationDir);
@@ -1984,7 +1984,7 @@
         deferred.resolve(configFile);
       }
       else {
-        deferred.reject('Unable to set config file: ' + parentDir + ' does not exist.');
+        deferred.reject(new Error('Unable to set config file: ' + parentDir + ' does not exist.'));
       }
     }.bind(this));
 
@@ -2397,7 +2397,7 @@
         var promise = promises.shift();
 
         if (!promise) {
-          return Q.reject('Config file is missing.');
+          return Q.reject(new Error('Config file is missing.'));
         }
 
         return promise.then(
@@ -2418,7 +2418,7 @@
         return hasConfigFile();
       },
       function() {
-        return Q.reject('"www" directory is missing.');
+        return Q.reject(new Error('"www" directory is missing.'));
       }
     );
   };
@@ -2506,7 +2506,7 @@
       this.isMonacaProject(arg.path)
         .catch(
           function() {
-            return Q.reject('Could not build since project is not a Monaca project or does not exist on disk.');
+            return Q.reject(new Error('Could not build since project is not a Monaca project or does not exist on disk.'));
           }
         )
         .then(relogin)
