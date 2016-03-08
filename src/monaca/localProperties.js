@@ -67,7 +67,7 @@ var getProperty = function(projectDir, key) {
       );
     },
     function() {
-      deferred.reject('.monaca directory missing. This is not a Monaca project.');
+      deferred.reject(new Error('.monaca directory missing. This is not a Monaca project.'));
     }
   );
 
@@ -117,7 +117,7 @@ var setProperty = function(projectDir, key, value) {
       );
     },
     function() {
-      deferred.reject('.monaca directory missing. This is not a Monaca project.');
+      deferred.reject(new Error('.monaca directory missing. This is not a Monaca project.'));
     }
   );
 

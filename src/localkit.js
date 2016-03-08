@@ -420,7 +420,7 @@
     var deferred = Q.defer();
 
     if (!this.monaca._loggedIn) {
-      deferred.reject('Must be logged in to use this method.');
+      deferred.reject(new Error('Must be logged in to use this method.'));
     }
     else {
       this._interval = setInterval(this._sendBeacon.bind(this), config.beacon_send_interval);
@@ -544,7 +544,7 @@
           deferred.resolve(projectId);
         }
         else {
-          deferred.reject('No such project.');
+          deferred.reject(new Error('No such project.'));
         }
       }.bind(this),
       function(error) {
@@ -606,7 +606,7 @@
       }.bind(this))[0];
 
     if (!projectId) {
-      return Q.reject('No such project.');
+      return Q.reject(new Error('No such project.'));
     }
     else {
       var project = this.projects.getProjectById(projectId),
@@ -684,7 +684,7 @@
       }.bind(this))[0];
 
     if (!projectId) {
-      return Q.reject('No such project.');
+      return Q.reject(new Error('No such project.'));
     }
     else {
       var project = this.projects.getProjectById(projectId),
@@ -718,7 +718,7 @@
       }.bind(this))[0];
 
     if (!projectId) {
-      return Q.reject('No such project.');
+      return Q.reject(new Error('No such project.'));
     }
     else {
       var project = this.projects.getProjectById(projectId);
@@ -750,7 +750,7 @@
     this.monaca.getLocalProjectId(projectPath).then(
       function(projectId) {
         if (!this.projects.hasOwnProperty(projectId)) {
-          deferred.reject('No project with id: ' + projectId);
+          deferred.reject(new Error('No project with id: ' + projectId));
         }
         else {
           try {
@@ -953,7 +953,7 @@
       );
     }
     else {
-      deferred.reject('No project with id: ' + projectId);
+      deferred.reject(new Error('No project with id: ' + projectId));
     }
 
     return deferred.promise;
@@ -972,7 +972,7 @@
     var deferred = Q.defer();
 
     if (!this.projects.hasOwnProperty(projectId)) {
-      deferred.reject('No project width id: ' + projectId);
+      deferred.reject(new Error('No project width id: ' + projectId));
     }
     else {
       var projectPath = this.projects.getProjectById(projectId).path,
@@ -989,7 +989,7 @@
         absoluteProjectPath = path.resolve(projectPath);
 
       if (absoluteFilePath.indexOf(absoluteProjectPath) !== 0) {
-        deferred.reject('File is outside of project path.');
+        deferred.reject(new Error('File is outside of project path.'));
       }
       else {
         fs.exists(filePath, function(exists) {
