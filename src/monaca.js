@@ -1484,15 +1484,21 @@
               }
             }
 
+            // Modified files.
+            var modifiedFiles = {
+              uploaded: {},
+              deleted: filesToBeDeleted
+            };
+
+            for (var i in keys) {
+              if (localFiles[keys[i]]) {
+                modifiedFiles.uploaded[keys[i]] = localFiles[keys[i]];
+              }
+            }
+
             // If dryrun option is set, just return the files to be uploaded.
             if (options && options.dryrun) {
-              var data = {};
-              for (var i in keys) {
-                if (localFiles[keys[i]]) {
-                  data[keys[i]] = localFiles[keys[i]];
-                }
-              }
-              return deferred.resolve({ uploaded: data, deleted: filesToBeDeleted});
+              return deferred.resolve(modifiedFiles);
             }
 
             var totalLength = keys.length,
@@ -1530,7 +1536,7 @@
               }
             }.bind(this)))).then(
               function() {
-                deferred.resolve(projectId);
+                deferred.resolve(modifiedFiles);
               },
               function(error) {
                 deferred.reject(error);
@@ -1650,9 +1656,15 @@
             // Filter files to be downloaded according to .monacaignore file.
             filterFiles();
 
+            // Modified files.
+            var modifiedFiles = {
+              remoteFiles: remoteFiles,
+              deleted: filesToBeDeleted
+            }
+
             // If dryrun option is set, just return the files to be downloaded and deleted.
             if (options && options.dryrun) {
-              return deferred.resolve({ remoteFiles: remoteFiles, deleted: filesToBeDeleted} );
+              return deferred.resolve(modifiedFiles);
             }
 
             var totalLength = Object.keys(remoteFiles).length,
@@ -1690,7 +1702,7 @@
               }
             }.bind(this)))).then(
               function() {
-                deferred.resolve(projectId);
+                deferred.resolve(modifiedFiles);
               },
               function(error) {
                 deferred.reject(error);
