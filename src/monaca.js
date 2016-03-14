@@ -772,23 +772,18 @@
    *   );
    */
   Monaca.prototype.checkBuildAvailability = function(projectId, platform, buildType) {
-    var deferred = Q.defer();
 
-    if (typeof platform === 'undefined') {
-      deferred.resolve();
-      return deferred.promise;
-    } else if (typeof buildType === 'undefined') {
-      deferred.reject(new Error("Missing --build-type parameter."));
-      return deferred.promise;
+    if (!projectId || !platform || !buildType) {
+      return Q.reject(new Error("Missing parameters."));
     }
 
-    this._get('/project/' + projectId + '/can_build_app')
+    return this._get('/project/' + projectId + '/can_build_app')
     .then(
       function(response) {
         try {
           var data = JSON.parse(response);
         } catch (err) {
-          return deferred.reject(new Error(err));
+          return Q.reject(new Error(err));
         }
 
         if (data.status === 'ok') {
@@ -855,23 +850,22 @@
 
           var errorMessage = checkError();
           if (errorMessage) {
-            return deferred.reject(new Error(errorMessage));
+            return Q.reject(new Error(errorMessage));
           } else {
-            return deferred.resolve(data);
+            return Q.resolve(data);
           }
         } else {
-          return deferred.reject(new Error(data.status + " - " + data.message));
+          return Q.reject(new Error(data.status + " - " + data.message));
         }
       },
       function(err) {
         if (err.code === 404) {
-          return deferred.reject(new Error("Cannot reach the server, contact Monaca Support. Error code: " + err.code));
+          return Q.reject(new Error("Cannot reach the server, contact Monaca Support. Error code: " + err.code));
         } else {
-          return deferred.reject(new Error("Internal server error, contact Monaca Support. Error code: " + err.code));
+          return Q.reject(new Error("Internal server error, contact Monaca Support. Error code: " + err.code));
         }
       }
     );
-    return deferred.promise;
   };
 
   /**
