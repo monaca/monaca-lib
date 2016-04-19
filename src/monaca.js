@@ -59,13 +59,25 @@
   var Monaca = function(apiRoot, options) {
     /**
      * @description
-     *   Root of Monaca web API.
+     *   Root of Monaca IDE API.
      * @name Monaca#apiRoot
      * @type string
      * @default https://ide.monaca.mobi/api
      */
     Object.defineProperty(this, 'apiRoot', {
       value: apiRoot ? apiRoot : config.default_api_root,
+      writable: false
+    });
+
+    /**
+     * @description
+     *   Root of Monaca web API.
+     * @name Monaca#webApiRoot
+     * @type string
+     * @default https://monaca.mobi/en/api
+     */
+    Object.defineProperty(this, 'webApiRoot', {
+      value: apiRoot ? apiRoot : config.web_api_root,
       writable: false
     });
 
@@ -752,6 +764,138 @@
         deferred.reject(error);
       }
     );
+    return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Creates a new account in Monaca cloud using email and password. Returns a token used to check.
+   *   if the account has been activated.
+   * @param {string} email - A Monaca account email.
+   * @param {string} password - Password associated with the account.
+   * @param {string} password_confirm - Password confirmation.
+   * @return {Promise}
+   * @example
+   *   monaca.signup('my@email.com', 'password', 'password').then(
+   *     function() {
+   *       // Signup successful!
+   *     },
+   *     function(error) {
+   *       // Signup failed!
+   *     }
+   *   );
+   */
+  Monaca.prototype.signup = function(email, password, passwordConfirm, options) {
+    options = options || {};
+    var deferred = Q.defer();
+
+    var form = {
+      language: options.language || 'en',
+      clientType: options.clientType || 'local',
+      version: options.version || this.packageName + ' ' + this.version,
+      os: os.platform(),
+      register: {
+        email: email,
+        password: password,
+        password_confirm: passwordConfirm
+      }
+    };
+
+    this.getConfig('http_proxy').then(
+      function(httpProxy) {
+        request.post({
+          url: this.webApiRoot + '/register',
+          proxy: httpProxy,
+          form: form
+        },
+        function(error, response, body) {
+          try {
+            var _body = JSON.parse(body || '{}');
+          } catch (e) {
+            return deferred.reject(new Error('Not a JSON response.'));
+          }
+          if (error) {
+            return deferred.reject(error.code);
+          }
+
+          if (_body.status === 'ok') {
+            deferred.resolve(_body.result.submitOK.token);
+          } else {
+            var errorMessage = _body.title;
+            Object.keys(_body.result.formError).forEach(function(key) {
+              errorMessage += '\n' + key + ': ' + _body.result.formError[key];
+            });
+
+            deferred.reject(new Error(errorMessage));
+          }
+        }.bind(this));
+      }.bind(this),
+      function(error) {
+        deferred.reject(error);
+      }
+    );
+
+    return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Checks if the account related to the specified token is already activated.
+   * @param {string} token - token related to a user account.
+   * @return {Promise}
+   * @example
+   *   monaca.isActivatedUser('token').then(
+   *     function() {
+   *       // Account is activated!
+   *     },
+   *     function(error) {
+   *       // Account is not activated yet!
+   *     }
+   *   );
+   */
+  Monaca.prototype.isActivatedUser = function(token, options) {
+    options = options || {};
+    var deferred = Q.defer();
+
+    this.getConfig('http_proxy').then(
+      function(httpProxy) {
+        request.post({
+          url: this.webApiRoot + '/check_activate',
+          proxy: httpProxy,
+          form: {
+            language: options.language || 'en',
+            clientType: options.clientType || 'local',
+            version: options.version || this.packageName + ' ' + this.version,
+            os: os.platform(),
+            param: token
+          }
+        },
+        function(error, response, body) {
+          try {
+            var _body = JSON.parse(body || '{}');
+          } catch (e) {
+            return deferred.reject(new Error('Not a JSON response.'));
+          }
+          if (error) {
+            return deferred.reject(error.code);
+          }
+
+          if (_body.status === 'ok') {
+            _body.result === 1 ? deferred.resolve() : deferred.reject();
+          } else {
+            deferred.reject(_body.title);
+          }
+        }.bind(this));
+      }.bind(this),
+      function(error) {
+        deferred.reject(error);
+      }
+    );
+
     return deferred.promise;
   };
 
