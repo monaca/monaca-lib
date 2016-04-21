@@ -357,10 +357,7 @@
 
     this._createRequestClient(data).then(
       function(requestClient) {
-        if (resource.charAt(0) !== '/') {
-          resource = '/' + resource;
-        }
-        requestClient.get(this.apiRoot + resource,
+        requestClient.get(resource.match(/^https?\:\/\//) ? resource : (this.apiRoot + resource),
           function(error, response, body) {
             if (error) {
               deferred.reject(error.code);
@@ -391,11 +388,8 @@
 
     this._createRequestClient().then(
       function(requestClient) {
-        if (resource.charAt(0) !== '/') {
-          resource = '/' + resource;
-        }
         requestClient.post({
-          url: this.apiRoot + resource,
+          url: resource.match(/^https?\:\/\//) ? resource : (this.apiRoot + resource),
           form: data
         }, function(error, response, body) {
           if (error) {
@@ -1861,7 +1855,7 @@
    *     });
    */
   Monaca.prototype.getTemplates = function() {
-    return this._get('/user/project/templates')
+    return this._get('/user/templates')
       .then(
         function(response) {
           var data;
@@ -1874,7 +1868,7 @@
           }
 
           if (data.status === 'ok') {
-            return data.result.items;
+            return data.result;
           }
           else {
             return Q.reject(data.status);
@@ -1888,11 +1882,11 @@
    * @memberof Monaca
    * @description
    *   Download template from Monaca Cloud.
-   * @param {String} templateId Template ID
+   * @param {String} resource Template URL
    * @param {String} destinationDir Destionation directory
    * @return {Promise}
    */
-  Monaca.prototype.downloadTemplate = function(templateId, destinationDir) {
+  Monaca.prototype.downloadTemplate = function(resource, destinationDir) {
     var checkDirectory = function() {
       var deferred = Q.defer();
 
@@ -1934,41 +1928,53 @@
           }
         )
         .then(
-          function(path) {
+          function(zipPath) {
             var deferred = Q.defer();
-            fs.createReadStream(path)
-            .pipe(unzip.Extract({ path: destinationDir }))
-            .on('error', function(error) {
-              deferred.reject(error);
-            })
-            .on('close', function() {
-              deferred.resolve(destinationDir);
+
+            fs.mkdir(destinationDir, function(error) {
+              if (error) {
+                return deferred.reject(error);
+              }
+
+              fs.createReadStream(zipPath)
+              .pipe(unzip.Parse())
+              .on('entry', function(entry) {
+                var p = entry.path.split("/").slice(1).join("/");
+                entry.path = entry.props.path = p;
+                if (!entry.path) {
+                  return entry.autodrain();
+                }
+
+                if (entry.path.endsWith('/')) {
+                  try {
+                    fs.mkdirSync(path.join(destinationDir, entry.path));
+                  } catch(error) {
+                    return deferred.reject(error);
+                  }
+                } else {
+                  entry.pipe(fs.createWriteStream(path.join(destinationDir, entry.path)));
+                }
+              })
+              .on('error', function(error) {
+                deferred.reject(error);
+              })
+              .on('close', function() {
+                deferred.resolve(destinationDir);
+              });
             });
+
             return deferred.promise;
           }
         );
     }
 
     var fetchFile = function() {
-      return this._get('/user/project/downloadTemplate', {templateId: templateId});
+      return this._get(resource);
     }.bind(this);
 
     return checkDirectory()
       .then(fetchFile)
       .then(unzipFile);
-  };
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Create project from template.
-   * @param {String} templateId Template ID
-   * @param {String} destinationDir Destionation directory
-   * @return {Promise}
-   */
-  Monaca.prototype.createFromTemplate = function(templateId, destinationDir) {
-    return this.downloadTemplate(templateId, destinationDir);
   };
 
   /**
