@@ -362,23 +362,35 @@
     }
 
     return deferred.promise;
-  }
+  };
 
-  Monaca.prototype._get = function(resource, data) {
+  Monaca.prototype._request = function(method, resource, data) {
+    method = method.toUpperCase();
+    resource = resource.match(/^https?\:\/\//) ? resource : (this.apiRoot + resource);
     var deferred = Q.defer();
 
-    this._createRequestClient(data).then(
+    var createRequestClient = function(data) {
+      return (typeof data === 'function' ? Q.resolve(data) : this._createRequestClient(data));
+    }.bind(this);
+
+    createRequestClient().then(
       function(requestClient) {
-        if (resource.charAt(0) !== '/') {
-          resource = '/' + resource;
-        }
-        requestClient.get(this.apiRoot + resource,
+        requestClient({
+            method: method,
+            url: resource,
+            form: method === 'POST' ? data : undefined
+          },
           function(error, response, body) {
             if (error) {
               deferred.reject(error.code);
             } else {
               if (response.statusCode === 200) {
                 deferred.resolve(body);
+              } else if (response.statusCode === 401 && resource.startsWith(this.apiRoot) && !this.retry) {
+                  this.retry = true;
+                  this.relogin().then(function() {
+                    deferred.resolve(this._request(method, resource, requestClient));
+                  }.bind(this));
               } else {
                 try {
                   deferred.reject(JSON.parse(body));
@@ -388,7 +400,7 @@
                 }
               }
             }
-          }
+          }.bind(this)
         )
       }.bind(this),
       function(error) {
@@ -398,37 +410,12 @@
     return deferred.promise;
   };
 
+  Monaca.prototype._get = function(resource, data) {
+    return this._request('GET', resource, data);
+  };
+
   Monaca.prototype._post = function(resource, data) {
-    var deferred = Q.defer();
-
-    this._createRequestClient().then(
-      function(requestClient) {
-        if (resource.charAt(0) !== '/') {
-          resource = '/' + resource;
-        }
-        requestClient.post({
-          url: this.apiRoot + resource,
-          form: data
-        }, function(error, response, body) {
-          if (error) {
-            deferred.reject(error.code);
-          } else {
-            if (response.statusCode === 200 || response.statusCode === 201) {
-              deferred.resolve(body);
-            } else {
-              try {
-                deferred.reject(JSON.parse(body));
-              }
-              catch (e) {
-                deferred.reject(new Error('Error code: ' + response.statusCode));
-              }
-            }
-          }
-        });
-      }.bind(this)
-    );
-
-    return deferred.promise;
+    return this._request('POST', resource, data);
   };
 
   /**
@@ -605,42 +592,27 @@
           }
           else {
             if (response.statusCode == 200) {
-              var d = Q.defer();
 
-              this.setData('reloginToken', _body.result.token).then(
-                function() {
-                  this.setData('clientId', _body.result.clientId).then(
-                    function() {
-                      d.resolve();
-                    },
-                    function(error) {
-                      d.reject(error);
-                    }
-                  );
-                }.bind(this),
-                function(error) {
-                  d.reject(error);
-                }
-              );
+              var headers = response.caseless.dict;
 
-              d.promise.then(
-                function() {
-                  var headers = response.caseless.dict;
+              this.setData('reloginToken', _body.result.token)
+                .then(this.setData.bind(this, 'clientId', _body.result.clientId), deferred.reject)
+                .then(this.setData.bind(this, 'x-monaca-param-api-token', headers['x-monaca-param-api-token']), deferred.reject)
+                .then(this.setData.bind(this, 'x-monaca-param-session', headers['x-monaca-param-session']), deferred.reject)
+                .then(
+                  function() {
+                    this.tokens = {
+                      api: headers['x-monaca-param-api-token'],
+                      session: headers['x-monaca-param-session']
+                    };
 
-                  this.tokens = {
-                    api: headers['x-monaca-param-api-token'],
-                    session: headers['x-monaca-param-session']
-                  };
+                    this.loginBody = _body.result;
+                    this._loggedIn = true;
 
-                  this.loginBody = _body.result;
-
-                  this._loggedIn = true;
-                  deferred.resolve();
-                }.bind(this),
-                function(error) {
-                  deferred.reject(error);
-                }
-              );
+                    deferred.resolve();
+                  }.bind(this),
+                  deferred.reject
+                );
             }
             else {
               deferred.reject(_body);
@@ -655,6 +627,45 @@
 
 
     return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Prepares the current session with local data before trying any request.
+   *   If local data is not found it calls relogin.
+   * @param {object} [options] - Login parameters.
+   * @param {string} [options.version] - App name and version to send to the Monaca API. Defaults to "monaca-lib x.y.z".
+   * @param {string} [options.language] - Can be either "en" or "ja". Defaults to "en".
+   * @return {Promise}
+   * @example
+   *   monaca.relogin().then(
+   *     function() {
+   *       // Login successful!
+   *     },
+   *     function(error) {
+   *       // Login failed!
+   *     }
+   *   );
+   */
+  Monaca.prototype.prepareSession = function(options) {
+    return Q.all([
+      this.getData('x-monaca-param-api-token'),
+      this.getData('x-monaca-param-session')
+    ]).then(
+      function(values) {
+        if (!values[0] || !values[1]) {
+          return this.relogin(options);
+        }
+
+        this.tokens = {
+          api: values[0],
+          session: values[1]
+        };
+        this._loggedIn = true;
+      }.bind(this)
+    );
   };
 
   /**
@@ -754,16 +765,20 @@
   Monaca.prototype.logout = function() {
     var deferred = Q.defer();
 
-    this.setData('reloginToken', '').then(
-      function() {
-        delete this.tokens;
-        this._loggedIn = false;
-        deferred.resolve();
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
-    );
+    this.setData('reloginToken', '')
+      .then(this.setData.bind(this, 'clientId', ''), deferred.reject)
+      .then(this.setData.bind(this, 'x-monaca-param-api-token', ''), deferred.reject)
+      .then(this.setData.bind(this, 'x-monaca-param-session', ''), deferred.reject)
+      .then(
+        function() {
+          delete this.tokens;
+          this._loggedIn = false;
+
+          deferred.resolve();
+        }.bind(this),
+        deferred.reject
+      );
+
     return deferred.promise;
   };
 
@@ -2005,7 +2020,7 @@
    *     });
    */
   Monaca.prototype.getTemplates = function() {
-    return this._get('/user/project/templates')
+    return this._get('/user/templates')
       .then(
         function(response) {
           var data;
@@ -2018,7 +2033,7 @@
           }
 
           if (data.status === 'ok') {
-            return data.result.items;
+            return data.result;
           }
           else {
             return Q.reject(data.status);
@@ -2032,11 +2047,11 @@
    * @memberof Monaca
    * @description
    *   Download template from Monaca Cloud.
-   * @param {String} templateId Template ID
+   * @param {String} resource Template URL
    * @param {String} destinationDir Destionation directory
    * @return {Promise}
    */
-  Monaca.prototype.downloadTemplate = function(templateId, destinationDir) {
+  Monaca.prototype.downloadTemplate = function(resource, destinationDir) {
     var checkDirectory = function() {
       var deferred = Q.defer();
 
@@ -2078,41 +2093,53 @@
           }
         )
         .then(
-          function(path) {
+          function(zipPath) {
             var deferred = Q.defer();
-            fs.createReadStream(path)
-            .pipe(unzip.Extract({ path: destinationDir }))
-            .on('error', function(error) {
-              deferred.reject(error);
-            })
-            .on('close', function() {
-              deferred.resolve(destinationDir);
+
+            fs.mkdir(destinationDir, function(error) {
+              if (error) {
+                return deferred.reject(error);
+              }
+
+              fs.createReadStream(zipPath)
+              .pipe(unzip.Parse())
+              .on('entry', function(entry) {
+                var p = entry.path.split("/").slice(1).join("/");
+                entry.path = entry.props.path = p;
+                if (!entry.path) {
+                  return entry.autodrain();
+                }
+
+                if (entry.path.endsWith('/')) {
+                  try {
+                    fs.mkdirSync(path.join(destinationDir, entry.path));
+                  } catch(error) {
+                    return deferred.reject(error);
+                  }
+                } else {
+                  entry.pipe(fs.createWriteStream(path.join(destinationDir, entry.path)));
+                }
+              })
+              .on('error', function(error) {
+                deferred.reject(error);
+              })
+              .on('close', function() {
+                deferred.resolve(destinationDir);
+              });
             });
+
             return deferred.promise;
           }
         );
     }
 
     var fetchFile = function() {
-      return this._get('/user/project/downloadTemplate', {templateId: templateId});
+      return this._get(resource);
     }.bind(this);
 
     return checkDirectory()
       .then(fetchFile)
       .then(unzipFile);
-  };
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Create project from template.
-   * @param {String} templateId Template ID
-   * @param {String} destinationDir Destionation directory
-   * @return {Promise}
-   */
-  Monaca.prototype.createFromTemplate = function(templateId, destinationDir) {
-    return this.downloadTemplate(templateId, destinationDir);
   };
 
   /**
