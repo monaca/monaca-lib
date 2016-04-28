@@ -1696,7 +1696,10 @@
             function(error) {
               deferred.reject(error);
             }
-          )
+          ),
+          function(error) {
+            deferred.reject(error);
+          }
         );
       }.bind(this),
       function(error) {
@@ -2069,27 +2072,27 @@
       console.log('Installing build dependencies...');
 
       var cmd = 'npm install ' + installDependencies.join(' ') + ' --loglevel=error';
-      var process = child_process.exec(cmd, {
+      var childProcess = child_process.exec(cmd, {
         cwd: USER_CORDOVA
       });
 
-      process.on('exit', function(code) {
+      childProcess.on('exit', function(code) {
         if (code === 0) {
           deferred.resolve();
         }
         else {
-          console.error('Failed to install build dependencies.');
+          process.stderr.write('Failed to install build dependencies.');
 
           deferred.reject('Failed installing packages.');
         }
       });
 
-      process.stdout.on('data', function(data) {
-        console.log(data);
+      childProcess.stdout.on('data', function(data) {
+        process.stdout.write(data);
       });
 
-      process.stderr.on('data', function(data) {
-        console.log(data);
+      childProcess.stderr.on('data', function(data) {
+        process.stderr.write(data);
       });
     } else {
       deferred.resolve();
@@ -2111,7 +2114,7 @@
 
     fs.exists(path.resolve(path.join(projectDir, 'package.json')), function(exists) {
       if (exists) {
-        console.log('Installing template dependencies...');
+        process.stdout.write('Installing template dependencies...');
 
         var cmd = 'npm install --loglevel=error';
         var npmProcess = child_process.exec(cmd, {
@@ -2148,7 +2151,6 @@
     var config = require(projectInfoFile);
 
     if(config.build && config.build.transpile && !config.build.transpile.enabled) {
-      console.log('disabled');
       return Q.resolve();
     }
 
@@ -2283,8 +2285,8 @@
     };
 
     var fetchFile = function() {
-      console.log('Downloading template...');
-      
+      process.stdout.write('\nDownloading template...');
+
       return this._get(resource);
     }.bind(this);
 
