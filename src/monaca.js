@@ -2126,7 +2126,7 @@
             var onsenCssSrc = path.join(projectDir, 'node_modules', 'onsenui', 'css');
             var onsenCssDest = path.join(projectDir, 'www', 'css');
 
-            var cpProcess = child_process.exec('cp -R ' + onsenCssSrc + ' ' + onsenCssDest)
+            var cpProcess = child_process.exec('cp -R ' + onsenCssSrc + ' ' + onsenCssDest);
 
             cpProcess.on('exit', function(code) {
               if (code === 0) {
