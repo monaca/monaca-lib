@@ -18,7 +18,7 @@
     xml2js = require('xml2js'),
     lockfile = require('lockfile'),
     tmp = require('tmp'),
-    unzip = require('unzip2'),
+    extract = require('extract-zip'),
     glob = require('glob');
 
   // local imports
@@ -2245,37 +2245,36 @@
         .then(
           function(zipPath) {
             var deferred = Q.defer();
+            var tmpDir = destinationDir + '-tmp';
 
-            fs.mkdir(destinationDir, function(error) {
+            extract(zipPath, {dir: tmpDir}, function(error) {
               if (error) {
                 return deferred.reject(error);
               }
 
-              fs.createReadStream(zipPath)
-              .pipe(unzip.Parse())
-              .on('entry', function(entry) {
-                var p = entry.path.split("/").slice(1).join("/");
-                entry.path = entry.props.path = p;
-                if (!entry.path) {
-                  return entry.autodrain();
-                }
+              fs.readdir(tmpDir, function(error, files) {
+                var retry = 0;
+                var source = files.length === 1 ? path.join(tmpDir, files[0]) : tmpDir;
+                var mv = function() {
+                  fs.rename(source, destinationDir, function(error) {
+                    // Windows fix
+                    if (error && error.code === 'EPERM' && ++retry < 5) {
+                      setTimeout(function () {
+                        mv();
+                      }, 200);
+                    } else if (error) {
+                      return deferred.reject(error);
+                    } else {
+                      fs.rmdir(tmpDir, function(error) {
+                        return deferred.resolve(destinationDir);
+                      });
+                    }
+                  });
+                };
 
-                if (entry.path.endsWith('/')) {
-                  try {
-                    fs.mkdirSync(path.join(destinationDir, entry.path));
-                  } catch(error) {
-                    return deferred.reject(error);
-                  }
-                } else {
-                  entry.pipe(fs.createWriteStream(path.join(destinationDir, entry.path)));
-                }
-              })
-              .on('error', function(error) {
-                deferred.reject(error);
-              })
-              .on('close', function() {
-                deferred.resolve(destinationDir);
+                mv();
               });
+
             });
 
             return deferred.promise;
