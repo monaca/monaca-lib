@@ -371,7 +371,7 @@
       return (typeof data === 'function' ? Q.resolve(data) : this._createRequestClient(data));
     }.bind(this);
 
-    createRequestClient().then(
+    createRequestClient(data).then(
       function(requestClient) {
         requestClient({
             method: method,
