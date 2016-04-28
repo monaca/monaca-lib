@@ -2069,7 +2069,7 @@
     });
 
     if(installDependencies.length > 0) {
-      console.log('Installing build dependencies...');
+      process.stdout.write('Installing build dependencies...\n');
 
       var cmd = 'npm install ' + installDependencies.join(' ') + ' --loglevel=error';
       var childProcess = child_process.exec(cmd, {
@@ -2114,7 +2114,7 @@
 
     fs.exists(path.resolve(path.join(projectDir, 'package.json')), function(exists) {
       if (exists) {
-        process.stdout.write('Installing template dependencies...');
+        process.stdout.write('\nInstalling template dependencies...\n');
 
         var cmd = 'npm install --loglevel=error';
         var npmProcess = child_process.exec(cmd, {
@@ -2123,7 +2123,19 @@
 
         npmProcess.on('exit', function(code) {
           if (code === 0) {
-            deferred.resolve(projectDir);
+            var onsenCssSrc = path.join(projectDir, 'node_modules', 'onsenui', 'css');
+            var onsenCssDest = path.join(projectDir, 'www', 'css');
+
+            var cpProcess = child_process.exec('cp -R ' + onsenCssSrc + ' ' + onsenCssDest);
+
+            cpProcess.on('exit', function(code) {
+              if (code === 0) {
+                deferred.resolve(projectDir);
+              }
+              else {
+                deferred.reject('Failed to copy Onsen UI dependencies.');
+              }
+            });
           }
           else {
             deferred.reject('Failed to install template dependencies.');
