@@ -24,15 +24,13 @@
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
 
-  var USER_DATA_FILE = path.join(
-    process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'],
-    '.cordova', 'monaca.json'
+  var USER_CORDOVA = path.join(
+      process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'],
+      '.cordova'
   );
 
-  var CONFIG_FILE = path.join(
-    process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'],
-    '.cordova', 'monaca_config.json'
-  );
+  var USER_DATA_FILE = path.join(USER_CORDOVA, 'monaca.json');
+  var CONFIG_FILE = path.join(USER_CORDOVA, 'monaca_config.json');
 
   // config
   var config = nconf.env()
@@ -1560,8 +1558,6 @@
     return deferred.promise;
   };
 
-
-
   /**
    * @method
    * @memberof Monaca
@@ -1593,13 +1589,14 @@
 
     localProperties.get(projectDir, 'project_id').then(
       function(projectId) {
-        Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)]).then(
-          function(files) {
-            var localFiles = files[0],
-              remoteFiles = files[1];
+        this.transpile(projectDir).then(
+          Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)]).then(
+            function(files) {
+              var localFiles = files[0],
+                remoteFiles = files[1];
 
-            // Fetch list of files after ignoring files/directories in .monacaignore file.
-            var allowFiles = this._filterIgnoreList(projectDir);
+              // Fetch list of files after ignoring files/directories in .monacaignore file.
+              var allowFiles = this._filterIgnoreList(projectDir);
 
               var filesToBeDeleted = {};
 
@@ -1610,97 +1607,97 @@
                 }
               }
               if (options && !options.dryrun && options.delete) {
-                    this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted)).then(
-                    function() {
-                      console.log(Object.keys(filesToBeDeleted)
+                this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted)).then(
+                  function() {
+                    console.log(Object.keys(filesToBeDeleted)
                       .map(function(f) {
                         return "deleted -> " + f;
                       })
                       .join("\n")
-                      );
-                    },
-                    function(err) {
-                      console.log("\nfile delete error ->  : " + JSON.stringify(err));
-                    }
+                    );
+                  },
+                  function(err) {
+                    console.log("\nfile delete error ->  : " + JSON.stringify(err));
+                  }
+                )
+              }
+
+              // Filter out directories and unchanged files.
+              this._filterFiles(localFiles, remoteFiles);
+
+              var keys = [];
+
+              // Checks if the file/dir are included in a directory that can be uploaded.
+              for (var file in localFiles) {
+                if (this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
+                  keys.push(file);
+                }
+              }
+
+              // Modified files.
+              var modifiedFiles = {
+                uploaded: {},
+                deleted: filesToBeDeleted
+              };
+
+              for (var i in keys) {
+                if (localFiles[keys[i]]) {
+                  modifiedFiles.uploaded[keys[i]] = localFiles[keys[i]];
+                }
+              }
+
+              // If dryrun option is set, just return the files to be uploaded.
+              if (options && options.dryrun) {
+                return deferred.resolve(modifiedFiles);
+              }
+
+              var totalLength = keys.length,
+                currentIndex = 0,
+                qLimit = qlimit(4);
+
+              var uploadFile = function(key) {
+                var d = Q.defer();
+                var absolutePath = path.join(projectDir, key.substr(1));
+
+                this.uploadFile(projectId, absolutePath, key).then(
+                  function(remotePath) {
+                    deferred.notify({
+                      path: remotePath,
+                      total: totalLength,
+                      index: currentIndex
+                    });
+                    d.resolve();
+                  },
+                  function(error) {
+                    d.reject(error);
+                  }
                   )
-              }
+                  .finally(
+                    function() {
+                      currentIndex++;
+                    }
+                  );
+                return d.promise;
+              }.bind(this);
 
-            // Filter out directories and unchanged files.
-            this._filterFiles(localFiles, remoteFiles);
-
-            var keys = [];
-
-            // Checks if the file/dir are included in a directory that can be uploaded.
-            for (var file in localFiles) {
-              if (this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
-                keys.push(file);
-              }
-            }
-
-            // Modified files.
-            var modifiedFiles = {
-              uploaded: {},
-              deleted: filesToBeDeleted
-            };
-
-            for (var i in keys) {
-              if (localFiles[keys[i]]) {
-                modifiedFiles.uploaded[keys[i]] = localFiles[keys[i]];
-              }
-            }
-
-            // If dryrun option is set, just return the files to be uploaded.
-            if (options && options.dryrun) {
-              return deferred.resolve(modifiedFiles);
-            }
-
-            var totalLength = keys.length,
-              currentIndex = 0,
-              qLimit = qlimit(4);
-
-            var uploadFile = function(key) {
-              var d = Q.defer();
-              var absolutePath = path.join(projectDir, key.substr(1));
-
-              this.uploadFile(projectId, absolutePath, key).then(
-                function(remotePath) {
-                  deferred.notify({
-                    path: remotePath,
-                    total: totalLength,
-                    index: currentIndex
-                  });
-                  d.resolve();
+              Q.all(keys.map(qLimit(function(key) {
+                if (localFiles.hasOwnProperty(key)) {
+                  return uploadFile(key);
+                }
+              }.bind(this)))).then(
+                function() {
+                  deferred.resolve(modifiedFiles);
                 },
                 function(error) {
-                  d.reject(error);
-                }
-              )
-              .finally(
-                function() {
-                  currentIndex++;
+                  deferred.reject(error);
                 }
               );
-              return d.promise;
-            }.bind(this);
-
-            Q.all(keys.map(qLimit(function(key) {
-              if (localFiles.hasOwnProperty(key)) {
-                return uploadFile(key);
-              }
-            }.bind(this)))).then(
-              function() {
-                deferred.resolve(modifiedFiles);
-              },
-              function(error) {
-                deferred.reject(error);
-              }
-            );
-          }.bind(this),
-          function(error) {
-            deferred.reject(error);
-          }
+            }.bind(this),
+            function(error) {
+              deferred.reject(error);
+            }
+          )
         );
-
       }.bind(this),
       function(error) {
         deferred.reject(error);
@@ -2046,6 +2043,159 @@
    * @method
    * @memberof Monaca
    * @description
+   *   Installs build dependencies.
+   * @param {String} Project's Directory
+   * @return {Promise}
+   */
+  Monaca.prototype.installBuildDependencies = function(projectDir) {
+    var deferred = Q.defer();
+    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
+    var config = require(projectInfoFile);
+
+    if(!config.build) {
+      deferred.resolve();
+      return deferred.promise;
+    }
+
+    var packageJsonFile = path.resolve(path.join(__dirname, '..', 'package.json'));
+    var dependencies = require(packageJsonFile).additionalDependencies;
+    var installDependencies = [];
+
+    Object.keys(dependencies).forEach(function(key) {
+      installDependencies.push(key + '@' + dependencies[key]);
+    });
+
+    if(installDependencies.length > 0) {
+      console.log('Installing build dependencies...');
+
+      var cmd = 'npm install ' + installDependencies.join(' ') + ' --loglevel=error';
+      var process = child_process.exec(cmd, {
+        cwd: USER_CORDOVA
+      });
+
+      process.on('exit', function(code) {
+        if (code === 0) {
+          deferred.resolve();
+        }
+        else {
+          console.error('Failed to install build dependencies.');
+
+          deferred.reject('Failed installing packages.');
+        }
+      });
+
+      process.stdout.on('data', function(data) {
+        console.log(data);
+      });
+
+      process.stderr.on('data', function(data) {
+        console.log(data);
+      });
+    } else {
+      deferred.resolve();
+    }
+
+    return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Installs the template's dependencies.
+   * @param {String} Project's Directory
+   * @return {Promise}
+   */
+  Monaca.prototype.installTemplateDependencies = function(projectDir) {
+    var deferred = Q.defer();
+
+    fs.exists(path.resolve(path.join(projectDir, 'package.json')), function(exists) {
+      if (exists) {
+        console.log('Installing template dependencies...');
+
+        var cmd = 'npm install --loglevel=error';
+        var npmProcess = child_process.exec(cmd, {
+          cwd: projectDir
+        });
+
+        npmProcess.on('exit', function(code) {
+          if (code === 0) {
+            deferred.resolve(projectDir);
+          }
+          else {
+            deferred.reject('Failed to install template dependencies.');
+          }
+        });
+
+        npmProcess.stdout.on('data', function(data) {
+          process.stdout.write(data);
+        });
+
+        npmProcess.stderr.on('data', function(data) {
+          process.stderr.write(data);
+        });
+      }
+      else {
+        deferred.resolve(projectDir);
+      }
+    });
+
+    return deferred.promise;
+  };
+
+  Monaca.prototype.transpile = function(projectDir) {
+    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
+    var config = require(projectInfoFile);
+
+    if(config.build && config.build.transpile && !config.build.transpile.enabled) {
+      console.log('disabled');
+      return Q.resolve();
+    }
+
+    var deferred = Q.defer();
+
+    try {
+      var src = config.build.transpile.src;
+      var dist = config.build.transpile.dist;
+      var type = config['template-type'];
+
+      if(type === 'react') {
+        process.env.NODE_PATH = USER_CORDOVA;
+
+        var nodeModuleDir = path.join(USER_CORDOVA, 'node_modules');
+        var browserify = require(path.resolve(path.join(nodeModuleDir, 'browserify')));
+        var babelify = require(path.resolve(path.join(nodeModuleDir, 'babelify')));
+        var es2015Preset = require(path.resolve(path.join(nodeModuleDir, 'babel-preset-es2015')));
+        var reactPreset = require(path.resolve(path.join(nodeModuleDir, 'babel-preset-react')));
+
+        var stream = browserify()
+            .add(src)
+            .transform(babelify, {presets: [es2015Preset, reactPreset]})
+            .bundle();
+
+        stream.on('error', function(error) {
+          deferred.reject(error);
+        });
+
+        stream.pipe(
+            fs.createWriteStream(dist).on('error', function (error) {
+              deferred.reject(error);
+            }).on('close', function () {
+              deferred.resolve();
+            })
+        );
+      }
+    } catch (error) {
+      deferred.reject(error);
+    }
+
+    return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *   Download template from Monaca Cloud.
    * @param {String} resource Template URL
    * @param {String} destinationDir Destionation directory
@@ -2131,15 +2281,19 @@
             return deferred.promise;
           }
         );
-    }
+    };
 
     var fetchFile = function() {
+      console.log('Downloading template...');
+      
       return this._get(resource);
     }.bind(this);
 
     return checkDirectory()
       .then(fetchFile)
-      .then(unzipFile);
+      .then(unzipFile)
+      .then(this.installTemplateDependencies)
+      .then(this.installBuildDependencies);
   };
 
   /**

@@ -464,7 +464,7 @@
   Localkit.prototype.addProject = function(projectPath, options) {
     var deferred = Q.defer(),
       options = options || {};
-
+    
     this.monaca.getLocalProjectId(projectPath).then(
       function(projectId) {
         if (!fs.existsSync(path.join(projectPath, 'www'))) {
@@ -476,6 +476,7 @@
         }
         else {
           var fileWatcher = new FileWatcher();
+          var fileWatcherTranspiler = new FileWatcher();
 
           try {
             fileWatcher.onchange(function(changeType, filePath) {
@@ -487,6 +488,11 @@
                 projectPath: projectPath
               });
             }.bind(this));
+
+            fileWatcherTranspiler.onchange(function(changeType, filePath) {
+              this.monaca.transpile(projectPath);
+            }.bind(this));
+            fileWatcherTranspiler.run(path.join(projectPath, 'src'));
 
             if (this.isWatching()) {
               fileWatcher.run(path.join(projectPath, 'www'));
