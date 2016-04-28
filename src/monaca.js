@@ -2191,13 +2191,20 @@
           deferred.reject(error);
         });
 
-        stream.pipe(
-            fs.createWriteStream(dist).on('error', function (error) {
+        var buffers = [];
+        stream.on('data', function(buffer) {
+          buffers.push(buffer);
+        });
+
+        stream.on('end', function() {
+          fs.writeFile(dist, Buffer.concat(buffers), (error) => {
+            if (error) {
               deferred.reject(error);
-            }).on('close', function () {
+            } else {
               deferred.resolve();
-            })
-        );
+            }
+          });
+        });
       }
     } catch (error) {
       deferred.reject(error);
