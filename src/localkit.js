@@ -893,15 +893,20 @@
           this.monaca.getProjectInfo(_project.path)
             .then(
               function(project) {
-  
+ 
+                var project_path = _project.path;
+                if (project_path == '.') {
+                   project_path = process.cwd();
+                }
+ 
                 project.name = _project.name || project.name;
                 project.frameworkVersion = "";
                 try {
-                  project.frameworkVersion = require(path.join(_project.path, '.monaca', 'project_info.json'))["framework_version"]
+                  project.frameworkVersion = require(path.join( project_path, '.monaca', 'project_info.json'))["framework_version"]
                 } catch(e) {}
                 project.cordovaVersion = "";
                 try {
-                  project.cordovaVersion = require(path.join(_project.path, '.monaca', 'project_info.json'))["cordova_version"]
+                  project.cordovaVersion = require(path.join( project_path, '.monaca', 'project_info.json'))["cordova_version"]
                 } catch(e) {}
 
                 deferred.resolve(project);
