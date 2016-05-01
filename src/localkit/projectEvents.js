@@ -67,6 +67,7 @@
 
       client.on('close', function() {
         this._clients.splice(this._clients.indexOf(clientObject), 1);
+        this.localkit.emit('debuggerDisconnected', this.connectedClients[clientIdHash]);
         delete this.connectedClients[clientIdHash];
       }.bind(this));
 
@@ -92,6 +93,7 @@
 
           this.connectedClients[clientIdHash] = clientData;
           this.connectedClients[clientIdHash].clientId = clientIdHash;
+          this.localkit.emit('debuggerConnected', clientData);
 
         }.bind(this));
       }

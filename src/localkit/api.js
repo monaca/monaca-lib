@@ -48,6 +48,13 @@
     if (this.monaca.debug) {
       console.debug("Local Response: " + msg);
     }
+
+    this.localkit.emit('httpResponse', {
+      // Warning: One more httpResponse emit below
+      response: response,
+      code: code,
+      message: message
+    });
     
     if (encrypt) {
       response.end(rc4.encrypt(msg, pairingKey));
@@ -253,6 +260,13 @@
               'Content-Type': 'application/octet-stream'
             });
             response.end(rc4.encrypt(buf, pairingKey));
+
+            this.localkit.emit('httpResponse', {
+              response: response,
+              code: '200',
+              message: 'File read ' + data.path
+            });
+
           }.bind(this),
           function(error) {
             this.sendJsonResponse(response, 500, 'Unable to read file.', undefined, true, pairingKey);

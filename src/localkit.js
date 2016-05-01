@@ -118,17 +118,10 @@
      */
     this.pairingKeys = {};
 
-    fs.exists(PAIRING_KEYS_FILE, function(exists) {
-      if (exists) {
-        fs.readFile(PAIRING_KEYS_FILE, function(err, data) {
-          if (err) {
-            throw new Error('Unable to open ' + PAIRING_KEYS_FILE);
-          }
-
-          this.pairingKeys = JSON.parse(data);
-        }.bind(this));
-      }
-    }.bind(this));
+    if (fs.existsSync(PAIRING_KEYS_FILE)) {
+      var jsonfile = fs.readFileSync(PAIRING_KEYS_FILE);
+      this.pairingKeys = JSON.parse(jsonfile);
+    }
 
     /**
      * @description
@@ -338,6 +331,8 @@
     this.server.on('connection', function(client) {
       this.serverClients.push(client);
 
+      this.emit('clientConnected', client);
+
       client.on('end', function() {
         this.serverClients.splice(this.serverClients.indexOf(client));
       }.bind(this));
@@ -359,7 +354,7 @@
         this.httpServerRunning = true;
         this.httpServerPort = port;
         this.httpServerIpaddr = this._getLocalIp();
-         
+        
         deferred.resolve({
           address: this._getLocalIp(),
           port: port
@@ -1099,7 +1094,7 @@
     return inspector.launch(options)
       .catch(
         function(error) {
-          this.emit('error', error);
+          this.emit('inspectorError', error);
           return Q.reject(error);
         }.bind(this)
       );

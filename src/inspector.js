@@ -414,7 +414,7 @@
       }
     });
 
-    proc.on('error', function() {
+    proc.on('error', function(error) {
       deferred.reject(ERROR_ADB);
     });
 

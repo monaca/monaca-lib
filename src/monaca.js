@@ -112,6 +112,12 @@
       writable: false
     });
 
+    this.tokens = {
+      api: null,
+      session: null
+    };
+
+    this.loginBody = null;
     this._loggedIn = false;
 
     if (this.debug) {
@@ -327,37 +333,33 @@
 
 
   Monaca.prototype._createRequestClient = function(data) {
-    var deferred = Q.defer(),
-      qs = {
-        api_token: this.tokens.api
-      };
+    var deferred = Q.defer(), qs = {};
+
+    if (this.tokens && this.tokens.api) {
+      qs.api_token = this.tokens.api;
+    }
 
     if (data) {
       extend(qs, data);
     }
 
-    if (!this._loggedIn) {
-      deferred.reject(new Error('Must be logged in to use this method.'));
-    }
-    else {
-      this.getConfig('http_proxy').then(
-        function(httpProxy) {
-          var requestClient = request.defaults({
-            qs: qs,
-            encoding: null,
-            proxy: httpProxy,
-            headers: {
-              Cookie: this.tokens.session
-            },
-            timeout: 300 * 1000
-          });
-          deferred.resolve(requestClient);
-        }.bind(this),
-        function(error) {
-          deferred.reject(error);
-        }
-      )
-    }
+    this.getConfig('http_proxy').then(
+      function(httpProxy) {
+        var requestClient = request.defaults({
+          qs: qs,
+          encoding: null,
+          proxy: httpProxy,
+          headers: {
+            Cookie: this.tokens.session
+          },
+          timeout: 300 * 1000
+        });
+        deferred.resolve(requestClient);
+      }.bind(this),
+      function(error) {
+        deferred.reject(error);
+      }
+    );
 
     return deferred.promise;
   };
@@ -388,7 +390,11 @@
                   this.retry = true;
                   this.relogin().then(function() {
                     deferred.resolve(this._request(method, resource, requestClient));
-                  }.bind(this));
+                  }.bind(this), function(error) {
+                    deferred.reject(new Error("Must be logged in to use this method."));
+                  });
+              } else if (response.statusCode === 401) {
+                deferred.reject(new Error("Must be logged in to use this method."));
               } else {
                 try {
                   deferred.reject(JSON.parse(body));
@@ -575,6 +581,7 @@
           form.clientId = clientId;
         }
         request.post({
+//          rejectUnauthorized: false,
           url: this.apiRoot + '/user/login',
           proxy: httpProxy,
           form: form
@@ -819,6 +826,7 @@
     this.getConfig('http_proxy').then(
       function(httpProxy) {
         request.post({
+//          rejectUnauthorized: false,
           url: this.webApiRoot + '/register',
           proxy: httpProxy,
           form: form
@@ -877,6 +885,7 @@
     this.getConfig('http_proxy').then(
       function(httpProxy) {
         request.post({
+//          rejectUnauthorized: false,
           url: this.webApiRoot + '/check_activate',
           proxy: httpProxy,
           form: {
@@ -2158,11 +2167,21 @@
     return deferred.promise;
   };
 
+  Monaca.prototype.requireTranspile = function(projectDir) {
+    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
+    var config = require(projectInfoFile);
+
+    if (config.build && config.build.transpile && config.build.transpile.enabled) {
+      return true;
+    }
+    return false;
+  };
+
   Monaca.prototype.transpile = function(projectDir) {
     var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
     var config = require(projectInfoFile);
 
-    if(config.build && config.build.transpile && !config.build.transpile.enabled) {
+    if (!this.requireTranspile(projectDir)) {
       return Q.resolve();
     }
 
@@ -2197,7 +2216,7 @@
         });
 
         stream.on('end', function() {
-          fs.writeFile(dist, Buffer.concat(buffers), function(error) {
+          fs.writeFile(dist, Buffer.concat(buffers), (error) => {
             if (error) {
               deferred.reject(error);
             } else {
