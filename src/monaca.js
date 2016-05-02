@@ -19,7 +19,8 @@
     lockfile = require('lockfile'),
     tmp = require('tmp'),
     extract = require('extract-zip'),
-    glob = require('glob');
+    glob = require('glob'),
+    ncp = require('ncp').ncp;
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -2135,14 +2136,13 @@
             var onsenCssSrc = path.join(projectDir, 'node_modules', 'onsenui', 'css');
             var onsenCssDest = path.join(projectDir, 'www', 'css');
 
-            var cpProcess = child_process.exec('cp -R ' + onsenCssSrc + ' ' + onsenCssDest);
-
-            cpProcess.on('exit', function(code) {
-              if (code === 0) {
-                deferred.resolve(projectDir);
-              }
-              else {
+            // concurrency limit
+            ncp.limit = 4;
+            ncp(onsenCssSrc, onsenCssDest, function (err) {
+              if (err) {
                 deferred.reject('Failed to copy Onsen UI dependencies.');
+              } else {
+                deferred.resolve(projectDir);
               }
             });
           }
