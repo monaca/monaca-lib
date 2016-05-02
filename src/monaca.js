@@ -2137,7 +2137,7 @@
             var onsenCssDest = path.join(projectDir, 'www', 'css');
 
             // concurrency limit
-            ncp.limit = 4;
+            ncp.limit = 16;
             ncp(onsenCssSrc, onsenCssDest, function (err) {
               if (err) {
                 deferred.reject('Failed to copy Onsen UI dependencies.');
