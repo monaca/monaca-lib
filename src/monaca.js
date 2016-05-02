@@ -364,16 +364,16 @@
     return deferred.promise;
   };
 
-  Monaca.prototype._request = function(method, resource, data) {
+  Monaca.prototype._request = function(method, resource, data, requestClient) {
     method = method.toUpperCase();
     resource = resource.match(/^https?\:\/\//) ? resource : (this.apiRoot + resource);
     var deferred = Q.defer();
 
-    var createRequestClient = function(data) {
-      return (typeof data === 'function' ? Q.resolve(data) : this._createRequestClient(data));
+    var createRequestClient = function() {
+      return (requestClient ? Q.resolve(requestClient) : this._createRequestClient(method === 'GET' ? data : undefined));
     }.bind(this);
 
-    createRequestClient(data).then(
+    createRequestClient().then(
       function(requestClient) {
         requestClient({
             method: method,
@@ -389,7 +389,7 @@
               } else if (response.statusCode === 401 && resource.startsWith(this.apiRoot) && !this.retry) {
                   this.retry = true;
                   this.relogin().then(function() {
-                    deferred.resolve(this._request(method, resource, requestClient));
+                    deferred.resolve(this._request(method, resource, data, requestClient));
                   }.bind(this), function(error) {
                     deferred.reject(new Error("Must be logged in to use this method."));
                   });
