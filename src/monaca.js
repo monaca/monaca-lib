@@ -2224,6 +2224,9 @@
             }
           });
         });
+      } else {
+        // Template has no transpiler settings.
+        deferred.resolve();
       }
     } catch (error) {
       deferred.reject(error);
