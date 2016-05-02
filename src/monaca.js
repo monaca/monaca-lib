@@ -2216,7 +2216,7 @@
         });
 
         stream.on('end', function() {
-          fs.writeFile(dist, Buffer.concat(buffers), (error) => {
+          fs.writeFile(dist, Buffer.concat(buffers), function(error) {
             if (error) {
               deferred.reject(error);
             } else {
