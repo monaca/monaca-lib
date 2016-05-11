@@ -390,7 +390,7 @@
               } else if (response.statusCode === 401 && resource.startsWith(this.apiRoot) && !this.retry) {
                   this.retry = true;
                   this.relogin().then(function() {
-                    deferred.resolve(this._request(method, resource, data, requestClient));
+                    deferred.resolve(this._request(method, resource, data, null ));
                   }.bind(this), function(error) {
                     deferred.reject(new Error("Must be logged in to use this method."));
                   });
