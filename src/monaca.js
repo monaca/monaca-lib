@@ -348,6 +348,7 @@
       function(httpProxy) {
         var requestClient = request.defaults({
           qs: qs,
+          // rejectUnauthorized: false,
           encoding: null,
           proxy: httpProxy,
           headers: {
@@ -582,7 +583,7 @@
           form.clientId = clientId;
         }
         request.post({
-//          rejectUnauthorized: false,
+         // rejectUnauthorized: false,
           url: this.apiRoot + '/user/login',
           proxy: httpProxy,
           form: form
@@ -886,7 +887,7 @@
     this.getConfig('http_proxy').then(
       function(httpProxy) {
         request.post({
-//          rejectUnauthorized: false,
+         // rejectUnauthorized: false,
           url: this.webApiRoot + '/check_activate',
           proxy: httpProxy,
           form: {
@@ -1886,6 +1887,45 @@
     return deferred.promise;
   };
 
+  Monaca.prototype.pollBuildStatus = function(projectId, queueId) {
+    var deferred = Q.defer();
+
+    var url = '/project/' + projectId + '/build/status/' + queueId;
+
+    var interval = setInterval(function() {
+      this._post(url).then(
+        function(response) {
+          var result = JSON.parse(response).result;
+
+          deferred.notify(result.description);
+
+          if (result.finished) {
+            clearInterval(interval);
+
+            if (result.status === 'finish') {
+              deferred.resolve(result.description);
+            } else {
+              this._post(url).then(
+                function(response) {
+                  deferred.reject(JSON.parse(response).result.error_message);
+                },
+                function(error) {
+                  deferred.reject(error);
+                }
+              );
+            }
+          }
+        }.bind(this),
+        function(error) {
+          clearInterval(interval);
+          deferred.reject(error);
+        }
+      );
+    }.bind(this), 1000);
+
+    return deferred.promise;
+  };
+
   /**
    * @method
    * @memberof Monaca
@@ -1924,7 +1964,7 @@
    *     }
    *   );
    */
-  Monaca.prototype.buildProject = function(projectId, params) {
+  Monaca.prototype.buildProject = function(projectId, params, skipPolling) {
     var deferred = Q.defer(),
       buildRoot = '/project/' + projectId + '/build';
 
@@ -1942,66 +1982,32 @@
       deferred.reject(new Error('Must specify build platform.'));
     }
 
-    var pollBuild = function(queueId) {
-      var deferred = Q.defer();
-
-      var interval = setInterval(function() {
-        this._post(buildRoot + '/status/' + queueId).then(
-          function(response) {
-            var result = JSON.parse(response).result;
-
-            deferred.notify(result.description);
-
-            if (result.finished) {
-              clearInterval(interval);
-
-              if (result.status === 'finish') {
-                deferred.resolve(result.description);
-              }
-              else {
-                this._post(buildRoot + '/result/' + queueId).then(
-                  function(response) {
-                    deferred.reject(JSON.parse(response).result.error_message);
-                  },
-                  function(error) {
-                    deferred.reject(error);
-                  }
-                );
-              }
-            }
-          }.bind(this),
-          function(error) {
-            clearInterval(interval);
-            deferred.reject(error);
-          }
-        );
-      }.bind(this), 1000);
-
-      return deferred.promise;
-    }.bind(this);
-
     this._post(buildRoot, params).then(
       function(response) {
         var queueId = JSON.parse(response).result.queue_id;
 
-        pollBuild(queueId).then(
-          function() {
-            this._post(buildRoot + '/result/' + queueId).then(
-              function(response) {
-                deferred.resolve(JSON.parse(response).result);
-              },
-              function(error) {
-                deferred.reject(error);
-              }
-            );
-          }.bind(this),
-          function(error) {
-            deferred.reject(error);
-          },
-          function(progress) {
-            deferred.notify(progress);
-          }
-        );
+        if(skipPolling) {
+          deferred.resolve(queueId);
+        } else {
+          this.pollBuildStatus(projectId, queueId).then(
+            function() {
+              this._post(buildRoot + '/result/' + queueId).then(
+                function(response) {
+                  deferred.resolve(JSON.parse(response).result);
+                },
+                function(error) {
+                  deferred.reject(error);
+                }
+              );
+            }.bind(this),
+            function(error) {
+              deferred.reject(error);
+            },
+            function(progress) {
+              deferred.notify(progress);
+            }
+          );
+        }
       }.bind(this),
       function(error) {
         deferred.reject(error);
