@@ -30,6 +30,7 @@
       '.cordova'
   );
 
+  var NPM_PACKAGE_FILE = path.join(USER_CORDOVA, 'package.json');
   var USER_DATA_FILE = path.join(USER_CORDOVA, 'monaca.json');
   var CONFIG_FILE = path.join(USER_CORDOVA, 'monaca_config.json');
 
@@ -2079,6 +2080,14 @@
     });
 
     if(installDependencies.length > 0) {
+      if(!fs.existsSync(USER_CORDOVA)) {
+        fs.mkdirSync(USER_CORDOVA);
+      }
+
+      if(!fs.existsSync(NPM_PACKAGE_FILE)) {
+        fs.writeFileSync(NPM_PACKAGE_FILE, '{}');
+      }
+
       process.stdout.write('Installing build dependencies...\n');
 
       var cmd = 'npm install ' + installDependencies.join(' ') + ' --loglevel=error';
