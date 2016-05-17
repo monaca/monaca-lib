@@ -393,10 +393,10 @@
                   this.relogin().then(function() {
                     deferred.resolve(this._request(method, resource, data, null ));
                   }.bind(this), function(error) {
-                    deferred.reject(new Error("Must be logged in to use this method."));
+                    deferred.reject(new Error('Error in user authentication. Please run "monaca login" command to continue.'));
                   });
               } else if (response.statusCode === 401) {
-                deferred.reject(new Error("Must be logged in to use this method."));
+                deferred.reject(new Error('Failed to authenticate. Please run "monaca login" command to continue.'));
               } else {
                 try {
                   deferred.reject(JSON.parse(body));
