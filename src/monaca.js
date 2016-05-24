@@ -2076,7 +2076,14 @@
     var installDependencies = [];
 
     Object.keys(dependencies).forEach(function(key) {
-      installDependencies.push(key + '@' + dependencies[key]);
+      try {
+        var dep = require(path.join(USER_CORDOVA, 'node_modules', key, 'package.json'));
+        if (dependencies[key] !== dep.version) {
+          installDependencies.push(key + '@' + dependencies[key]);
+        }
+      } catch (e) {
+        installDependencies.push(key + '@' + dependencies[key]);
+      }
     });
 
     if(installDependencies.length > 0) {
@@ -2133,7 +2140,7 @@
 
     fs.exists(path.resolve(path.join(projectDir, 'package.json')), function(exists) {
       if (exists) {
-        process.stdout.write('\nInstalling template dependencies...\n');
+        process.stdout.write('Installing template dependencies...\n');
 
         var cmd = 'npm install --loglevel=error';
         var npmProcess = child_process.exec(cmd, {
@@ -2335,7 +2342,7 @@
     };
 
     var fetchFile = function() {
-      process.stdout.write('\nDownloading template...');
+      process.stdout.write('\nDownloading template...\n');
 
       return this._get(resource);
     }.bind(this);
