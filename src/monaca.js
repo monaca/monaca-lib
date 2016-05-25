@@ -2923,8 +2923,13 @@
           }.bind(this)
         )
         .then(
-          function() {
+          function(projectId) {
             return uploadFiles()
+              .then(
+                function() {
+                  return projectId;
+                }
+              )
               .catch(
                 function() {
                   return createProject()
