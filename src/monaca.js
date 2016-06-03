@@ -366,7 +366,7 @@
     return deferred.promise;
   };
 
-  Monaca.prototype._request = function(method, resource, data, requestClient) {
+  Monaca.prototype._request = function(method, resource, data, requestClient, isFile ) {
     method = method.toUpperCase();
     resource = resource.match(/^https?\:\/\//) ? resource : (this.apiRoot + resource);
     var deferred = Q.defer();
@@ -377,11 +377,23 @@
 
     createRequestClient().then(
       function(requestClient) {
-        requestClient({
+        var hashData = null;
+        if (! isFile) {
+          hashData = {
             method: method,
             url: resource,
             form: method === 'POST' ? data : undefined
-          },
+          };
+        } else {
+          hashData = {
+            method: method,
+            url: resource,
+            formData: method === 'POST' ? data : undefined
+          };
+        }
+
+        requestClient(
+          hashData ,
           function(error, response, body) {
             if (error) {
               deferred.reject(error.code);
@@ -407,7 +419,7 @@
               }
             }
           }.bind(this)
-        )
+        );
       }.bind(this),
       function(error) {
         deferred.reject(error);
@@ -424,6 +436,10 @@
     return this._request('POST', resource, data);
   };
 
+  Monaca.prototype._post_file = function(resource, data) {
+    return this._request('POST', resource, data, null, true );
+  };
+   
   /**
    * @method
    * @memberof Monaca
@@ -506,9 +522,10 @@
             deferred.reject(error);
           }
           else {
-            this._post('/project/' + projectId + '/file/save', {
+            this._post_file('/project/' + projectId + '/file/save', {
               path: remotePath,
-              contentBase64: data.toString('base64')
+//              contentBase64: data.toString('base64')
+              file: fs.createReadStream(localPath)
             }).then(
               function() {
                 deferred.resolve(remotePath);
