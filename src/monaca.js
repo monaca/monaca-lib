@@ -3007,7 +3007,55 @@
     })
     return deferred.promise;
   }
+  
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Send builds to third-party app distribution services.
+   * @return {Promise}
+   */
+  Monaca.prototype.distribute = function(alias, request_parameters, build_id, projectId) {
+    var deferred = Q.defer();
 
+    if(!projectId) {
+      projectId = this.getProjectId();
+    }
+    
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to submit build distribution request. (alias: ' + alias + '; parameters: ' + JSON.stringify(request_parameters) + ')';
+
+    this._createRequestClient({
+      alias: alias,
+      parameters: request_parameters,
+      build_id: build_id
+    }).then(
+      function(requestClient) {
+        requestClient.post({
+            rejectUnauthorized: false,
+            url: this.apiRoot + '/project/' + projectId + '/distribute',
+            json: true
+          },
+          function(error, response, body) {
+            if (error) {
+              deferred.reject(unknownErrorMsg);
+            } else {
+              if(body.status === 'error' || body.status === 'fail') {
+                deferred.reject(body.message || unknownErrorMsg);
+              } else {
+                deferred.resolve(body);
+              }
+            }
+          }.bind(this)
+        );
+      }.bind(this),
+
+      function(error) {
+        deferred.reject(unknownErrorMsg);
+      }
+    );
+
+    return deferred.promise;
+  }
 
   module.exports = Monaca;
 })();
