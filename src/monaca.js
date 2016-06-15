@@ -2207,13 +2207,70 @@
     if (config.build && config.build.transpile && config.build.transpile.enabled) {
       return true;
     }
+
     return false;
   };
 
-  Monaca.prototype.transpile = function(projectDir) {
+  Monaca.prototype.getWebPackConfigs = function(projectDir) {
     var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
     var config = require(projectInfoFile);
+    var type = config['template-type'];
 
+    var extension;
+    var exclude;
+    var loader = '';
+    var presets = [
+      path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-es2015')),
+      path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-stage-2'))
+    ];
+    var resolve = {};
+
+    if(type === 'react') {
+      extension = /\.js$/;
+      exclude = /(node_modules|bower_components|platforms|www|\.monaca)/;
+      loader = 'babel-loader';
+      presets.push(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-react')));
+    } else if (type === 'angular2') {
+      extension = /\.ts$/;
+      exclude = /(bower_components|platforms|www|\.monaca)/;
+      loader = 'awesome-typescript-loader';
+      resolve = {
+        root: [ path.join(projectDir, 'src') ],
+        extensions: ['', '.ts', '.js']
+      };
+    }
+        
+    return {
+      context: projectDir,
+      entry: '.' + path.sep + config.build.transpile.src,
+      output: {
+        path: '.' + path.sep,
+        filename: config.build.transpile.dist
+      },
+      module: {
+        loaders: [
+          {
+            test: extension,
+            exclude: exclude,
+            loader: loader,
+            query: {
+              'presets': presets
+            }
+          }
+        ]
+      },
+      resolveLoader: {                                                                                
+        root: path.resolve(path.join(USER_CORDOVA, 'node_modules'))
+      }, 
+      resolve: resolve
+    };
+  }
+
+  Monaca.prototype.getWebPackModule = function() {
+    return require(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'webpack')));
+  };
+
+  Monaca.prototype.transpile = function(projectDir) {
     if (!this.requireTranspile(projectDir)) {
       return Q.resolve();
     }
@@ -2221,41 +2278,30 @@
     var deferred = Q.defer();
 
     try {
-      var src = config.build.transpile.src;
-      var dist = config.build.transpile.dist;
+      var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
+      var config = require(projectInfoFile);
       var type = config['template-type'];
 
-      if(type === 'react') {
+      if(type === 'react' || type === 'angular2') {
         process.env.NODE_PATH = USER_CORDOVA;
 
-        var nodeModuleDir = path.join(USER_CORDOVA, 'node_modules');
-        var browserify = require(path.resolve(path.join(nodeModuleDir, 'browserify')));
-        var babelify = require(path.resolve(path.join(nodeModuleDir, 'babelify')));
-        var es2015Preset = require(path.resolve(path.join(nodeModuleDir, 'babel-preset-es2015')));
-        var reactPreset = require(path.resolve(path.join(nodeModuleDir, 'babel-preset-react')));
+        var webpack = this.getWebPackModule();
 
-        var stream = browserify()
-            .add(src)
-            .transform(babelify, {presets: [es2015Preset, reactPreset]})
-            .bundle();
+        webpack(this.getWebPackConfigs(projectDir), function(err, stats){
+          if(err) {
+            return deferred.reject(err);
+          }
+          
+          var jsonStats = stats.toJson();
+          if(jsonStats.errors.length > 0) {
+            return deferred.reject(JSON.stringify(jsonStats.errors));
+          }
+          
+          if(jsonStats.warnings.length > 0) {
+            // deferred.reject(jsonStats.warnings);
+          }
 
-        stream.on('error', function(error) {
-          deferred.reject(error);
-        });
-
-        var buffers = [];
-        stream.on('data', function(buffer) {
-          buffers.push(buffer);
-        });
-
-        stream.on('end', function() {
-          fs.writeFile(dist, Buffer.concat(buffers), function(error) {
-            if (error) {
-              deferred.reject(error);
-            } else {
-              deferred.resolve();
-            }
-          });
+          deferred.resolve();
         });
       } else {
         // Template has no transpiler settings.
