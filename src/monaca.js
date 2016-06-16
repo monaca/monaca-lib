@@ -2217,7 +2217,7 @@
     var type = config['template-type'];
 
     var extension;
-    var exclude;
+    var exclude = /(node_modules|bower_components|platforms|www|\.monaca)/;
     var loader = '';
     var presets = [
       path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-es2015')),
@@ -2227,19 +2227,17 @@
 
     if(type === 'react') {
       extension = /\.js$/;
-      exclude = /(node_modules|bower_components|platforms|www|\.monaca)/;
       loader = 'babel-loader';
       presets.push(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-react')));
     } else if (type === 'angular2') {
       extension = /\.ts$/;
-      exclude = /(bower_components|platforms|www|\.monaca)/;
       loader = 'awesome-typescript-loader';
       resolve = {
         root: [ path.join(projectDir, 'src') ],
         extensions: ['', '.ts', '.js']
       };
     }
-        
+
     return {
       context: projectDir,
       entry: '.' + path.sep + config.build.transpile.src,
@@ -2284,6 +2282,12 @@
 
       if(type === 'react' || type === 'angular2') {
         process.env.NODE_PATH = USER_CORDOVA;
+
+        if(type === 'angular2') {
+          if(parseInt(process.version.replace('v', '').replace(/\./g, ''), 10) < 500) {
+            console.log('Warning: The version of Node JS you are using does not meet the minimum requirements for Angular 2. You may experience errors when transpiling.  Please upgrade Node JS to v5.x.x and NPM to v3.x.x.');
+          }
+        }
 
         var webpack = this.getWebPackModule();
 
