@@ -2242,7 +2242,7 @@
       context: projectDir,
       entry: '.' + path.sep + config.build.transpile.src,
       output: {
-        path: '.' + path.sep,
+        path: projectDir,
         filename: config.build.transpile.dist
       },
       module: {
