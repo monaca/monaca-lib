@@ -3015,7 +3015,7 @@
    *  Send builds to third-party app distribution services.
    * @return {Promise}
    */
-  Monaca.prototype.distribute = function(alias, request_parameters, build_id, projectId) {
+  Monaca.prototype.distribute = function(alias, request_parameters, build_id, projectId, ci_queue_id) {
     var deferred = Q.defer();
 
     if(!projectId) {
@@ -3027,7 +3027,8 @@
     this._createRequestClient({
       alias: alias,
       parameters: request_parameters,
-      build_id: build_id
+      build_id: build_id,
+      ci_queue_id: ci_queue_id || null
     }).then(
       function(requestClient) {
         requestClient.post({
