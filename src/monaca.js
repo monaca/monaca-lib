@@ -20,7 +20,8 @@
     tmp = require('tmp'),
     extract = require('extract-zip'),
     glob = require('glob'),
-    ncp = require('ncp').ncp;
+    ncp = require('ncp').ncp,
+    npm = require('global-npm');
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -2074,6 +2075,36 @@
    * @method
    * @memberof Monaca
    * @description
+   *   Runs NPM install command
+   * @param {String} Project's Directory
+   * @param {String} Dependencies to install. Omit it to use the directory's package.json
+   * @return {Promise}
+   */
+  Monaca.prototype._npmInstall = function(projectDir, argvs) {
+    argvs = argvs || [];
+    var deferred = Q.defer();
+
+    npm.load({}, function (err) {
+      if (err) {
+        return deferred.reject(err);
+      }
+
+      npm.commands.install(projectDir, argvs, function(err, data) {
+        if (err) {
+          return deferred.reject(err);
+        }
+
+        deferred.resolve(projectDir);
+      });
+    });
+
+    return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *   Installs build dependencies.
    * @param {String} Project's Directory
    * @return {Promise}
@@ -2092,51 +2123,37 @@
     var dependencies = require(packageJsonFile).additionalDependencies;
     var installDependencies = [];
 
+    if(!fs.existsSync(USER_CORDOVA)) {
+      fs.mkdirSync(USER_CORDOVA);
+    }
+    if(!fs.existsSync(NPM_PACKAGE_FILE)) {
+      fs.writeFileSync(NPM_PACKAGE_FILE, '{}');
+    }
+    var nodeModules = path.join(USER_CORDOVA, 'node_modules');
+    if(!fs.existsSync(nodeModules)) {
+      fs.mkdirSync(nodeModules);
+    }
+
     Object.keys(dependencies).forEach(function(key) {
+      var dep;
       try {
-        var dep = require(path.join(USER_CORDOVA, 'node_modules', key, 'package.json'));
-        if (dependencies[key] !== dep.version) {
-          installDependencies.push(key + '@' + dependencies[key]);
-        }
+        dep = require(path.join(USER_CORDOVA, 'node_modules', key, 'package.json'));
       } catch (e) {
-        installDependencies.push(key + '@' + dependencies[key]);
+      } finally {
+        if (!dep || dep.version !== dependencies[key]) {
+          installDependencies.push(key + '@' + dependencies[key]);
+          var depPath = path.join(nodeModules, key)
+          if(!fs.existsSync(depPath)) {
+            fs.mkdirSync(depPath);
+          }
+        }
       }
     });
 
     if(installDependencies.length > 0) {
-      if(!fs.existsSync(USER_CORDOVA)) {
-        fs.mkdirSync(USER_CORDOVA);
-      }
+      process.stdout.write('\n\nInstalling build dependencies...\n');
 
-      if(!fs.existsSync(NPM_PACKAGE_FILE)) {
-        fs.writeFileSync(NPM_PACKAGE_FILE, '{}');
-      }
-
-      process.stdout.write('Installing build dependencies...\n');
-
-      var cmd = 'npm install ' + installDependencies.join(' ') + ' --loglevel=error';
-      var childProcess = child_process.exec(cmd, {
-        cwd: USER_CORDOVA
-      });
-
-      childProcess.on('exit', function(code) {
-        if (code === 0) {
-          deferred.resolve();
-        }
-        else {
-          process.stderr.write('Failed to install build dependencies.');
-
-          deferred.reject('Failed installing packages.');
-        }
-      });
-
-      childProcess.stdout.on('data', function(data) {
-        process.stdout.write(data);
-      });
-
-      childProcess.stderr.on('data', function(data) {
-        process.stderr.write(data);
-      });
+      deferred.resolve(this._npmInstall(USER_CORDOVA, installDependencies));
     } else {
       deferred.resolve();
     }
@@ -2158,44 +2175,29 @@
     fs.exists(path.resolve(path.join(projectDir, 'package.json')), function(exists) {
       if (exists) {
         process.stdout.write('Installing template dependencies...\n');
+        this._npmInstall(projectDir)
+          .then(
+            function() {
+              var onsenCssSrc = path.join(projectDir, 'node_modules', 'onsenui', 'css');
+              var onsenCssDest = path.join(projectDir, 'www', 'css');
 
-        var cmd = 'npm install --loglevel=error';
-        var npmProcess = child_process.exec(cmd, {
-          cwd: projectDir
-        });
-
-        npmProcess.on('exit', function(code) {
-          if (code === 0) {
-            var onsenCssSrc = path.join(projectDir, 'node_modules', 'onsenui', 'css');
-            var onsenCssDest = path.join(projectDir, 'www', 'css');
-
-            // concurrency limit
-            ncp.limit = 16;
-            ncp(onsenCssSrc, onsenCssDest, function (err) {
-              if (err) {
-                deferred.reject('Failed to copy Onsen UI dependencies.');
-              } else {
-                deferred.resolve(projectDir);
-              }
-            });
-          }
-          else {
-            deferred.reject('Failed to install template dependencies.');
-          }
-        });
-
-        npmProcess.stdout.on('data', function(data) {
-          process.stdout.write(data);
-        });
-
-        npmProcess.stderr.on('data', function(data) {
-          process.stderr.write(data);
-        });
+              // concurrency limit
+              ncp.limit = 16;
+              ncp(onsenCssSrc, onsenCssDest, function (err) {
+                if (err) {
+                  deferred.reject('Failed to copy Onsen UI dependencies.');
+                } else {
+                  deferred.resolve(projectDir);
+                }
+              });
+            },
+            deferred.reject.bind(null, 'Failed to install template dependencies.')
+        );
       }
       else {
         deferred.resolve(projectDir);
       }
-    });
+    }.bind(this));
 
     return deferred.promise;
   };
@@ -2417,8 +2419,8 @@
     return checkDirectory()
       .then(fetchFile)
       .then(unzipFile)
-      .then(this.installTemplateDependencies)
-      .then(this.installBuildDependencies);
+      .then(this.installTemplateDependencies.bind(this))
+      .then(this.installBuildDependencies.bind(this));
   };
 
   /**
