@@ -9,8 +9,7 @@
     crypto = require('crypto'),
     util = require('util'),
     events = require('events'),
-    nconf = require('nconf'),
-    dialog = require('dialog');
+    nconf = require('nconf');
 
   // local imports
   var ProjectEvents = require(path.join(__dirname, 'localkit', 'projectEvents')),
@@ -489,14 +488,7 @@
 
             try {
               fileWatcherTranspiler.onchange(function(changeType, filePath) {
-                this.monaca.transpile(projectPath).then(
-                  function(value) {
-                    console.log("Traspiling succeeded");
-                  },
-                  function(error) {
-                    dialog.showErrorBox("Transpiling Failed", error);
-                  }
-                );
+                this.monaca.transpile(projectPath);
               }.bind(this));
               fileWatcherTranspiler.run(path.join(projectPath, 'src'));
             } catch (error) {
