@@ -21,7 +21,8 @@
     extract = require('extract-zip'),
     glob = require('glob'),
     ncp = require('ncp').ncp,
-    npm = require('global-npm');
+    npm = require('global-npm'),
+    EventEmitter = require('events');
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -39,6 +40,8 @@
   var config = nconf.env()
     .file(path.join(__dirname, 'config.json'))
     .get('monaca');
+
+  class LibEmitter extends EventEmitter {}
 
   /**
    * @class Monaca
@@ -126,6 +129,8 @@
     if (this.debug) {
       request.debug = true;
     }
+
+    this.emitter = new LibEmitter();
   };
 
   Monaca.prototype._loadAllData = function() {
@@ -2306,12 +2311,11 @@
           if(jsonStats.warnings.length > 0) {
             // deferred.reject(jsonStats.warnings);
           }
-
-          deferred.resolve();
+          deferred.resolve("Successful transpile");
         });
       } else {
         // Template has no transpiler settings.
-        deferred.resolve();
+        deferred.resolve("No need to transpile");
       }
     } catch (error) {
       deferred.reject(error);

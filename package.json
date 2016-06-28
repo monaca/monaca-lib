@@ -47,8 +47,7 @@
     "sse": "0.0.6",
     "tmp": "0.0.26",
     "watch": "^0.13.0",
-    "xml2js": "^0.4.6",
-    "global-npm": "^0.3.0"
+    "xml2js": "^0.4.6"
   },
   "additionalDependencies": {
     "awesome-typescript-loader": "1.0.0",
