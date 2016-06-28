@@ -20,7 +20,8 @@
     tmp = require('tmp'),
     extract = require('extract-zip'),
     glob = require('glob'),
-    ncp = require('ncp').ncp;
+    ncp = require('ncp').ncp,
+    EventEmitter = require('events');
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -38,6 +39,8 @@
   var config = nconf.env()
     .file(path.join(__dirname, 'config.json'))
     .get('monaca');
+
+  class LibEmitter extends EventEmitter {}
 
   /**
    * @class Monaca
@@ -125,6 +128,8 @@
     if (this.debug) {
       request.debug = true;
     }
+
+    this.emitter = new LibEmitter();
   };
 
   Monaca.prototype._loadAllData = function() {
@@ -2304,7 +2309,6 @@
           if(jsonStats.warnings.length > 0) {
             // deferred.reject(jsonStats.warnings);
           }
-
           deferred.resolve();
         });
       } else {
