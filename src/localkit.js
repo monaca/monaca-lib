@@ -488,7 +488,14 @@
 
             try {
               fileWatcherTranspiler.onchange(function(changeType, filePath) {
-                this.monaca.transpile(projectPath);
+                this.monaca.transpile(projectPath).then(
+                  function(response) {
+                    this.monaca.emitter.emit('success', response);
+                  }.bind(this),
+                  function(error) {
+                    this.monaca.emitter.emit('error', error);
+                  }.bind(this)
+                );
               }.bind(this));
               fileWatcherTranspiler.run(path.join(projectPath, 'src'));
             } catch (error) {
