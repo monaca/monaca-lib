@@ -2312,11 +2312,11 @@
             // deferred.reject(jsonStats.warnings);
           }
 
-          deferred.resolve();
+          deferred.resolve("Successful transpile");
         });
       } else {
         // Template has no transpiler settings.
-        deferred.resolve();
+        deferred.resolve("No need to transpile");
       }
     } catch (error) {
       deferred.reject(error);
