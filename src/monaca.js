@@ -126,41 +126,29 @@
     if (this.debug) {
       request.debug = true;
     }
+
+    this._monacaData = this._loadAllData();
   };
 
   Monaca.prototype._loadAllData = function() {
-    var deferred = Q.defer();
-
-    fs.exists(USER_DATA_FILE, function(exists) {
-      if (exists) {
-        fs.readFile(USER_DATA_FILE, function(error, data) {
-          if (error) {
-            deferred.reject(error);
-          }
-          else {
-            try {
-              deferred.resolve(JSON.parse(data));
-            }
-            catch (err) {
-              deferred.reject(err);
-            }
-          }
-        });
+    var data;
+    try {
+      data = require(USER_DATA_FILE);
+    } catch(e) {
+      if (e.code === 'MODULE_NOT_FOUND') {
+        return {};
       }
-      else {
-        deferred.resolve({});
-      }
-    });
-
-    return deferred.promise;
+      throw e;
+    }
+    return data;
   };
 
-  Monaca.prototype._saveAllData = function(data) {
+  Monaca.prototype._saveAllData = function() {
     var deferred = Q.defer(),
       jsonData;
 
     try {
-      jsonData = JSON.stringify(data);
+      jsonData = JSON.stringify(this._monacaData);
     }
     catch (error) {
       return deferred.reject(error);
@@ -184,43 +172,13 @@
     return deferred.promise;
   };
 
-  Monaca.prototype.setData = function(key, value) {
-    var deferred = Q.defer();
-
-    this._loadAllData().then(
-      function(data) {
-        data[key] = value;
-
-        this._saveAllData(data).then(
-          function() {
-            deferred.resolve(value);
-          },
-          function(error) {
-            deferred.reject(error);
-          }
-        );
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-    return deferred.promise;
+  Monaca.prototype.setData = function(data) {
+    extend(this._monacaData, data);
+    return this._saveAllData();
   };
 
   Monaca.prototype.getData = function(key) {
-    var deferred = Q.defer();
-
-    this._loadAllData().then(
-      function(data) {
-        deferred.resolve(data[key]);
-      },
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-    return deferred.promise;
+    return this._monacaData[key];
   };
 
   //Used to filter the uploaded/downloaded files/dirs based on patterns
@@ -592,10 +550,9 @@
       form.password = arguments[1];
     }
 
-    Q.all([this.getData('clientId'), this.getConfig('http_proxy')]).then(
-      function(data) {
-        var clientId = data[0],
-          httpProxy = data[1];
+    this.getConfig('http_proxy').then(
+      function(httpProxy) {
+        var clientId = this.getData('clientId');
 
         if (clientId) {
           form.clientId = clientId;
@@ -619,25 +576,26 @@
             if (response.statusCode == 200) {
 
               var headers = response.caseless.dict;
+              this.setData({
+                'reloginToken': _body.result.token,
+                'clientId': _body.result.clientId,
+                'x-monaca-param-api-token': headers['x-monaca-param-api-token'],
+                'x-monaca-param-session': headers['x-monaca-param-session']
+              })
+              .then(
+                function() {
+                  this.tokens = {
+                    api: headers['x-monaca-param-api-token'],
+                    session: headers['x-monaca-param-session']
+                  };
 
-              this.setData('reloginToken', _body.result.token)
-                .then(this.setData.bind(this, 'clientId', _body.result.clientId), deferred.reject)
-                .then(this.setData.bind(this, 'x-monaca-param-api-token', headers['x-monaca-param-api-token']), deferred.reject)
-                .then(this.setData.bind(this, 'x-monaca-param-session', headers['x-monaca-param-session']), deferred.reject)
-                .then(
-                  function() {
-                    this.tokens = {
-                      api: headers['x-monaca-param-api-token'],
-                      session: headers['x-monaca-param-session']
-                    };
+                  this.loginBody = _body.result;
+                  this._loggedIn = true;
 
-                    this.loginBody = _body.result;
-                    this._loggedIn = true;
-
-                    deferred.resolve();
-                  }.bind(this),
-                  deferred.reject
-                );
+                  deferred.resolve();
+                }.bind(this),
+                deferred.reject
+              );
             }
             else {
               deferred.reject(_body);
@@ -675,22 +633,20 @@
    *   );
    */
   Monaca.prototype.prepareSession = function(options) {
-    return Q.all([
-      this.getData('x-monaca-param-api-token'),
-      this.getData('x-monaca-param-session')
-    ]).then(
-      function(values) {
-        if (!values[0] || !values[1]) {
-          return this.relogin(options);
-        }
+    var apiToken = this.getData('x-monaca-param-api-token'),
+      session = this.getData('x-monaca-param-session');
 
-        this.tokens = {
-          api: values[0],
-          session: values[1]
-        };
-        this._loggedIn = true;
-      }.bind(this)
-    );
+    if (!apiToken || !session) {
+      return this.relogin(options);
+    }
+
+    this.tokens = {
+      api: apiToken,
+      session: session
+    };
+    this._loggedIn = true;
+
+    return Q.resolve();
   };
 
   /**
@@ -714,31 +670,14 @@
    *   );
    */
   Monaca.prototype.relogin = function(options) {
-    var deferred = Q.defer();
-
     options = options || {};
 
-    this.getData('reloginToken').then(
-      function(reloginToken) {
-        if (typeof(reloginToken) !== 'string' || reloginToken === '') {
-          return deferred.reject(new Error('Not a valid relogin token.'));
-        }
+    var reloginToken = this.getData('reloginToken');
+    if (typeof(reloginToken) !== 'string' || reloginToken === '') {
+      return deferred.reject(new Error('Not a valid relogin token.'));
+    }
 
-        this._login(reloginToken, options).then(
-          function() {
-            deferred.resolve();
-          },
-          function(error) {
-            deferred.reject(error);
-          }
-        );
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-    return deferred.promise;
+    return this._login(reloginToken, options);
   };
 
   /**
@@ -790,19 +729,21 @@
   Monaca.prototype.logout = function() {
     var deferred = Q.defer();
 
-    this.setData('reloginToken', '')
-      .then(this.setData.bind(this, 'clientId', ''), deferred.reject)
-      .then(this.setData.bind(this, 'x-monaca-param-api-token', ''), deferred.reject)
-      .then(this.setData.bind(this, 'x-monaca-param-session', ''), deferred.reject)
-      .then(
-        function() {
-          delete this.tokens;
-          this._loggedIn = false;
+    this.setData({
+      'reloginToken': '',
+      'clientId': '',
+      'x-monaca-param-api-token': '',
+      'x-monaca-param-session': ''
+    })
+    .then(
+      function() {
+        delete this.tokens;
+        this._loggedIn = false;
 
-          deferred.resolve();
-        }.bind(this),
-        deferred.reject
-      );
+        deferred.resolve();
+      }.bind(this),
+      deferred.reject
+    );
 
     return deferred.promise;
   };
@@ -2449,59 +2390,38 @@
     return deferred.promise;
   };
 
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Get current config file.
-   * @return {Promise}
-   */
-  Monaca.prototype.getConfigFile = function() {
-    var deferred = Q.defer();
-
-    deferred.resolve(this._configFile || CONFIG_FILE);
-
-    return deferred.promise;
-  };
-
   Monaca.prototype._ensureConfigFile = function() {
-    var deferred = Q.defer();
+    var deferred = Q.defer(),
+      configFile = this._configFile || CONFIG_FILE;
 
-    // Ensure that config file exists.
-    this.getConfigFile().then(
-      function(configFile) {
-        var parentDir = path.dirname(configFile);
+    var parentDir = path.dirname(configFile);
 
-        fs.exists(parentDir, function(exists) {
-          if (!exists) {
-            try {
-              shell.mkdir('-p', parentDir);
-            }
-            catch (err) {
-              return deferred.reject(err);
-            }
-          }
+    fs.exists(parentDir, function(exists) {
+      if (!exists) {
+        try {
+          shell.mkdir('-p', parentDir);
+        }
+        catch (err) {
+          return deferred.reject(err);
+        }
+      }
 
-          fs.exists(configFile, function(exists) {
-            if (!exists) {
-              fs.writeFile(configFile, '{}', function(err) {
-                if (err) {
-                  deferred.reject(err);
-                }
-                else {
-                  deferred.resolve(configFile);
-                }
-              });
+      fs.exists(configFile, function(exists) {
+        if (!exists) {
+          fs.writeFile(configFile, '{}', function(err) {
+            if (err) {
+              deferred.reject(err);
             }
             else {
               deferred.resolve(configFile);
             }
           });
-        });
-      },
-      function() {
-      }
-    );
+        }
+        else {
+          deferred.resolve(configFile);
+        }
+      });
+    });
 
     return deferred.promise;
   };
@@ -2534,8 +2454,8 @@
     else if (typeof value === 'undefined') {
       throw new Error('"value" must exist.');
     }
-    else if (typeof value !== 'string') {
-      throw new Error('"value" must be a string.');
+    else if (typeof value !== 'string' && value !== null) {
+      throw new Error('"value" must be a string or null.');
     }
 
     var deferred = Q.defer();
@@ -2565,7 +2485,13 @@
 
             try {
               var ob = JSON.parse(data);
-              ob[key] = value;
+
+              if (value === null) {
+                value = ob[key];
+                delete ob[key];
+              } else {
+                ob[key] = value;
+              }
 
               fs.writeFile(configFile, JSON.stringify(ob), function(error) {
                 unlock();
@@ -2602,68 +2528,7 @@
    * @return {Promise}
    */
   Monaca.prototype.removeConfig = function(key) {
-    if (typeof key === 'undefined') {
-      throw new Error('"key" must exist.');
-    }
-    else if (typeof key !== 'string') {
-      throw new Error('"key" must be a string.');
-    }
-
-    var deferred = Q.defer();
-
-    this._ensureConfigFile().then(
-      function(configFile) {
-        var lockFile = configFile + '.lock';
-
-        lockfile.lock(lockFile, {wait: 10000}, function(error) {
-          if (error) {
-            return deferred.reject(error);
-          }
-
-          var unlock = function() {
-            lockfile.unlock(lockFile, function(error) {
-              if (error) {
-                console.error(error);
-              }
-            });
-          };
-
-          fs.readFile(configFile, function(error, data) {
-            if (error) {
-              unlock();
-              return deferred.reject(error);
-            }
-
-            try {
-              var ob = JSON.parse(data),
-                value = ob[key];
-
-              delete ob[key];
-
-              fs.writeFile(configFile, JSON.stringify(ob), function(error) {
-                unlock();
-
-                if (error) {
-                  deferred.reject(error);
-                }
-                else {
-                  deferred.resolve(value);
-                }
-              });
-            }
-            catch (err) {
-              unlock();
-              deferred.reject(err);
-            }
-          });
-        });
-      },
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-    return deferred.promise;
+    return this.setConfig(key, null);
   };
 
   /**
