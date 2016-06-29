@@ -41,8 +41,6 @@
     .file(path.join(__dirname, 'config.json'))
     .get('monaca');
 
-  class LibEmitter extends EventEmitter {}
-
   /**
    * @class Monaca
    * @description
@@ -130,7 +128,7 @@
       request.debug = true;
     }
 
-    this.emitter = new LibEmitter();
+    this.emitter = new EventEmitter();
     this._monacaData = this._loadAllData();
   };
 
@@ -2217,7 +2215,7 @@
 
   Monaca.prototype.transpile = function(projectDir) {
     if (!this.requireTranspile(projectDir)) {
-      return Q.resolve();
+      return Q.resolve(projectDir);
     }
 
     var deferred = Q.defer();
@@ -2240,23 +2238,25 @@
 
         webpack(this.getWebPackConfigs(projectDir), function(err, stats){
           if(err) {
-            return deferred.reject(err);
+            return deferred.reject(new Error(err));
           }
           
           var jsonStats = stats.toJson();
           if(jsonStats.errors.length > 0) {
-            return deferred.reject(JSON.stringify(jsonStats.errors));
+            var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
+            error.log = jsonStats.errors;
+            return deferred.reject(error);
           }
           
           if(jsonStats.warnings.length > 0) {
             // deferred.reject(jsonStats.warnings);
           }
 
-          deferred.resolve("Successful transpile");
+          deferred.resolve(projectDir);
         });
       } else {
         // Template has no transpiler settings.
-        deferred.resolve("No need to transpile");
+        deferred.resolve(projectDir);
       }
     } catch (error) {
       deferred.reject(error);
