@@ -2051,15 +2051,14 @@
    * @return {Promise}
    */
   Monaca.prototype.installBuildDependencies = function(projectDir) {
-    var deferred = Q.defer();
     var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
     var config = require(projectInfoFile);
 
     if(!config.build) {
-      deferred.resolve();
-      return deferred.promise;
+      return Q.resolve();
     }
 
+    var deferred = Q.defer();
     var packageJsonFile = path.resolve(path.join(__dirname, '..', 'package.json'));
     var dependencies = require(packageJsonFile).additionalDependencies;
     var installDependencies = [];
@@ -2094,12 +2093,99 @@
     if(installDependencies.length > 0) {
       process.stdout.write('\n\nInstalling build dependencies...\n');
 
-      deferred.resolve(this._npmInstall(USER_CORDOVA, installDependencies));
+      this._npmInstall(USER_CORDOVA, installDependencies).then(function(){
+        deferred.resolve(projectDir);
+      });
     } else {
-      deferred.resolve();
+      deferred.resolve(projectDir);
     }
 
     return deferred.promise;
+  };
+
+  Monaca.prototype.getWebpackConfig = function(webpack_type, projectDir) {
+    var file = 'webpack.' + webpack_type + '.js';
+    var asset = path.resolve(path.join(__dirname, 'assets', file));
+
+    if(!fs.existsSync(asset)) {
+      throw 'Failed to locate Webpack config template: ' + file;
+    }
+
+    try {
+      var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
+      var config = require(projectInfoFile); 
+    } catch(error) {
+      throw 'Failed to require package info.';
+    }
+    
+    var type = config['template-type'];
+    var extension = '/\\.js$/';
+    var exclude = '/(node_modules|bower_components|platforms|www|\\.monaca)/';
+    var loader = '';
+    var presets = [
+      path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-es2015')),
+      path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-stage-2'))
+    ];
+    var resolve = {};
+
+    if(type === 'react') {
+      loader = 'babel-loader';
+      presets.push(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-react')));
+    } else if (type === 'angular2') {
+      extension = '/\.ts$/';
+      loader = 'awesome-typescript-loader';
+      resolve = {
+        root: [ path.join(projectDir, 'src') ],
+        extensions: ['', '.ts', '.js']
+      };
+    }
+
+    if(webpack_type === 'dev') {
+      resolve.alias = {
+        'webpack-dev-server/client': path.resolve(path.join(USER_CORDOVA, 'node_modules', 'webpack-dev-server', 'client'))
+      };
+    }
+
+    return fs.readFileSync(asset, 'utf8')
+      .replace(/{{USER_CORDOVA}}/g, USER_CORDOVA)
+      .replace(/{{PROJECT_DIR}}/g, projectDir)
+      .replace(/{{EXTENSION}}/g, extension)
+      .replace(/{{EXCLUDE}}/g, exclude)
+      .replace(/{{LOADER}}/g, loader)
+      .replace(/{{PRESETS}}/g, JSON.stringify(presets, null, 4))
+      .replace(/{{RESOLVE}}/g, JSON.stringify(resolve, null, 4))
+      ;
+  }
+
+  Monaca.prototype.generateBuildConfigs = function(projectDir) {
+    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
+    var config = require(projectInfoFile);
+
+    if(!config.build) {
+      return Q.resolve();
+    }
+
+    var deferred = Q.defer();
+
+    try {
+      var webpackDevFile = path.resolve(path.join(projectDir, 'webpack.dev.config.js'));
+      if(!fs.existsSync(webpackDevFile)) {
+        var fileContent = this.getWebpackConfig('dev', projectDir);
+        fs.writeFileSync(webpackDevFile, fileContent, 'utf8');
+      }
+
+      var webpackProdFile = path.resolve(path.join(projectDir, 'webpack.prod.config.js'));
+      if(!fs.existsSync(path.resolve(path.join(projectDir, 'webpack.prod.config.js')))) {
+        var fileContent = this.getWebpackConfig('prod', projectDir);
+        fs.writeFileSync(webpackProdFile, fileContent, 'utf8');
+      }
+
+      deferred.resolve(projectDir);
+    } catch (error) {
+      deferred.reject(error);
+    }
+
+    return Q.resolve(projectDir);
   };
 
   /**
@@ -2154,94 +2240,12 @@
     return false;
   };
 
-  Monaca.prototype.getWebPackConfigs = function(projectDir) {
-    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-    var config = require(projectInfoFile);
-    var type = false;
-
-    /**
-     * Create an empty mock.js file in the user's cordova folder.
-     * webpack-dev-server requires an instance of webpack and attempts to
-     * compile.  mock.js file is used for the non-transpilable code.
-     */
-    var mockFile = path.join(USER_CORDOVA, 'mock.js');
-    if(!fs.existsSync(mockFile)) {
-      fs.writeFileSync(mockFile, '', 'utf8');  
-    }
-    
-    // Defaults
-    var entry = mockFile;
-    var output = output = {
-      path: USER_CORDOVA,
-      filename: 'mock.dist.js'
-    };
-    var extension = /\.js$/;
-    var exclude = /(node_modules|bower_components|platforms|www|\.monaca)/;
-    var loader = '';
-    var presets = [
-      path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-es2015')),
-      path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-stage-2'))
-    ];
-    var resolve = {};
-
-    if(config && config['template-type']) {
-      type = config['template-type'];
-      entry = '.' + path.sep + config.build.transpile.src;
-      output = {
-        path: projectDir,
-        filename: config.build.transpile.dist
-      };
-    }
-
-    if(type === 'react') {
-      loader = 'babel-loader';
-      presets.push(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-react')));
-    } else if (type === 'angular2') {
-      extension = /\.ts$/;
-      loader = 'awesome-typescript-loader';
-      resolve = {
-        root: [ path.join(projectDir, 'src') ],
-        extensions: ['', '.ts', '.js']
-      };
-    }
-
-    resolve.alias = {
-      'webpack-dev-server/client': path.resolve(path.join(USER_CORDOVA, 'node_modules', 'webpack-dev-server', 'client'))
-    };
-
-    var configs = {
-      context: projectDir,
-      entry: [entry],
-      output: output,
-      module: {
-        loaders: []
-      },
-      resolveLoader: {
-        root: path.resolve(path.join(USER_CORDOVA, 'node_modules'))
-      }, 
-      resolve: resolve
-    };
-
-    if(type === 'react' || type === 'angular2') {
-      configs.module.loaders.push({
-        test: extension,
-        exclude: exclude,
-        loader: loader,
-        query: {
-          'presets': presets
-        }
-      });
-    }
-
-    return configs;
-  }
-
   Monaca.prototype.getWebPackModule = function() {
     return require(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'webpack')));
   };
 
-  Monaca.prototype.getWebpackDevServer = function() {
-    return require(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'webpack-dev-server')));
+  Monaca.prototype.getWebpackDevServerBinPath = function() {
+    return path.resolve(path.join(USER_CORDOVA, 'node_modules', '.bin', 'webpack-dev-server'));
   };
 
   Monaca.prototype.transpile = function(projectDir) {
@@ -2250,6 +2254,7 @@
     }
 
     var deferred = Q.defer();
+    process.stdout.write('Running Transpiler...');
 
     try {
       var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
@@ -2276,7 +2281,9 @@
         }
         dot();
 
-        webpack(this.getWebPackConfigs(projectDir), function(err, stats){
+        var webpackProdConfig = require(path.join(projectDir, 'webpack.prod.config.js'));
+
+        webpack(webpackProdConfig, function(err, stats){
           clearTimeout(loadingTimeoutId);
           process.stdout.write('\n');
 
@@ -2406,7 +2413,8 @@
       .then(fetchFile)
       .then(unzipFile)
       .then(this.installTemplateDependencies.bind(this))
-      .then(this.installBuildDependencies.bind(this));
+      .then(this.installBuildDependencies.bind(this))
+      .then(this.generateBuildConfigs.bind(this));
   };
 
   /**
