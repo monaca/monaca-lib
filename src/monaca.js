@@ -2042,6 +2042,29 @@
     return deferred.promise;
   };
 
+  Monaca.prototype.jsStringEscape = function (string) {
+    return ('' + string).replace(/["'\\\n\r\u2028\u2029]/g, function (character) {
+      // Escape all characters not included in SingleStringCharacters and
+      // DoubleStringCharacters on
+      // http://www.ecma-international.org/ecma-262/5.1/#sec-7.8.4
+      switch (character) {
+        case '"':
+        case "'":
+        case '\\':
+          return '\\' + character
+        // Four possible LineTerminator characters need to be escaped:
+        case '\n':
+          return '\\n'
+        case '\r':
+          return '\\r'
+        case '\u2028':
+          return '\\u2028'
+        case '\u2029':
+          return '\\u2029'
+      }
+    })
+  };
+
   /**
    * @method
    * @memberof Monaca
@@ -2123,14 +2146,14 @@
     var exclude = '/(node_modules|bower_components|platforms|www|\\.monaca)/';
     var loader = '';
     var presets = [
-      path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-es2015')),
-      path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-stage-2'))
+      this.jsStringEscape(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-es2015'))),
+      this.jsStringEscape(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-stage-2')))
     ];
     var resolve = {};
 
     if(type === 'react') {
       loader = 'babel-loader';
-      presets.push(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-react')));
+      presets.push(this.jsStringEscape(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-react'))));
     } else if (type === 'angular2') {
       extension = '/\.ts$/';
       loader = 'awesome-typescript-loader';
@@ -2142,13 +2165,13 @@
 
     if(webpack_type === 'dev') {
       resolve.alias = {
-        'webpack-dev-server/client': path.resolve(path.join(USER_CORDOVA, 'node_modules', 'webpack-dev-server', 'client'))
+        'webpack-dev-server/client': this.jsStringEscape(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'webpack-dev-server', 'client')))
       };
     }
 
     return fs.readFileSync(asset, 'utf8')
-      .replace(/{{USER_CORDOVA}}/g, USER_CORDOVA)
-      .replace(/{{PROJECT_DIR}}/g, projectDir)
+      .replace(/{{USER_CORDOVA}}/g, this.jsStringEscape(USER_CORDOVA))
+      .replace(/{{PROJECT_DIR}}/g, this.jsStringEscape(projectDir))
       .replace(/{{EXTENSION}}/g, extension)
       .replace(/{{EXCLUDE}}/g, exclude)
       .replace(/{{LOADER}}/g, loader)
