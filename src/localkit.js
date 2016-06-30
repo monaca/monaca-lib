@@ -488,7 +488,28 @@
 
             try {
               fileWatcherTranspiler.onchange(function(changeType, filePath) {
-                this.monaca.transpile(projectPath);
+                this.monaca.transpile(projectPath).then(
+                  function(result) {
+                    var eventContent = {
+                      type: 'success',
+                      message: result.message
+                    };
+                    if (result.warnings) {
+                      eventContent.log = result.warnings;
+                    }
+                    this.monaca.emitter.emit('output', eventContent);
+                  }.bind(this),
+                  function(error) {
+                    var eventContent = {
+                      type: 'error',
+                      message: error.message
+                    };
+                    if (error.log) {
+                      eventContent.log = error.log;
+                    }
+                    this.monaca.emitter.emit('output', eventContent);
+                  }.bind(this)
+                );
               }.bind(this));
               fileWatcherTranspiler.run(path.join(projectPath, 'src'));
             } catch (error) {
