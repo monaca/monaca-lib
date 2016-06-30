@@ -2146,8 +2146,8 @@
     var exclude = '/(node_modules|bower_components|platforms|www|\\.monaca)/';
     var loader = '';
     var presets = [
-      this.jsStringEscape(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-es2015'))),
-      this.jsStringEscape(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-stage-2')))
+      path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-es2015')),
+      path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-stage-2'))
     ];
     var resolve = {};
 
@@ -2165,7 +2165,7 @@
 
     if(webpack_type === 'dev') {
       resolve.alias = {
-        'webpack-dev-server/client': this.jsStringEscape(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'webpack-dev-server', 'client')))
+        'webpack-dev-server/client': path.resolve(path.join(USER_CORDOVA, 'node_modules', 'webpack-dev-server', 'client'))
       };
     }
 
