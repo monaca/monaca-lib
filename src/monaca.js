@@ -2214,8 +2214,12 @@
   };
 
   Monaca.prototype.transpile = function(projectDir) {
+    var result = {
+      message: "No transpiling needed for " + projectDir
+    };
+
     if (!this.requireTranspile(projectDir)) {
-      return Q.resolve(projectDir);
+      return Q.resolve(result);
     }
 
     var deferred = Q.defer();
@@ -2247,16 +2251,15 @@
             error.log = jsonStats.errors;
             return deferred.reject(error);
           }
-          
-          if(jsonStats.warnings.length > 0) {
-            // deferred.reject(jsonStats.warnings);
-          }
 
-          deferred.resolve(projectDir);
+          result.message = "Transpiling succeeded for " + projectDir;
+          result.stats = jsonStats;
+
+          deferred.resolve(result);
         });
       } else {
         // Template has no transpiler settings.
-        deferred.resolve(projectDir);
+        deferred.resolve(result);
       }
     } catch (error) {
       deferred.reject(error);

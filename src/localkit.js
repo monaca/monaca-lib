@@ -489,11 +489,14 @@
             try {
               fileWatcherTranspiler.onchange(function(changeType, filePath) {
                 this.monaca.transpile(projectPath).then(
-                  function() {
+                  function(result) {
                     var eventContent = {
                       type: 'success',
-                      message: 'Transpiling succeeded for ' + projectPath
+                      message: result.message
                     };
+                    if (result.warnings) {
+                      eventContent.log = result.warnings;
+                    }
                     this.monaca.emitter.emit('output', eventContent);
                   }.bind(this),
                   function(error) {
