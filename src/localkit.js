@@ -496,6 +496,7 @@
                     };
                     if (result.warnings) {
                       eventContent.log = result.warnings;
+                      eventContent.logType = "warning";
                     }
                     this.monaca.emitter.emit('output', eventContent);
                   }.bind(this),
@@ -506,6 +507,7 @@
                     };
                     if (error.log) {
                       eventContent.log = error.log;
+                      eventContent.logType = "error";
                     }
                     this.monaca.emitter.emit('output', eventContent);
                   }.bind(this)
