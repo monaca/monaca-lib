@@ -58,6 +58,14 @@
    *   );
    */
   var Monaca = function(apiRoot, options) {
+    // Parameters are optional.
+    if (typeof apiRoot === 'object') {
+      options = apiRoot;
+      apiRoot = undefined;
+    } else {
+      options = options || {};
+    }
+
     /**
      * @description
      *   Root of Monaca IDE API.
@@ -106,12 +114,34 @@
 
     /**
      * @description
-     *   Package name.
-     * @name Monaca#packageName
+     *   Client type.
+     * @name Monaca#clientType
      * @type string
      */
+    Object.defineProperty(this, 'clientType', {
+      value: options.clientType || 'local',
+      writable: false
+    });
+
+    /**
+     * @description
+     *   Client version.
+     * @name Monaca#clientVersion
+     * @type string
+     */
+    Object.defineProperty(this, 'clientVersion', {
+      value: options.clientVersion || '0.0.0',
+      writable: false
+    });
+
+    /**
+     * @description
+     *   Debug.
+     * @name Monaca#debug
+     * @type boolean
+     */
     Object.defineProperty(this, 'debug', {
-      value: (options && options.hasOwnProperty("debug") && options.debug === true),
+      value: (options.hasOwnProperty('debug') && options.debug === true),
       writable: false
     });
 
@@ -308,6 +338,7 @@
       function(httpProxy) {
         var requestClient = request.defaults({
           qs: qs,
+          rejectUnauthorized: false, // DELETE
           encoding: null,
           proxy: httpProxy,
           headers: {
@@ -398,7 +429,58 @@
   Monaca.prototype._post_file = function(resource, data) {
     return this._request('POST', resource, data, null, true );
   };
-   
+
+  Monaca.prototype._generateUUIDv4 = function(a, b) {
+    for (
+      b = a = ''; a++ < 36; b += a * 51 & 52 ?
+      (
+        a ^ 15 ?
+        8 ^ Math.random() *
+        (a ^ 20 ? 16 : 4) :
+        4
+      ).toString(16) :
+      '-'
+    );
+    return b;
+  };
+
+  Monaca.prototype.getTrackId = function() {
+    if (this.getData('trackId')) {
+      return Q.resolve(this.getData('trackId'));
+    }
+    return this.setData({
+      trackId: this._generateUUIDv4()
+    });
+  }
+
+  Monaca.prototype.reportAnalytics = function(info) {
+    console.log('-------- REPORTING ANALYTICS', info.event);
+
+    return this.getTrackId().then(
+      function(trackId) {
+        var form = extend({}, info, { event: 'monaca-local-' + info.event }, {
+          trackId: trackId,
+          clientType: this.clientType,
+          version: this.version,
+          clientId: this.getData('clientId')
+        });
+
+        return this._post(this.apiRoot + '/user/track', form)
+          .then(Q.resolve, Q.resolve);
+
+      }.bind(this),
+      Q.resolve
+    );
+  };
+
+  Monaca.prototype.reportFail = function(report, error) {
+    report.errorDetail = error === 'object' ? error.message : error;
+    return this.reportAnalytics(report)
+      .then(function() {
+        return Q.reject(error);
+      });
+  };
+
   /**
    * @method
    * @memberof Monaca
@@ -670,14 +752,7 @@
    *   );
    */
   Monaca.prototype.relogin = function(options) {
-    options = options || {};
-
-    var reloginToken = this.getData('reloginToken');
-    if (typeof(reloginToken) !== 'string' || reloginToken === '') {
-      return deferred.reject(new Error('Not a valid relogin token.'));
-    }
-
-    return this._login(reloginToken, options);
+    return this._login(this.getData('reloginToken'), options);
   };
 
   /**
@@ -733,7 +808,8 @@
       'reloginToken': '',
       'clientId': '',
       'x-monaca-param-api-token': '',
-      'x-monaca-param-session': ''
+      'x-monaca-param-session': '',
+      'trackId': ''
     })
     .then(
       function() {
@@ -784,10 +860,15 @@
       }
     };
 
-    this.getConfig('http_proxy').then(
+/*    this.reportAnalytics({
+      event: 'signup'
+    })
+    .then(this.getConfig.bind(this, 'http_proxy'))*/
+    this.getConfig('http_proxy')
+    .then(
       function(httpProxy) {
         request.post({
-//          rejectUnauthorized: false,
+          rejectUnauthorized: false,
           url: this.webApiRoot + '/register',
           proxy: httpProxy,
           form: form
@@ -818,6 +899,9 @@
         deferred.reject(error);
       }
     );
+    /*.catch(this.reportFail.bind(this, {
+      event: 'signup-fail'
+    }))*/
 
     return deferred.promise;
   };
@@ -846,7 +930,7 @@
     this.getConfig('http_proxy').then(
       function(httpProxy) {
         request.post({
-//          rejectUnauthorized: false,
+          rejectUnauthorized: false,
           url: this.webApiRoot + '/check_activate',
           proxy: httpProxy,
           form: {
@@ -880,6 +964,18 @@
     );
 
     return deferred.promise;
+
+/*    var deferred_afterReport = Q.defer();
+    deferred.promise
+      .then(
+        this.reportAnalytics.bind(this, {
+          event: 'signup-complete'
+        }),
+        deferred_afterReport.reject
+      )
+      .then(deferred_afterReport.resolve);
+
+    return deferred_afterReport.promise;*/
   };
 
   /**
@@ -2270,7 +2366,8 @@
    * @param {String} destinationDir Destionation directory
    * @return {Promise}
    */
-  Monaca.prototype.downloadTemplate = function(resource, destinationDir) {
+  Monaca.prototype.downloadTemplate = function(template, destinationDir) {
+
     var checkDirectory = function() {
       var deferred = Q.defer();
 
@@ -2354,14 +2451,22 @@
     var fetchFile = function() {
       process.stdout.write('\nDownloading template...\n');
 
-      return this._get(resource);
+      return this._get(template.resource);
     }.bind(this);
 
-    return checkDirectory()
+    return this.reportAnalytics({
+        event: 'create',
+        arg1: template.name
+      })
+      .then(checkDirectory)
       .then(fetchFile)
       .then(unzipFile)
       .then(this.installTemplateDependencies.bind(this))
-      .then(this.installBuildDependencies.bind(this));
+      .then(this.installBuildDependencies.bind(this))
+      .catch(this.reportFail.bind(this, {
+        event: 'create-fail',
+        arg1: template.name
+      }));
   };
 
   /**
