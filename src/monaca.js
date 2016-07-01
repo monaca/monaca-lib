@@ -338,7 +338,7 @@
       function(httpProxy) {
         var requestClient = request.defaults({
           qs: qs,
-          rejectUnauthorized: false, // DELETE
+          //rejectUnauthorized: false, // DELETE
           encoding: null,
           proxy: httpProxy,
           headers: {
@@ -389,7 +389,7 @@
               deferred.reject(error.code);
             } else {
               if (response.statusCode === 200) {
-                deferred.resolve(body);
+                deferred.resolve({body: body, response: response});
               } else if (response.statusCode === 401 && resource.startsWith(this.apiRoot) && !this.retry) {
                   this.retry = true;
                   this.relogin().then(function() {
@@ -481,6 +481,14 @@
       });
   };
 
+  Monaca.prototype._safeParse = function(jsonString) {
+    try {
+      return JSON.parse(jsonString);
+    } catch(e) {
+      throw new Error('Not a JSON response.');
+    }
+  }
+
   /**
    * @method
    * @memberof Monaca
@@ -513,7 +521,7 @@
             shell.mkdir('-p', parentDir);
           }
 
-          fs.writeFile(localPath, data, function(error) {
+          fs.writeFile(localPath, data.body, function(error) {
             if (error) {
               deferred.reject(error);
             }
@@ -632,66 +640,40 @@
       form.password = arguments[1];
     }
 
-    this.getConfig('http_proxy').then(
-      function(httpProxy) {
-        var clientId = this.getData('clientId');
+    return this._post(this.apiRoot + '/user/login', form)
+      .then(
+        function(data) {
+          var body = this._safeParse(data.body),
+            response = data.response;
+          if (body.status === 'ok') {
+            var headers = response.caseless.dict;
+            return this.setData({
+              'reloginToken': body.result.token,
+              'clientId': body.result.clientId,
+              'x-monaca-param-api-token': headers['x-monaca-param-api-token'],
+              'x-monaca-param-session': headers['x-monaca-param-session']
+            })
+            .then(
+              function() {
+                this.tokens = {
+                  api: headers['x-monaca-param-api-token'],
+                  session: headers['x-monaca-param-session']
+                };
 
-        if (clientId) {
-          form.clientId = clientId;
-        }
-        request.post({
-//          rejectUnauthorized: false,
-          url: this.apiRoot + '/user/login',
-          proxy: httpProxy,
-          form: form
-        },
-        function(error, response, body) {
-          try {
-            var _body = JSON.parse(body || '{}');
-          } catch (e) {
-            deferred.reject(new Error('Not a JSON response.'));
+                this.loginBody = body.result;
+                this._loggedIn = true;
+
+                return Q.resolve();
+              }.bind(this),
+              Q.reject
+            );
           }
-          if (error) {
-            deferred.reject(error.code);
-          }
-          else {
-            if (response.statusCode == 200) {
 
-              var headers = response.caseless.dict;
-              this.setData({
-                'reloginToken': _body.result.token,
-                'clientId': _body.result.clientId,
-                'x-monaca-param-api-token': headers['x-monaca-param-api-token'],
-                'x-monaca-param-session': headers['x-monaca-param-session']
-              })
-              .then(
-                function() {
-                  this.tokens = {
-                    api: headers['x-monaca-param-api-token'],
-                    session: headers['x-monaca-param-session']
-                  };
+          return Q.reject(body);
 
-                  this.loginBody = _body.result;
-                  this._loggedIn = true;
-
-                  deferred.resolve();
-                }.bind(this),
-                deferred.reject
-              );
-            }
-            else {
-              deferred.reject(_body);
-            }
-          }
-        }.bind(this));
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-
-    return deferred.promise;
+        }.bind(this),
+        Q.reject
+      );
   };
 
   /**
@@ -860,50 +842,32 @@
       }
     };
 
+    return this._post(this.webApiRoot + '/register', form)
+      .then(
+        function(data) {
+          var body = this._safeParse(data.body);
+          if (body.status === 'ok') {
+            return Q.resolve(body.result.submitOK.token);
+          }
+
+          var errorMessage = body.title;
+          Object.keys(body.result.formError).forEach(function(key) {
+            errorMessage += '\n' + key + ': ' + body.result.formError[key];
+          });
+
+          return Q.reject(new Error(errorMessage));
+        }.bind(this),
+        Q.reject
+      );
+
+
 /*    this.reportAnalytics({
       event: 'signup'
     })
-    .then(this.getConfig.bind(this, 'http_proxy'))*/
-    this.getConfig('http_proxy')
-    .then(
-      function(httpProxy) {
-        request.post({
-          rejectUnauthorized: false,
-          url: this.webApiRoot + '/register',
-          proxy: httpProxy,
-          form: form
-        },
-        function(error, response, body) {
-          try {
-            var _body = JSON.parse(body || '{}');
-          } catch (e) {
-            return deferred.reject(new Error('Not a JSON response.'));
-          }
-          if (error) {
-            return deferred.reject(error.code);
-          }
 
-          if (_body.status === 'ok') {
-            deferred.resolve(_body.result.submitOK.token);
-          } else {
-            var errorMessage = _body.title;
-            Object.keys(_body.result.formError).forEach(function(key) {
-              errorMessage += '\n' + key + ': ' + _body.result.formError[key];
-            });
-
-            deferred.reject(new Error(errorMessage));
-          }
-        }.bind(this));
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
-    );
     /*.catch(this.reportFail.bind(this, {
       event: 'signup-fail'
     }))*/
-
-    return deferred.promise;
   };
 
   /**
@@ -927,43 +891,24 @@
     options = options || {};
     var deferred = Q.defer();
 
-    this.getConfig('http_proxy').then(
-      function(httpProxy) {
-        request.post({
-          rejectUnauthorized: false,
-          url: this.webApiRoot + '/check_activate',
-          proxy: httpProxy,
-          form: {
-            language: options.language || 'en',
-            clientType: options.clientType || 'local',
-            version: options.version || this.packageName + ' ' + this.version,
-            os: os.platform(),
-            param: token
-          }
-        },
-        function(error, response, body) {
-          try {
-            var _body = JSON.parse(body || '{}');
-          } catch (e) {
-            return deferred.reject(new Error('Not a JSON response.'));
-          }
-          if (error) {
-            return deferred.reject(error.code);
-          }
+    return this._post(this.webApiRoot + '/check_activate', {
+      language: options.language || 'en',
+      clientType: options.clientType || 'local',
+      version: options.version || this.packageName + ' ' + this.version,
+      os: os.platform(),
+      param: token
+    })
+    .then(
+      function(data) {
+        var body = this._safeParse(data.body);
+        if (body.status === 'ok') {
+          return body.result === 1 ? Q.resolve() : Q.reject();
+        }
 
-          if (_body.status === 'ok') {
-            _body.result === 1 ? deferred.resolve() : deferred.reject();
-          } else {
-            deferred.reject(_body.title);
-          }
-        }.bind(this));
+        return Q.reject(body.title);
       }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
+      Q.reject
     );
-
-    return deferred.promise;
 
 /*    var deferred_afterReport = Q.defer();
     deferred.promise
@@ -1002,17 +947,13 @@
 
     return this._get('/project/' + projectId + '/can_build_app')
     .then(
-      function(response) {
-        try {
-          var data = JSON.parse(response);
-        } catch (err) {
-          return Q.reject(new Error(err));
-        }
+      function(data) {
+        var body = this._safeParse(data.body);
 
-        if (data.status === 'ok') {
+        if (body.status === 'ok') {
 
           var checkError = function() {
-            var platformContent = data.result[platform];
+            var platformContent = body.result[platform];
 
             if (!platformContent) {
               return 'Specified platform is not supported or doesn\'t exist.';
@@ -1075,12 +1016,12 @@
           if (errorMessage) {
             return Q.reject(new Error(errorMessage));
           } else {
-            return Q.resolve(data);
+            return Q.resolve(body);
           }
         } else {
-          return Q.reject(new Error(data.status + " - " + data.message));
+          return Q.reject(new Error(body.status + " - " + body.message));
         }
-      },
+      }.bind(this),
       function(err) {
         if (err.code === 404) {
           return Q.reject(new Error("Cannot reach the server, contact Monaca Support. Error code: " + err.code));
@@ -1103,9 +1044,9 @@
     var deferred = Q.defer();
 
     this._get('/user/getSessionUrl', { url: url }).then(
-      function(response) {
-        deferred.resolve(JSON.parse(response).result.url);
-      },
+      function(data) {
+        deferred.resolve(this._safeParse(data.body).result.url);
+      }.bind(this),
       function(error) {
         deferred.reject(error);
       }
@@ -1178,9 +1119,9 @@
     options.disableStatusUpdate = options.disableStatusUpdate ? 1 : 0;
 
     this._get('/user/info/news', options ? options : {} ).then(
-      function(response) {
-        deferred.resolve(JSON.parse(response));
-      },
+      function(data) {
+        deferred.resolve(this._safeParse(data.body));
+      }.bind(this),
       function(error) {
         deferred.reject(error);
       }
@@ -1208,9 +1149,9 @@
     var deferred = Q.defer();
 
     this._get('/user/projects').then(
-      function(response) {
-        deferred.resolve(JSON.parse(response).result.items);
-      },
+      function(data) {
+        deferred.resolve(this._safeParse(data.body).result.items);
+      }.bind(this),
       function(error) {
         deferred.reject(error);
       }
@@ -1286,8 +1227,8 @@
     var deferred = Q.defer();
 
     this._post('/project/' + projectId + '/file/tree').then(
-      function(response) {
-        deferred.resolve(JSON.parse(response).result.items);
+      function(data) {
+        deferred.resolve(JSON.parse(data.body).result.items);
       },
       function(error) {
         deferred.reject(error);
@@ -1545,18 +1486,9 @@
     options.isBuildOnly = options.isBuildOnly ? 1 : 0;
 
     this._post('/user/project/create', options).then(
-      function(response) {
-        var data;
-
-        try {
-          data = JSON.parse(response).result;
-        }
-        catch (error) {
-          return deferred.reject(error);
-        }
-
-        deferred.resolve(data);
-      },
+      function(data) {
+        deferred.resolve(this._safeParse(data.body).result);
+      }.bind(this),
       function(error) {
         deferred.reject(error);
       }
@@ -2003,8 +1935,8 @@
 
       var interval = setInterval(function() {
         this._post(buildRoot + '/status/' + queueId).then(
-          function(response) {
-            var result = JSON.parse(response).result;
+          function(data) {
+            var result = this._safeParse(data.body).result;
 
             deferred.notify(result.description);
 
@@ -2016,9 +1948,9 @@
               }
               else {
                 this._post(buildRoot + '/result/' + queueId).then(
-                  function(response) {
-                    deferred.reject(JSON.parse(response).result.error_message);
-                  },
+                  function(data) {
+                    deferred.reject(this._safeParse(data.body).result.error_message);
+                  }.bind(this),
                   function(error) {
                     deferred.reject(error);
                   }
@@ -2037,15 +1969,15 @@
     }.bind(this);
 
     this._post(buildRoot, params).then(
-      function(response) {
-        var queueId = JSON.parse(response).result.queue_id;
+      function(data) {
+        var queueId = this._safeParse(data.body).result.queue_id;
 
         pollBuild(queueId).then(
           function() {
             this._post(buildRoot + '/result/' + queueId).then(
-              function(response) {
-                deferred.resolve(JSON.parse(response).result);
-              },
+              function(data) {
+                deferred.resolve(this._safeParse(data.body).result);
+              }.bind(this),
               function(error) {
                 deferred.reject(error);
               }
@@ -2088,23 +2020,16 @@
   Monaca.prototype.getTemplates = function() {
     return this._get('/user/templates')
       .then(
-        function(response) {
-          var data;
+        function(data) {
+          var body = this._safeParse(data.body);
 
-          try {
-            data = JSON.parse(response);
+          if (body.status === 'ok') {
+            return Q.resolve(body.result);
+          } else {
+            return Q.reject(body.status);
           }
-          catch (e) {
-            return Q.reject(e);
-          }
-
-          if (data.status === 'ok') {
-            return data.result;
-          }
-          else {
-            return Q.reject(data.status);
-          }
-        }
+        }.bind(this),
+        Q.reject
       );
   };
 
@@ -2296,9 +2221,9 @@
           }
         ]
       },
-      resolveLoader: {                                                                                
+      resolveLoader: {
         root: path.resolve(path.join(USER_CORDOVA, 'node_modules'))
-      }, 
+      },
       resolve: resolve
     };
   }
@@ -2334,12 +2259,12 @@
           if(err) {
             return deferred.reject(err);
           }
-          
+
           var jsonStats = stats.toJson();
           if(jsonStats.errors.length > 0) {
             return deferred.reject(JSON.stringify(jsonStats.errors));
           }
-          
+
           if(jsonStats.warnings.length > 0) {
             // deferred.reject(jsonStats.warnings);
           }
@@ -2451,7 +2376,10 @@
     var fetchFile = function() {
       process.stdout.write('\nDownloading template...\n');
 
-      return this._get(template.resource);
+      return this._get(template.resource)
+        .then(function(data) {
+          return Q.resolve(data.body);
+        });
     }.bind(this);
 
     return this.reportAnalytics({
