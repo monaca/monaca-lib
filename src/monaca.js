@@ -21,8 +21,15 @@
     extract = require('extract-zip'),
     glob = require('glob'),
     ncp = require('ncp').ncp,
-    npm = require('global-npm'),
     EventEmitter = require('events');
+
+  try {
+    var npm = require("npm");
+  } catch (err) {
+    if (err.code === 'MODULE_NOT_FOUND') {
+      var npm = require('global-npm');
+    }
+  }
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
