@@ -676,7 +676,9 @@
 
     var reloginToken = this.getData('reloginToken');
     if (typeof(reloginToken) !== 'string' || reloginToken === '') {
-      return deferred.reject(new Error('Not a valid relogin token.'));
+      var deferred = Q.defer();
+      deferred.reject(new Error('Not a valid relogin token.'));
+      return deferred.promise;
     }
 
     return this._login(reloginToken, options);
