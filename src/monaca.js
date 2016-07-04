@@ -21,15 +21,8 @@
     extract = require('extract-zip'),
     glob = require('glob'),
     ncp = require('ncp').ncp,
-    EventEmitter = require('events');
-
-  try {
-    var npm = require("npm");
-  } catch (err) {
-    if (err.code === 'MODULE_NOT_FOUND') {
-      var npm = require('global-npm');
-    }
-  }
+    EventEmitter = require('events'),
+    npm;
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -407,7 +400,7 @@
   Monaca.prototype._post_file = function(resource, data) {
     return this._request('POST', resource, data, null, true );
   };
-   
+
   /**
    * @method
    * @memberof Monaca
@@ -2034,6 +2027,25 @@
     argvs = argvs || [];
     var deferred = Q.defer();
 
+    if (!npm) {
+      var npmModules = ['npm', 'global-npm'];
+
+      for (var i in npmModules) {
+        if (npm) {
+          return
+        }
+
+        try {
+          npm = require(npmModules[i]);
+        } catch (err) {
+          if (err.code === 'MODULE_NOT_FOUND' && i == (npmModules.length - 1)) {
+            console.error(new Error('npm module not found, add it in order to be able to use this functionality.'));
+            return deferred.reject(err);
+          }
+        }
+      }
+    }
+
     npm.load({}, function (err) {
       if (err) {
         return deferred.reject(err);
@@ -2209,9 +2221,9 @@
           }
         ]
       },
-      resolveLoader: {                                                                                
+      resolveLoader: {
         root: path.resolve(path.join(USER_CORDOVA, 'node_modules'))
-      }, 
+      },
       resolve: resolve
     };
   }
@@ -2251,7 +2263,7 @@
           if(err) {
             return deferred.reject(new Error(err));
           }
-          
+
           var jsonStats = stats.toJson();
           if(jsonStats.errors.length > 0) {
             var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
