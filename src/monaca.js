@@ -2115,10 +2115,7 @@
 
     if(installDependencies.length > 0) {
       process.stdout.write('\n\nInstalling build dependencies...\n');
-
-      this._npmInstall(USER_CORDOVA, installDependencies).then(function(){
-        deferred.resolve(projectDir);
-      });
+      deferred.resolve(this._npmInstall(projectDir, installDependencies));
     } else {
       deferred.resolve(projectDir);
     }
@@ -2126,57 +2123,25 @@
     return deferred.promise;
   };
 
-  Monaca.prototype.getWebpackConfig = function(webpack_type, projectDir) {
-    var file = 'webpack.' + webpack_type + '.js';
-    var asset = path.resolve(path.join(__dirname, 'assets', file));
-
-    if(!fs.existsSync(asset)) {
-      throw 'Failed to locate Webpack config template: ' + file;
-    }
-
+  Monaca.prototype.getWebpackConfig = function(environment, projectDir) {
     try {
       var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
       var config = require(projectInfoFile); 
     } catch(error) {
       throw 'Failed to require package info.';
     }
-    
-    var type = config['template-type'];
-    var extension = '/\\.js$/';
-    var exclude = '/(node_modules|bower_components|platforms|www|\\.monaca)/';
-    var loader = '';
-    var presets = [
-      path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-es2015')),
-      path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-stage-2'))
-    ];
-    var resolve = {};
 
-    if(type === 'react') {
-      loader = 'babel-loader';
-      presets.push(this.jsStringEscape(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-react'))));
-    } else if (type === 'angular2') {
-      extension = '/\.ts$/';
-      loader = 'awesome-typescript-loader';
-      resolve = {
-        root: [ path.join(projectDir, 'src') ],
-        extensions: ['', '.ts', '.js']
-      };
-    }
+    var framework = config['template-type'];
+    var file = 'webpack.' + environment + '.' + framework +  '.js';
+    var asset = path.resolve(path.join(__dirname, 'template', file));
 
-    if(webpack_type === 'dev') {
-      resolve.alias = {
-        'webpack-dev-server/client': path.resolve(path.join(USER_CORDOVA, 'node_modules', 'webpack-dev-server', 'client'))
-      };
+    if(!fs.existsSync(asset)) {
+      throw 'Failed to locate Webpack config template for framework ' + framework;
     }
 
     return fs.readFileSync(asset, 'utf8')
       .replace(/{{USER_CORDOVA}}/g, this.jsStringEscape(USER_CORDOVA))
       .replace(/{{PROJECT_DIR}}/g, this.jsStringEscape(projectDir))
-      .replace(/{{EXTENSION}}/g, extension)
-      .replace(/{{EXCLUDE}}/g, exclude)
-      .replace(/{{LOADER}}/g, loader)
-      .replace(/{{PRESETS}}/g, JSON.stringify(presets, null, 4))
-      .replace(/{{RESOLVE}}/g, JSON.stringify(resolve, null, 4))
       ;
   }
 
