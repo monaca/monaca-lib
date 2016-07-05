@@ -488,7 +488,7 @@
 
             try {
               fileWatcherTranspiler.onchange(function(changeType, filePath) {
-                this.monaca.transpile(projectPath).then(
+                this.monaca.transpile(path.resolve(projectPath)).then(
                   function(result) {
                     var eventContent = {
                       type: 'success',

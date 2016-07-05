@@ -2247,10 +2247,15 @@
       return Q.resolve(result);
     }
 
+    var pwd = process.cwd();
     var deferred = Q.defer();
     process.stdout.write('Running Transpiler...');
 
     try {
+      if(projectDir !== pwd) {
+        process.chdir(projectDir);
+      }
+
       var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
       var config = require(projectInfoFile);
       var type = config['template-type'];
@@ -2282,6 +2287,7 @@
           process.stdout.write('\n');
 
           if(err) {
+            process.chdir(pwd);
             return deferred.reject(new Error(err));
           }
           
@@ -2289,19 +2295,23 @@
           if(jsonStats.errors.length > 0) {
             var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
             error.log = jsonStats.errors;
+            process.chdir(pwd);
             return deferred.reject(error);
           }
 
           result.message = "Transpiling succeeded for " + projectDir;
           result.stats = jsonStats;
 
+          process.chdir(pwd);
           deferred.resolve(result);
         });
       } else {
         // Template has no transpiler settings.
+        process.chdir(pwd);
         deferred.resolve(result);
       }
     } catch (error) {
+      process.chdir(pwd);
       deferred.reject(error);
     }
 
