@@ -160,6 +160,78 @@
     this._monacaData = this._loadAllData();
   };
 
+
+  Monaca.prototype._generateUUIDv4 = function(a, b) {
+    for (
+      b = a = ''; a++ < 36; b += a * 51 & 52 ?
+      (
+        a ^ 15 ?
+        8 ^ Math.random() *
+        (a ^ 20 ? 16 : 4) :
+        4
+      ).toString(16) :
+      '-'
+    );
+    return b;
+  };
+
+  Monaca.prototype.getTrackId = function() {
+    if (this.getData('trackId')) {
+      return Q.resolve(this.getData('trackId'));
+    }
+    return this.setData({
+      trackId: this._generateUUIDv4()
+    });
+  }
+
+  Monaca.prototype.reportAnalytics = function(report, resolvedValue) {
+    console.log('-------- REPORTING ANALYTICS', report);
+
+    return this.getTrackId().then(
+      function(trackId) {
+        var form = extend({}, report, { event: 'monaca-local-' + report.event }, {
+          trackId: trackId,
+          clientType: this.clientType,
+          version: this.version,
+          clientId: this.getData('clientId')
+        });
+
+        return this._post(this.apiRoot + '/user/track', form)
+          .then(Q.resolve.bind(null, resolvedValue), Q.resolve.bind(null, resolvedValue));
+
+      }.bind(this),
+      Q.resolve.bind(null, resolvedValue)
+    );
+  };
+
+  Monaca.prototype.reportFail = function(report, error) {
+    report.errorDetail = error === 'object' ? error.message : error;
+    return this.reportAnalytics(extend({}, report, { event: report.event + '-fail' }))
+      .then(function() {
+        return Q.reject(error);
+      });
+  };
+
+  Monaca.prototype.reportFinish = function(report, resolvedValue) {
+    return this.reportAnalytics(extend({}, report, { event: report.event + '-finish' }))
+      .then(
+        function() {
+            return Q.resolve(resolvedValue);
+        },
+        function() {
+            return Q.resolve(resolvedValue);
+        }
+      );
+  };
+
+  Monaca.prototype._safeParse = function(jsonString) {
+    try {
+      return JSON.parse(jsonString);
+    } catch(e) {
+      throw new Error('Not a JSON response.');
+    }
+  }
+
   Monaca.prototype._loadAllData = function() {
     var data;
     try {
@@ -338,7 +410,7 @@
       function(httpProxy) {
         var requestClient = request.defaults({
           qs: qs,
-          //rejectUnauthorized: false, // DELETE
+          rejectUnauthorized: false, // DELETE
           encoding: null,
           proxy: httpProxy,
           headers: {
@@ -429,65 +501,6 @@
   Monaca.prototype._post_file = function(resource, data) {
     return this._request('POST', resource, data, null, true );
   };
-
-  Monaca.prototype._generateUUIDv4 = function(a, b) {
-    for (
-      b = a = ''; a++ < 36; b += a * 51 & 52 ?
-      (
-        a ^ 15 ?
-        8 ^ Math.random() *
-        (a ^ 20 ? 16 : 4) :
-        4
-      ).toString(16) :
-      '-'
-    );
-    return b;
-  };
-
-  Monaca.prototype.getTrackId = function() {
-    if (this.getData('trackId')) {
-      return Q.resolve(this.getData('trackId'));
-    }
-    return this.setData({
-      trackId: this._generateUUIDv4()
-    });
-  }
-
-  Monaca.prototype.reportAnalytics = function(info) {
-    console.log('-------- REPORTING ANALYTICS', info.event);
-
-    return this.getTrackId().then(
-      function(trackId) {
-        var form = extend({}, info, { event: 'monaca-local-' + info.event }, {
-          trackId: trackId,
-          clientType: this.clientType,
-          version: this.version,
-          clientId: this.getData('clientId')
-        });
-
-        return this._post(this.apiRoot + '/user/track', form)
-          .then(Q.resolve, Q.resolve);
-
-      }.bind(this),
-      Q.resolve
-    );
-  };
-
-  Monaca.prototype.reportFail = function(report, error) {
-    report.errorDetail = error === 'object' ? error.message : error;
-    return this.reportAnalytics(report)
-      .then(function() {
-        return Q.reject(error);
-      });
-  };
-
-  Monaca.prototype._safeParse = function(jsonString) {
-    try {
-      return JSON.parse(jsonString);
-    } catch(e) {
-      throw new Error('Not a JSON response.');
-    }
-  }
 
   /**
    * @method
@@ -734,6 +747,7 @@
    *   );
    */
   Monaca.prototype.relogin = function(options) {
+    options = options || {};
     return this._login(this.getData('reloginToken'), options);
   };
 
@@ -859,15 +873,6 @@
         }.bind(this),
         Q.reject
       );
-
-
-/*    this.reportAnalytics({
-      event: 'signup'
-    })
-
-    /*.catch(this.reportFail.bind(this, {
-      event: 'signup-fail'
-    }))*/
   };
 
   /**
@@ -908,19 +913,14 @@
         return Q.reject(body.title);
       }.bind(this),
       Q.reject
-    );
-
-/*    var deferred_afterReport = Q.defer();
-    deferred.promise
-      .then(
-        this.reportAnalytics.bind(this, {
-          event: 'signup-complete'
-        }),
-        deferred_afterReport.reject
-      )
-      .then(deferred_afterReport.resolve);
-
-    return deferred_afterReport.promise;*/
+    )
+    // .then(
+    //   this.reportAnalytics.bind(this, {
+    //     event: 'signup-complete'
+    //   }),
+    //   Q.reject
+    // )
+    ;
   };
 
   /**
@@ -2291,7 +2291,7 @@
    * @param {String} destinationDir Destionation directory
    * @return {Promise}
    */
-  Monaca.prototype.downloadTemplate = function(template, destinationDir) {
+  Monaca.prototype.downloadTemplate = function(resource, destinationDir) {
 
     var checkDirectory = function() {
       var deferred = Q.defer();
@@ -2376,25 +2376,17 @@
     var fetchFile = function() {
       process.stdout.write('\nDownloading template...\n');
 
-      return this._get(template.resource)
+      return this._get(resource)
         .then(function(data) {
           return Q.resolve(data.body);
         });
     }.bind(this);
 
-    return this.reportAnalytics({
-        event: 'create',
-        arg1: template.name
-      })
-      .then(checkDirectory)
+    return checkDirectory()
       .then(fetchFile)
       .then(unzipFile)
       .then(this.installTemplateDependencies.bind(this))
-      .then(this.installBuildDependencies.bind(this))
-      .catch(this.reportFail.bind(this, {
-        event: 'create-fail',
-        arg1: template.name
-      }));
+      .then(this.installBuildDependencies.bind(this));
   };
 
   /**
