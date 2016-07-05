@@ -23,10 +23,10 @@ module.exports = {
   },
 
   resolve: {
-    root: '{{PROJECT_DIR}}/src/public',
+    root: '{{PROJECT_DIR}}/src',
     extensions: ['', '.ts', '.js', '.json', '.css', '.html']
   },
-  
+
   module: {
     loaders: [{
       test: /\.ts$/,
@@ -39,19 +39,19 @@ module.exports = {
         ]
       }
     }, {
-      test: /\.ts$/,
-      loader: 'angular2-template',
-      exclude: /(node_modules|bower_components|platforms|www|\.monaca)/
-    }, {
       test: /\.html$/,
       loader: 'html'
     }, {
       test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)$/,
-      loader: 'null'
+      loader: 'file?name=assets/[name].[hash].[ext]'
     }, {
       test: /\.css$/,
       exclude: '{{PROJECT_DIR}}/src/app',
-      loader: 'null'
+      loader: ExtractTextPlugin.extract('style', 'css?sourceMap')
+    }, {
+      test: /\.css$/,
+      include: '{{PROJECT_DIR}}/src/app',
+      loader: 'raw'
     }],
 
     noParse: [/.+zone\.js\/dist\/.+/, /.+angular2\/bundles\/.+/, /angular2-polyfills\.js/]

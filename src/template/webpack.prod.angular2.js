@@ -37,10 +37,6 @@ module.exports = {
         ]
       }
     }, {
-      test: /\.ts$/,
-      loader: 'angular2-template',
-      exclude: /(node_modules|bower_components|platforms|www|\.monaca)/
-    }, {
       test: /\.html$/,
       loader: 'html'
     }, {
