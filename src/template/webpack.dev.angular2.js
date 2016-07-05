@@ -23,15 +23,17 @@ module.exports = {
   },
 
   resolve: {
-    root: '{{PROJECT_DIR}}/src',
-    extensions: ['', '.ts', '.js', '.json', '.css', '.html']
+    root: [
+      '{{PROJECT_DIR}}/src',
+      '{{PROJECT_DIR}}/node_modules'
+    ],
+    extensions: ['', '.ts', '.js', '.json', '.css', '.html', '.styl']
   },
 
   module: {
     loaders: [{
       test: /\.ts$/,
       loader: 'ts',
-      exclude: /(node_modules|bower_components|platforms|www|\.monaca)/,
       query: {
         presets: [
           '{{USER_CORDOVA}}/node_modules/babel-preset-es2015',
@@ -44,6 +46,9 @@ module.exports = {
     }, {
       test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)$/,
       loader: 'file?name=assets/[name].[hash].[ext]'
+    }, {
+      test: /\.styl$/,
+      loaders: ['style-loader', 'css-loader', 'stylus-loader'], 
     }, {
       test: /\.css$/,
       exclude: '{{PROJECT_DIR}}/src/app',
