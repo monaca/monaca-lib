@@ -21,7 +21,8 @@
     extract = require('extract-zip'),
     glob = require('glob'),
     ncp = require('ncp').ncp,
-    npm = require('global-npm');
+    npm = require('global-npm'),
+    EventEmitter = require('events');
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -127,6 +128,7 @@
       request.debug = true;
     }
 
+    this.emitter = new EventEmitter();
     this._monacaData = this._loadAllData();
   };
 
@@ -2237,8 +2239,12 @@
   };
 
   Monaca.prototype.transpile = function(projectDir) {
+    var result = {
+      message: "No transpiling needed for " + projectDir
+    };
+
     if (!this.requireTranspile(projectDir)) {
-      return Q.resolve();
+      return Q.resolve(result);
     }
 
     var deferred = Q.defer();
@@ -2276,23 +2282,24 @@
           process.stdout.write('\n');
 
           if(err) {
-            return deferred.reject(err);
+            return deferred.reject(new Error(err));
           }
           
           var jsonStats = stats.toJson();
           if(jsonStats.errors.length > 0) {
-            return deferred.reject(JSON.stringify(jsonStats.errors));
-          }
-          
-          if(jsonStats.warnings.length > 0) {
-            // deferred.reject(jsonStats.warnings);
+            var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
+            error.log = jsonStats.errors;
+            return deferred.reject(error);
           }
 
-          deferred.resolve();
+          result.message = "Transpiling succeeded for " + projectDir;
+          result.stats = jsonStats;
+
+          deferred.resolve(result);
         });
       } else {
         // Template has no transpiler settings.
-        deferred.resolve();
+        deferred.resolve(result);
       }
     } catch (error) {
       deferred.reject(error);
