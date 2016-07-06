@@ -21,8 +21,8 @@
     extract = require('extract-zip'),
     glob = require('glob'),
     ncp = require('ncp').ncp,
-    npm = require('global-npm'),
-    EventEmitter = require('events');
+    EventEmitter = require('events'),
+    npm;
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -400,7 +400,7 @@
   Monaca.prototype._post_file = function(resource, data) {
     return this._request('POST', resource, data, null, true );
   };
-   
+
   /**
    * @method
    * @memberof Monaca
@@ -2014,6 +2014,34 @@
       );
   };
 
+  Monaca.prototype._npmInit = function() {
+    if (npm) {
+      return Q.resolve(npm);
+    }
+
+    var npmModules = ['npm', 'global-npm'];
+
+    for (var i in npmModules) {
+      try {
+        npm = require(npmModules[i]);
+      } catch (err) {
+        if (i == (npmModules.length - 1)) {
+          if (err.code === 'MODULE_NOT_FOUND') {
+            err.message = 'npm module not found, add it in order to be able to use this functionality.';
+          } else {
+            err.message = 'There is an issue with npm. Error code: ' + err.code;
+          }
+
+          return Q.reject(err);
+        }
+      }
+
+      if (npm) {
+        return Q.resolve(npm);
+      }
+    }
+  }
+
   /**
    * @method
    * @memberof Monaca
@@ -2027,18 +2055,23 @@
     argvs = argvs || [];
     var deferred = Q.defer();
 
-    npm.load({}, function (err) {
-      if (err) {
-        return deferred.reject(err);
-      }
-
-      npm.commands.install(projectDir, argvs, function(err, data) {
+    this._npmInit().then(function() {
+      npm.load({}, function (err) {
         if (err) {
           return deferred.reject(err);
         }
 
-        deferred.resolve(projectDir);
+        npm.commands.install(projectDir, argvs, function(err, data) {
+          if (err) {
+            return deferred.reject(err);
+          }
+
+          deferred.resolve(projectDir);
+        });
       });
+    }, function(err) {
+      console.error(err.message);
+      process.exit(1);
     });
 
     return deferred.promise;
@@ -2202,9 +2235,9 @@
           }
         ]
       },
-      resolveLoader: {                                                                                
+      resolveLoader: {
         root: path.resolve(path.join(USER_CORDOVA, 'node_modules'))
-      }, 
+      },
       resolve: resolve
     };
   }
@@ -2244,7 +2277,7 @@
           if(err) {
             return deferred.reject(new Error(err));
           }
-          
+
           var jsonStats = stats.toJson();
           if(jsonStats.errors.length > 0) {
             var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
