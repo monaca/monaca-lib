@@ -59,6 +59,14 @@
    *   );
    */
   var Monaca = function(apiRoot, options) {
+    // Parameters are optional.
+    if (typeof apiRoot === 'object') {
+      options = apiRoot;
+      apiRoot = undefined;
+    } else {
+      options = options || {};
+    }
+
     /**
      * @description
      *   Root of Monaca IDE API.
@@ -107,12 +115,34 @@
 
     /**
      * @description
-     *   Package name.
-     * @name Monaca#packageName
+     *   Client type.
+     * @name Monaca#clientType
      * @type string
      */
+    Object.defineProperty(this, 'clientType', {
+      value: options.clientType || 'local',
+      writable: false
+    });
+
+    /**
+     * @description
+     *   Client version.
+     * @name Monaca#clientVersion
+     * @type string
+     */
+    Object.defineProperty(this, 'clientVersion', {
+      value: options.clientVersion || '0.0.0',
+      writable: false
+    });
+
+    /**
+     * @description
+     *   Debug.
+     * @name Monaca#debug
+     * @type boolean
+     */
     Object.defineProperty(this, 'debug', {
-      value: (options && options.hasOwnProperty("debug") && options.debug === true),
+      value: (options.hasOwnProperty('debug') && options.debug === true),
       writable: false
     });
 
@@ -130,6 +160,106 @@
 
     this.emitter = new EventEmitter();
     this._monacaData = this._loadAllData();
+  };
+
+
+  Monaca.prototype._generateUUIDv4 = function(a, b) {
+    for (
+      b = a = ''; a++ < 36; b += a * 51 & 52 ?
+      (
+        a ^ 15 ?
+        8 ^ Math.random() *
+        (a ^ 20 ? 16 : 4) :
+        4
+      ).toString(16) :
+      '-'
+    );
+    return b;
+  };
+
+  Monaca.prototype.getTrackId = function() {
+    if (this.getData('trackId')) {
+      return Q.resolve(this.getData('trackId'));
+    }
+    return this.setData({
+      trackId: this._generateUUIDv4()
+    }).then(Q.resolve.bind(null, this.getData('trackId')));
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Reports any event to Monaca backend. It keeps the previous promise flow.
+   * @param {object} report - Report object. Must contain 'event'.
+   *  Optional values are 'arg1' and 'otherArgs'.
+   * @param {any} resolvedValue - Optional. This parameter will be returned by the promise.
+   * @return {Promise}
+   * @example
+   *   monaca.reportAnalytics({event: 'create'})
+   *     .then(nextMethod)
+   */
+  Monaca.prototype.reportAnalytics = function(report, resolvedValue) {
+    return this.getTrackId().then(
+      function(trackId) {
+        var form = extend({}, report, { event: 'monaca-lib-' + report.event }, {
+          trackId: trackId,
+          clientType: this.clientType,
+          version: this.version,
+          clientId: this.getData('clientId')
+        });
+
+        return this._post(this.apiRoot + '/user/track', form)
+          .then(Q.resolve.bind(null, resolvedValue), Q.resolve.bind(null, resolvedValue));
+
+      }.bind(this),
+      Q.resolve.bind(null, resolvedValue)
+    );
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Reports a fail event to Monaca backend. This must be used with a rejected promise.
+   *  It keeps the rejected promise flow.
+   * @param {object} report - Report object. Must contain 'event'.
+   *  Optional values are 'arg1' and 'otherArgs'.
+   * @param {any} resolvedValue - Optional. This parameter will be returned by the promise.
+   * @return {Rejected promise}
+   * @example
+   *   monaca.reportFail({event: 'create'})
+   *     .catch(handleErrors)
+   */
+  Monaca.prototype.reportFail = function(report, error) {
+    report.errorDetail = error === 'object' ? error.message : error;
+    return this.reportAnalytics(extend({}, report, { event: report.event + '-fail' }))
+      .then(Q.reject.bind(null, error));
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Reports a finish event to Monaca backend. It keeps the previous promise flow.
+   * @param {object} report - Report object. Must contain 'event'.
+   *  Optional values are 'arg1' and 'otherArgs'.
+   * @param {any} resolvedValue - Optional. This parameter will be returned by the promise.
+   * @return {Promise}
+   * @example
+   *   monaca.reportAnalytics({event: 'create'})
+   *     .then(nextMethod)
+   */
+  Monaca.prototype.reportFinish = function(report, resolvedValue) {
+    return this.reportAnalytics(extend({}, report, { event: report.event + '-finish' }), resolvedValue);
+  };
+
+  Monaca.prototype._safeParse = function(jsonString) {
+    try {
+      return JSON.parse(jsonString);
+    } catch(e) {
+      throw new Error('Not a JSON response.');
+    }
   };
 
   Monaca.prototype._loadAllData = function() {
@@ -310,6 +440,7 @@
       function(httpProxy) {
         var requestClient = request.defaults({
           qs: qs,
+          // rejectUnauthorized: false, // DELETE
           encoding: null,
           proxy: httpProxy,
           headers: {
@@ -360,7 +491,7 @@
               deferred.reject(error.code);
             } else {
               if (response.statusCode === 200) {
-                deferred.resolve(body);
+                deferred.resolve({body: body, response: response});
               } else if (response.statusCode === 401 && resource.startsWith(this.apiRoot) && !this.retry) {
                   this.retry = true;
                   this.relogin().then(function() {
@@ -433,7 +564,7 @@
             shell.mkdir('-p', parentDir);
           }
 
-          fs.writeFile(localPath, data, function(error) {
+          fs.writeFile(localPath, data.body, function(error) {
             if (error) {
               deferred.reject(error);
             }
@@ -552,66 +683,40 @@
       form.password = arguments[1];
     }
 
-    this.getConfig('http_proxy').then(
-      function(httpProxy) {
-        var clientId = this.getData('clientId');
+    return this._post(this.apiRoot + '/user/login', form)
+      .then(
+        function(data) {
+          var body = this._safeParse(data.body),
+            response = data.response;
+          if (body.status === 'ok') {
+            var headers = response.caseless.dict;
+            return this.setData({
+              'reloginToken': body.result.token,
+              'clientId': body.result.clientId,
+              'x-monaca-param-api-token': headers['x-monaca-param-api-token'],
+              'x-monaca-param-session': headers['x-monaca-param-session']
+            })
+            .then(
+              function() {
+                this.tokens = {
+                  api: headers['x-monaca-param-api-token'],
+                  session: headers['x-monaca-param-session']
+                };
 
-        if (clientId) {
-          form.clientId = clientId;
-        }
-        request.post({
-//          rejectUnauthorized: false,
-          url: this.apiRoot + '/user/login',
-          proxy: httpProxy,
-          form: form
-        },
-        function(error, response, body) {
-          try {
-            var _body = JSON.parse(body || '{}');
-          } catch (e) {
-            deferred.reject(new Error('Not a JSON response.'));
+                this.loginBody = body.result;
+                this._loggedIn = true;
+
+                return Q.resolve();
+              }.bind(this),
+              Q.reject
+            );
           }
-          if (error) {
-            deferred.reject(error.code);
-          }
-          else {
-            if (response.statusCode == 200) {
 
-              var headers = response.caseless.dict;
-              this.setData({
-                'reloginToken': _body.result.token,
-                'clientId': _body.result.clientId,
-                'x-monaca-param-api-token': headers['x-monaca-param-api-token'],
-                'x-monaca-param-session': headers['x-monaca-param-session']
-              })
-              .then(
-                function() {
-                  this.tokens = {
-                    api: headers['x-monaca-param-api-token'],
-                    session: headers['x-monaca-param-session']
-                  };
+          return Q.reject(body);
 
-                  this.loginBody = _body.result;
-                  this._loggedIn = true;
-
-                  deferred.resolve();
-                }.bind(this),
-                deferred.reject
-              );
-            }
-            else {
-              deferred.reject(_body);
-            }
-          }
-        }.bind(this));
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-
-    return deferred.promise;
+        }.bind(this),
+        Q.reject
+      );
   };
 
   /**
@@ -673,13 +778,7 @@
    */
   Monaca.prototype.relogin = function(options) {
     options = options || {};
-
-    var reloginToken = this.getData('reloginToken');
-    if (typeof(reloginToken) !== 'string' || reloginToken === '') {
-      return deferred.reject(new Error('Not a valid relogin token.'));
-    }
-
-    return this._login(reloginToken, options);
+    return this._login(this.getData('reloginToken'), options);
   };
 
   /**
@@ -735,7 +834,8 @@
       'reloginToken': '',
       'clientId': '',
       'x-monaca-param-api-token': '',
-      'x-monaca-param-session': ''
+      'x-monaca-param-session': '',
+      'trackId': ''
     })
     .then(
       function() {
@@ -786,42 +886,23 @@
       }
     };
 
-    this.getConfig('http_proxy').then(
-      function(httpProxy) {
-        request.post({
-//          rejectUnauthorized: false,
-          url: this.webApiRoot + '/register',
-          proxy: httpProxy,
-          form: form
-        },
-        function(error, response, body) {
-          try {
-            var _body = JSON.parse(body || '{}');
-          } catch (e) {
-            return deferred.reject(new Error('Not a JSON response.'));
-          }
-          if (error) {
-            return deferred.reject(error.code);
+    return this._post(this.webApiRoot + '/register', form)
+      .then(
+        function(data) {
+          var body = this._safeParse(data.body);
+          if (body.status === 'ok') {
+            return Q.resolve(body.result.submitOK.token);
           }
 
-          if (_body.status === 'ok') {
-            deferred.resolve(_body.result.submitOK.token);
-          } else {
-            var errorMessage = _body.title;
-            Object.keys(_body.result.formError).forEach(function(key) {
-              errorMessage += '\n' + key + ': ' + _body.result.formError[key];
-            });
+          var errorMessage = body.title;
+          Object.keys(body.result.formError).forEach(function(key) {
+            errorMessage += '\n' + key + ': ' + body.result.formError[key];
+          });
 
-            deferred.reject(new Error(errorMessage));
-          }
-        }.bind(this));
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-    return deferred.promise;
+          return Q.reject(new Error(errorMessage));
+        }.bind(this),
+        Q.reject
+      );
   };
 
   /**
@@ -845,43 +926,24 @@
     options = options || {};
     var deferred = Q.defer();
 
-    this.getConfig('http_proxy').then(
-      function(httpProxy) {
-        request.post({
-//          rejectUnauthorized: false,
-          url: this.webApiRoot + '/check_activate',
-          proxy: httpProxy,
-          form: {
-            language: options.language || 'en',
-            clientType: options.clientType || 'local',
-            version: options.version || this.packageName + ' ' + this.version,
-            os: os.platform(),
-            param: token
-          }
-        },
-        function(error, response, body) {
-          try {
-            var _body = JSON.parse(body || '{}');
-          } catch (e) {
-            return deferred.reject(new Error('Not a JSON response.'));
-          }
-          if (error) {
-            return deferred.reject(error.code);
-          }
+    return this._post(this.webApiRoot + '/check_activate', {
+      language: options.language || 'en',
+      clientType: options.clientType || 'local',
+      version: options.version || this.packageName + ' ' + this.version,
+      os: os.platform(),
+      param: token
+    })
+    .then(
+      function(data) {
+        var body = this._safeParse(data.body);
+        if (body.status === 'ok') {
+          return body.result === 1 ? Q.resolve() : Q.reject();
+        }
 
-          if (_body.status === 'ok') {
-            _body.result === 1 ? deferred.resolve() : deferred.reject();
-          } else {
-            deferred.reject(_body.title);
-          }
-        }.bind(this));
+        return Q.reject(body.title);
       }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
+      Q.reject
     );
-
-    return deferred.promise;
   };
 
   /**
@@ -908,17 +970,13 @@
 
     return this._get('/project/' + projectId + '/can_build_app')
     .then(
-      function(response) {
-        try {
-          var data = JSON.parse(response);
-        } catch (err) {
-          return Q.reject(new Error(err));
-        }
+      function(data) {
+        var body = this._safeParse(data.body);
 
-        if (data.status === 'ok') {
+        if (body.status === 'ok') {
 
           var checkError = function() {
-            var platformContent = data.result[platform];
+            var platformContent = body.result[platform];
 
             if (!platformContent) {
               return 'Specified platform is not supported or doesn\'t exist.';
@@ -981,12 +1039,12 @@
           if (errorMessage) {
             return Q.reject(new Error(errorMessage));
           } else {
-            return Q.resolve(data);
+            return Q.resolve(body);
           }
         } else {
-          return Q.reject(new Error(data.status + " - " + data.message));
+          return Q.reject(new Error(body.status + " - " + body.message));
         }
-      },
+      }.bind(this),
       function(err) {
         if (err.code === 404) {
           return Q.reject(new Error("Cannot reach the server, contact Monaca Support. Error code: " + err.code));
@@ -1009,9 +1067,9 @@
     var deferred = Q.defer();
 
     this._get('/user/getSessionUrl', { url: url }).then(
-      function(response) {
-        deferred.resolve(JSON.parse(response).result.url);
-      },
+      function(data) {
+        deferred.resolve(this._safeParse(data.body).result.url);
+      }.bind(this),
       function(error) {
         deferred.reject(error);
       }
@@ -1084,9 +1142,9 @@
     options.disableStatusUpdate = options.disableStatusUpdate ? 1 : 0;
 
     this._get('/user/info/news', options ? options : {} ).then(
-      function(response) {
-        deferred.resolve(JSON.parse(response));
-      },
+      function(data) {
+        deferred.resolve(this._safeParse(data.body));
+      }.bind(this),
       function(error) {
         deferred.reject(error);
       }
@@ -1114,9 +1172,9 @@
     var deferred = Q.defer();
 
     this._get('/user/projects').then(
-      function(response) {
-        deferred.resolve(JSON.parse(response).result.items);
-      },
+      function(data) {
+        deferred.resolve(this._safeParse(data.body).result.items);
+      }.bind(this),
       function(error) {
         deferred.reject(error);
       }
@@ -1192,8 +1250,8 @@
     var deferred = Q.defer();
 
     this._post('/project/' + projectId + '/file/tree').then(
-      function(response) {
-        deferred.resolve(JSON.parse(response).result.items);
+      function(data) {
+        deferred.resolve(JSON.parse(data.body).result.items);
       },
       function(error) {
         deferred.reject(error);
@@ -1451,18 +1509,9 @@
     options.isBuildOnly = options.isBuildOnly ? 1 : 0;
 
     this._post('/user/project/create', options).then(
-      function(response) {
-        var data;
-
-        try {
-          data = JSON.parse(response).result;
-        }
-        catch (error) {
-          return deferred.reject(error);
-        }
-
-        deferred.resolve(data);
-      },
+      function(data) {
+        deferred.resolve(this._safeParse(data.body).result);
+      }.bind(this),
       function(error) {
         deferred.reject(error);
       }
@@ -1909,8 +1958,8 @@
 
       var interval = setInterval(function() {
         this._post(buildRoot + '/status/' + queueId).then(
-          function(response) {
-            var result = JSON.parse(response).result;
+          function(data) {
+            var result = this._safeParse(data.body).result;
 
             deferred.notify(result.description);
 
@@ -1922,9 +1971,9 @@
               }
               else {
                 this._post(buildRoot + '/result/' + queueId).then(
-                  function(response) {
-                    deferred.reject(JSON.parse(response).result.error_message);
-                  },
+                  function(data) {
+                    deferred.reject(this._safeParse(data.body).result.error_message);
+                  }.bind(this),
                   function(error) {
                     deferred.reject(error);
                   }
@@ -1943,15 +1992,15 @@
     }.bind(this);
 
     this._post(buildRoot, params).then(
-      function(response) {
-        var queueId = JSON.parse(response).result.queue_id;
+      function(data) {
+        var queueId = this._safeParse(data.body).result.queue_id;
 
         pollBuild(queueId).then(
           function() {
             this._post(buildRoot + '/result/' + queueId).then(
-              function(response) {
-                deferred.resolve(JSON.parse(response).result);
-              },
+              function(data) {
+                deferred.resolve(this._safeParse(data.body).result);
+              }.bind(this),
               function(error) {
                 deferred.reject(error);
               }
@@ -1994,23 +2043,16 @@
   Monaca.prototype.getTemplates = function() {
     return this._get('/user/templates')
       .then(
-        function(response) {
-          var data;
+        function(data) {
+          var body = this._safeParse(data.body);
 
-          try {
-            data = JSON.parse(response);
+          if (body.status === 'ok') {
+            return Q.resolve(body.result);
+          } else {
+            return Q.reject(body.status);
           }
-          catch (e) {
-            return Q.reject(e);
-          }
-
-          if (data.status === 'ok') {
-            return data.result;
-          }
-          else {
-            return Q.reject(data.status);
-          }
-        }
+        }.bind(this),
+        Q.reject
       );
   };
 
@@ -2321,6 +2363,7 @@
    * @return {Promise}
    */
   Monaca.prototype.downloadTemplate = function(resource, destinationDir) {
+
     var checkDirectory = function() {
       var deferred = Q.defer();
 
@@ -2404,7 +2447,10 @@
     var fetchFile = function() {
       process.stdout.write('\nDownloading template...\n');
 
-      return this._get(resource);
+      return this._get(resource)
+        .then(function(data) {
+          return Q.resolve(data.body);
+        });
     }.bind(this);
 
     return checkDirectory()
