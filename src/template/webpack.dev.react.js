@@ -1,24 +1,28 @@
 try {
   var webpack = require('{{USER_CORDOVA}}/node_modules/webpack');
+  var HtmlWebpackPlugin = require('{{USER_CORDOVA}}/node_modules/html-webpack-plugin');
+  var ExtractTextPlugin = require('{{USER_CORDOVA}}/node_modules/extract-text-webpack-plugin');
 } catch (e) {
   throw 'Missing Webpack Build Dependencies.';
 }
 
 module.exports = {
-  devtool: 'eval',
-  context: '{{PROJECT_DIR}}/www',
+  devtool: 'eval-source-map',
+  debug: true,
+  watch: true,
+
   entry: [
     'react-hot-loader/patch',
     'webpack-dev-server/client?http://0.0.0.0:8000/',
     'webpack/hot/only-dev-server',
-    '../src/main.js'
-
+    './src/main.js'
   ],
-  watch: true,
+
   output: {
-    path: '{{PROJECT_DIR}}',
-    filename: 'www/dist.js'
+    path: '{{PROJECT_DIR}}/www',
+    filename: 'dist.js'
   },
+
   module: {
     loaders: [{
       test: /\.(js)$/,
@@ -33,17 +37,32 @@ module.exports = {
         plugins: ['{{USER_CORDOVA}}/node_modules/react-hot-loader/babel']
       }
     }, {
-      test: /\.(html|css|png|jpg)$/,
-      exclude: /(node_modules|bower_components|platforms|\.monaca)/,
-      loader: 'file-loader'
+      test: /\.html$/,
+      loader: 'html'
+    }, {
+      test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)$/,
+      loader: 'file?name=assets/[name].[hash].[ext]'
+    }, {
+      test: /\.styl$/,
+      loaders: ['style-loader', 'css-loader', 'stylus-loader'], 
+    }, {
+      test: /\.css$/,
+      exclude: '{{PROJECT_DIR}}',
+      loader: ExtractTextPlugin.extract('style', 'css?sourceMap')
+    }, {
+      test: /\.css$/,
+      include: '{{PROJECT_DIR}}',
+      loader: 'raw'
     }]
   },
 
   devServer: {
+    contentBase: './www',
     colors: true,
     inline: true,
     port: 8000,
-    hot: true
+    stats: 'minimal',
+    hot: false // live reload will not trigger for index.html if hot is enabled.
   },
 
   resolveLoader: {
@@ -60,6 +79,10 @@ module.exports = {
     }
   },
   plugins: [
-    new webpack.HotModuleReplacementPlugin()
+    new webpack.HotModuleReplacementPlugin(),
+    new ExtractTextPlugin('[name].css'),
+    new HtmlWebpackPlugin({
+      template: 'src/public/index.html'
+    })
   ]
 };

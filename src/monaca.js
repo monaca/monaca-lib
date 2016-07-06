@@ -2192,23 +2192,9 @@
     fs.exists(path.resolve(path.join(projectDir, 'package.json')), function(exists) {
       if (exists) {
         process.stdout.write('Installing template dependencies...\n');
-        this._npmInstall(projectDir)
-          .then(
-            function() {
-              var onsenCssSrc = path.join(projectDir, 'node_modules', 'onsenui', 'css');
-              var onsenCssDest = path.join(projectDir, 'www', 'css');
-
-              // concurrency limit
-              ncp.limit = 16;
-              ncp(onsenCssSrc, onsenCssDest, function (err) {
-                if (err) {
-                  deferred.reject('Failed to copy Onsen UI dependencies.');
-                } else {
-                  deferred.resolve(projectDir);
-                }
-              });
-            },
-            deferred.reject.bind(null, 'Failed to install template dependencies.')
+        this._npmInstall(projectDir).then(
+          deferred.resolve.bind(null, projectDir),
+          deferred.reject.bind(null, 'Failed to install template dependencies.')
         );
       }
       else {
@@ -2223,7 +2209,7 @@
     var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
     var config = require(projectInfoFile);
 
-    if (config.build && config.build.transpile && config.build.transpile.enabled) {
+    if (config.build && config.build.transpile) {
       return true;
     }
 
