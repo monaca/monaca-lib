@@ -181,12 +181,23 @@
     }
     return this.setData({
       trackId: this._generateUUIDv4()
-    });
-  }
+    }).then(Q.resolve.bind(null, this.getData('trackId')));
+  };
 
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Reports any event to Monaca backend. It keeps the previous promise flow.
+   * @param {object} report - Report object. Must contain 'event'.
+   *  Optional values are 'arg1' and 'otherArgs'.
+   * @param {any} resolvedValue - Optional. This parameter will be returned by the promise.
+   * @return {Promise}
+   * @example
+   *   monaca.reportAnalytics({event: 'create'})
+   *     .then(nextMethod)
+   */
   Monaca.prototype.reportAnalytics = function(report, resolvedValue) {
-    console.log('-------- REPORTING ANALYTICS', report);
-
     return this.getTrackId().then(
       function(trackId) {
         var form = extend({}, report, { event: 'monaca-local-' + report.event }, {
@@ -204,24 +215,41 @@
     );
   };
 
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Reports a fail event to Monaca backend. This must be used with a rejected promise.
+   *  It keeps the rejected promise flow.
+   * @param {object} report - Report object. Must contain 'event'.
+   *  Optional values are 'arg1' and 'otherArgs'.
+   * @param {any} resolvedValue - Optional. This parameter will be returned by the promise.
+   * @return {Rejected promise}
+   * @example
+   *   monaca.reportFail({event: 'create'})
+   *     .catch(handleErrors)
+   */
   Monaca.prototype.reportFail = function(report, error) {
     report.errorDetail = error === 'object' ? error.message : error;
     return this.reportAnalytics(extend({}, report, { event: report.event + '-fail' }))
-      .then(function() {
-        return Q.reject(error);
-      });
+      .then(Q.reject.bind(null, error));
   };
 
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Reports a finish event to Monaca backend. It keeps the previous promise flow.
+   * @param {object} report - Report object. Must contain 'event'.
+   *  Optional values are 'arg1' and 'otherArgs'.
+   * @param {any} resolvedValue - Optional. This parameter will be returned by the promise.
+   * @return {Promise}
+   * @example
+   *   monaca.reportAnalytics({event: 'create'})
+   *     .then(nextMethod)
+   */
   Monaca.prototype.reportFinish = function(report, resolvedValue) {
-    return this.reportAnalytics(extend({}, report, { event: report.event + '-finish' }))
-      .then(
-        function() {
-            return Q.resolve(resolvedValue);
-        },
-        function() {
-            return Q.resolve(resolvedValue);
-        }
-      );
+    return this.reportAnalytics(extend({}, report, { event: report.event + '-finish' }), resolvedValue);
   };
 
   Monaca.prototype._safeParse = function(jsonString) {
@@ -230,7 +258,7 @@
     } catch(e) {
       throw new Error('Not a JSON response.');
     }
-  }
+  };
 
   Monaca.prototype._loadAllData = function() {
     var data;
@@ -913,14 +941,7 @@
         return Q.reject(body.title);
       }.bind(this),
       Q.reject
-    )
-    // .then(
-    //   this.reportAnalytics.bind(this, {
-    //     event: 'signup-complete'
-    //   }),
-    //   Q.reject
-    // )
-    ;
+    );
   };
 
   /**
