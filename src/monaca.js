@@ -202,7 +202,7 @@
   Monaca.prototype.reportAnalytics = function(report, resolvedValue) {
     return this.getTrackId().then(
       function(trackId) {
-        var form = extend({}, report, { event: 'monaca-local-' + report.event }, {
+        var form = extend({}, report, { event: 'monaca-lib-' + report.event }, {
           trackId: trackId,
           clientType: this.clientType,
           version: this.version,
