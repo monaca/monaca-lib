@@ -1,7 +1,7 @@
 {
   "monaca": {
-    "default_api_root": "https://ide.s.monaca.mobi/api",
-    "web_api_root": "https://s.monaca.mobi/en/api"
+    "default_api_root": "https://ide.monaca.mobi/api",
+    "web_api_root": "https://monaca.mobi/en/api"
   },
   "localkit": {
     "http_server_port": 8001,
