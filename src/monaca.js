@@ -2080,7 +2080,7 @@
     var config = require(projectInfoFile);
 
     if(!config.build) {
-      return Q.resolve();
+      return Q.resolve(projectDir);
     }
 
     var deferred = Q.defer();
