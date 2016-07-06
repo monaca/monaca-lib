@@ -2014,6 +2014,29 @@
       );
   };
 
+  Monaca.prototype._npmInit = function() {
+    if (npm) {
+      return Q.resolve(npm);
+    }
+
+    var npmModules = ['npm', 'global-npm'];
+
+    for (var i in npmModules) {
+      try {
+        npm = require(npmModules[i]);
+      } catch (err) {
+        if (err.code === 'MODULE_NOT_FOUND' && i == (npmModules.length - 1)) {
+          err.message = 'npm module not found, add it in order to be able to use this functionality.';
+          return Q.reject(err);
+        }
+      }
+
+      if (npm) {
+        return Q.resolve(npm);
+      }
+    }
+  }
+
   /**
    * @method
    * @memberof Monaca
@@ -2027,37 +2050,23 @@
     argvs = argvs || [];
     var deferred = Q.defer();
 
-    if (!npm) {
-      var npmModules = ['npm', 'global-npm'];
-
-      for (var i in npmModules) {
-        if (npm) {
-          return
-        }
-
-        try {
-          npm = require(npmModules[i]);
-        } catch (err) {
-          if (err.code === 'MODULE_NOT_FOUND' && i == (npmModules.length - 1)) {
-            console.error(new Error('npm module not found, add it in order to be able to use this functionality.'));
-            return deferred.reject(err);
-          }
-        }
-      }
-    }
-
-    npm.load({}, function (err) {
-      if (err) {
-        return deferred.reject(err);
-      }
-
-      npm.commands.install(projectDir, argvs, function(err, data) {
+    this._npmInit().then(function() {
+      npm.load({}, function (err) {
         if (err) {
           return deferred.reject(err);
         }
 
-        deferred.resolve(projectDir);
+        npm.commands.install(projectDir, argvs, function(err, data) {
+          if (err) {
+            return deferred.reject(err);
+          }
+
+          deferred.resolve(projectDir);
+        });
       });
+    }, function(err) {
+      console.error(err.message);
+      process.exit(1);
     });
 
     return deferred.promise;
