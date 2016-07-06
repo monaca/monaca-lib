@@ -2025,8 +2025,13 @@
       try {
         npm = require(npmModules[i]);
       } catch (err) {
-        if (err.code === 'MODULE_NOT_FOUND' && i == (npmModules.length - 1)) {
-          err.message = 'npm module not found, add it in order to be able to use this functionality.';
+        if (i == (npmModules.length - 1)) {
+          if (err.code === 'MODULE_NOT_FOUND') {
+            err.message = 'npm module not found, add it in order to be able to use this functionality.';
+          } else {
+            err.message = 'There is an issue with npm. Error code: ' + err.code;
+          }
+
           return Q.reject(err);
         }
       }
