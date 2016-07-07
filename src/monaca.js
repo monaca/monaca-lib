@@ -778,7 +778,13 @@
    */
   Monaca.prototype.relogin = function(options) {
     options = options || {};
-    return this._login(this.getData('reloginToken'), options);
+
+    var reloginToken = this.getData('reloginToken');
+    if (typeof reloginToken !== 'string' || reloginToken === '') {
+      return Q.reject(new Error('Not a valid relogin token.'));
+    }
+
+    return this._login(reloginToken, options);
   };
 
   /**
