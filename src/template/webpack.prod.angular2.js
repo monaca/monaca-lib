@@ -2,6 +2,7 @@ try {
   var webpack = require('{{USER_CORDOVA}}/node_modules/webpack');
   var ExtractTextPlugin = require('{{USER_CORDOVA}}/node_modules/extract-text-webpack-plugin');
   var CopyWebpackPlugin = require('{{USER_CORDOVA}}/node_modules/copy-webpack-plugin');
+  var HtmlWebpackPlugin = require('{{USER_CORDOVA}}/node_modules/html-webpack-plugin');
 } catch (e) {
   throw 'Missing Webpack Build Dependencies.';
 }
@@ -72,6 +73,10 @@ module.exports = {
     new ExtractTextPlugin('[name].css'),
     new webpack.optimize.CommonsChunkPlugin({
       name: ['app', 'vendor', 'polyfills']
+    }),
+    new HtmlWebpackPlugin({   
+      template: 'src/public/index.html',    
+      chunksSortMode: 'dependency'    
     }),
     new webpack.NoErrorsPlugin(),
     new webpack.optimize.DedupePlugin(),
