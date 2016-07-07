@@ -31,6 +31,7 @@ module.exports = {
     loaders: [{
       test: /\.ts$/,
       loader: 'ts',
+
       query: {
         presets: [
           '{{USER_CORDOVA}}/node_modules/babel-preset-es2015',
@@ -45,7 +46,7 @@ module.exports = {
       loader: 'file?name=assets/[name].[hash].[ext]'
     }, {
       test: /\.styl$/,
-      loaders: ['style-loader', 'css-loader', 'stylus-loader'], 
+      loaders: ['style-loader', 'css-loader', 'stylus-loader'],
     }, {
       test: /\.css$/,
       exclude: '{{PROJECT_DIR}}/src/app',

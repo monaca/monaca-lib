@@ -16,17 +16,33 @@ module.exports = {
     filename: 'dist.js'
   },
 
+  resolve: {
+    root: [
+      '{{PROJECT_DIR}}/src',
+      '{{PROJECT_DIR}}/node_modules'
+    ],
+
+    extensions: ['', '.js', '.jsx', '.json', '.css', '.html', '.styl'],
+
+    alias: {
+      webpack: '{{USER_CORDOVA}}/node_modules/webpack',
+      react: '{{PROJECT_DIR}}/node_modules/react'
+    }
+  },
+
   module: {
     loaders: [{
-      test: /\.(js)$/,
-      exclude: /(node_modules|bower_components|www|platforms|\.monaca)/,
-      loader: 'babel-loader',
+      test: /\.(js|jsx)$/,
+      loader: 'babel',
+      exclude: /(react-onsenui|onsenui.js|bower_components|www|platforms|\.monaca)/,
+
       query: {
         presets: [
           '{{USER_CORDOVA}}/node_modules/babel-preset-es2015',
           '{{USER_CORDOVA}}/node_modules/babel-preset-stage-2',
           '{{USER_CORDOVA}}/node_modules/babel-preset-react'
         ],
+
         plugins: ['{{USER_CORDOVA}}/node_modules/react-hot-loader/babel']
       }
     }, {
@@ -37,23 +53,17 @@ module.exports = {
       loader: 'file?name=assets/[name].[hash].[ext]'
     }, {
       test: /\.styl$/,
-      loaders: ['style-loader', 'css-loader', 'stylus-loader'], 
+      loaders: ['style-loader', 'css-loader', 'stylus-loader'],
     }, {
       test: /\.css$/,
-      exclude: '{{PROJECT_DIR}}',
+      exclude: '{{PROJECT_DIR}}/src',
       loader: ExtractTextPlugin.extract('style', 'css?sourceMap')
     }, {
       test: /\.css$/,
-      include: '{{PROJECT_DIR}}',
+      include: '{{PROJECT_DIR}}/src',
       loader: 'raw'
     }]
   },
-
-  resolveLoader: {
-    root: '{{USER_CORDOVA}}/node_modules'
-  },
-
-  resolve: {},
 
   plugins: [
     new ExtractTextPlugin('[name].css'),
@@ -64,4 +74,8 @@ module.exports = {
       from: '{{PROJECT_DIR}}/src/public',
     }])
   ],
+
+  resolveLoader: {
+    root: '{{USER_CORDOVA}}/node_modules'
+  }
 };
