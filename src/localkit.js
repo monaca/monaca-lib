@@ -233,8 +233,8 @@
       requestToken: requestToken,
       companionClientIdHash: clientIdHash
     }).then(
-      function(response) {
-        deferred.resolve(JSON.parse(response).result.pairingKey);
+      function(data) {
+        deferred.resolve(JSON.parse(data.body).result.pairingKey);
       },
       function(error) {
         deferred.reject(error);
