@@ -2089,11 +2089,11 @@
    * @memberof Monaca
    * @description
    *   Runs NPM install command
-   * @param {String} Project's Directory
+   * @param {String} Directory
    * @param {String} Dependencies to install. Omit it to use the directory's package.json
    * @return {Promise}
    */
-  Monaca.prototype._npmInstall = function(projectDir, argvs) {
+  Monaca.prototype._npmInstall = function(dir, argvs) {
     argvs = argvs || [];
     var deferred = Q.defer();
 
@@ -2103,12 +2103,12 @@
           return deferred.reject(err);
         }
 
-        npm.commands.install(projectDir, argvs, function(err, data) {
+        npm.commands.install(dir, argvs, function(err, data) {
           if (err) {
             return deferred.reject(err);
           }
 
-          deferred.resolve(projectDir);
+          deferred.resolve(data);
         });
       });
     }, function(err) {
@@ -2119,7 +2119,7 @@
     return deferred.promise;
   };
 
-  Monaca.prototype.jsStringEscape = function (string) {
+  function jsStringEscape(string) {
     return ('' + string).replace(/["'\\\n\r\u2028\u2029]/g, function (character) {
       // Escape all characters not included in SingleStringCharacters and
       // DoubleStringCharacters on
@@ -2128,16 +2128,16 @@
         case '"':
         case "'":
         case '\\':
-          return '\\' + character
+          return '\\' + character;
         // Four possible LineTerminator characters need to be escaped:
         case '\n':
-          return '\\n'
+          return '\\n';
         case '\r':
-          return '\\r'
+          return '\\r';
         case '\u2028':
-          return '\\u2028'
+          return '\\u2028';
         case '\u2029':
-          return '\\u2029'
+          return '\\u2029';
       }
     })
   };
@@ -2151,8 +2151,7 @@
    * @return {Promise}
    */
   Monaca.prototype.installBuildDependencies = function(projectDir) {
-    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-    var config = require(projectInfoFile);
+    var config = this.fetchProjectData(projectDir);
 
     if(!config.build) {
       return Q.resolve(projectDir);
@@ -2192,7 +2191,10 @@
 
     if(installDependencies.length > 0) {
       process.stdout.write('\n\nInstalling build dependencies...\n');
-      deferred.resolve(this._npmInstall(projectDir, installDependencies));
+      this._npmInstall(USER_CORDOVA, installDependencies).then(
+        deferred.resolve.bind(null, projectDir),
+        deferred.reject.bind(null, 'Failed to install build dependencies.')
+      );
     } else {
       deferred.resolve(projectDir);
     }
@@ -2202,8 +2204,7 @@
 
   Monaca.prototype.getWebpackConfig = function(environment, projectDir) {
     try {
-      var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-      var config = require(projectInfoFile); 
+      var config = this.fetchProjectData(projectDir);
     } catch(error) {
       throw 'Failed to require package info.';
     }
@@ -2217,17 +2218,16 @@
     }
 
     return fs.readFileSync(asset, 'utf8')
-      .replace(/{{USER_CORDOVA}}/g, this.jsStringEscape(USER_CORDOVA))
-      .replace(/{{PROJECT_DIR}}/g, this.jsStringEscape(projectDir))
+      .replace(/{{USER_CORDOVA}}/g, jsStringEscape(USER_CORDOVA))
+      .replace(/{{PROJECT_DIR}}/g, jsStringEscape(projectDir))
       ;
   }
 
   Monaca.prototype.generateBuildConfigs = function(projectDir) {
-    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-    var config = require(projectInfoFile);
+    var config = this.fetchProjectData(projectDir);
 
     if(!config.build) {
-      return Q.resolve();
+      return Q.resolve(false);
     }
 
     var deferred = Q.defer();
@@ -2280,24 +2280,36 @@
     return deferred.promise;
   };
 
-  Monaca.prototype.isTranspilable = function(projectDir) {
-    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-    var config = require(projectInfoFile);
-    var type = config['template-type'];
+  var project_json_data = null;
 
+  Monaca.prototype.fetchProjectData = function(projectDir) {
+    if(project_json_data) {
+      return project_json_data;
+    }
+
+    try {
+      project_json_data = this._safeParse(fs.readFileSync(path.resolve(path.join(projectDir, '.monaca', 'project_info.json'))));
+    } catch (e) {
+      project_json_data = null;
+    }
+
+    return project_json_data;
+  }
+
+  Monaca.prototype.isTranspilable = function(projectDir) {
+    var config = this.fetchProjectData(projectDir);
+    
+    if(!config) {
+      return false;
+    }
+
+    var type = config['template-type'];
     return type && ( type === 'react' || type === 'angular2' );
   }
 
-  Monaca.prototype.requireTranspile = function(projectDir) {
-    process.stdout.write('requireTranspile has been deprecated, please use isTranspileEnabled\n');
-    return this.isTranspileEnabled(projectDir);
-  }
-
   Monaca.prototype.isTranspileEnabled = function(projectDir) {
-    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-    var config = require(projectInfoFile);
-
-    return config.build && config.build.transpile && config.build.transpile.enabled;
+    var config = this.fetchProjectData(projectDir);
+    return config.build && config.build.transpile && config.build.transpile.enabled;   
   };
 
   Monaca.prototype.getWebpackBinPath = function() {
@@ -2332,11 +2344,10 @@
       process.env.NODE_PATH = USER_CORDOVA;
 
       // Check for nodejs version dependency requirement for angular 2.
-      var projectConfigPath = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-      var projectConfig = require(projectConfigPath);
+      var projectConfig = this.fetchProjectData(projectDir);
       if(projectConfig['template-type'] === 'angular2') {
         if(parseInt(process.version.replace('v', '').replace(/\./g, ''), 10) < 500) {
-          process.stdout.write('Warning: The version of Node JS you are using does not meet the minimum requirements for Angular 2. You may experience errors when transpiling.  Please upgrade Node JS to v5.x.x and NPM to v3.x.x.\n');
+          process.stdout.write('Warning: The version of Node.js you are using does not meet the minimum requirements for Angular 2. You may experience errors when transpiling.  Please upgrade Node.js to v5.x.x and NPM to v3.x.x.\n');
         }
       }
 
@@ -2396,7 +2407,7 @@
         } else {
           deferred.resolve({
             message:'Transpiling succeeded for ' + projectDir,
-            stats: webpackProcessLog
+            log: webpackProcessLog
           });
         }
       });
