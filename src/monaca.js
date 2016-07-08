@@ -2280,19 +2280,28 @@
     return deferred.promise;
   };
 
+  Monaca.prototype.isTranspilable = function(projectDir) {
+    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
+    var config = require(projectInfoFile);
+    var type = config['template-type'];
+
+    return type && ( type === 'react' || type === 'angular2' );
+  }
+
   Monaca.prototype.requireTranspile = function(projectDir) {
+    process.stdout.write('requireTranspile has been deprecated, please use isTranspileEnabled\n');
+    return this.isTranspileEnabled(projectDir);
+  }
+
+  Monaca.prototype.isTranspileEnabled = function(projectDir) {
     var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
     var config = require(projectInfoFile);
 
-    if (config.build && config.build.transpile) {
-      return true;
-    }
-
-    return false;
+    return config.build && config.build.transpile && config.build.transpile.enabled;
   };
 
-  Monaca.prototype.getWebPackModule = function() {
-    return require(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'webpack')));
+  Monaca.prototype.getWebpackBinPath = function() {
+    return path.resolve(path.join(USER_CORDOVA, 'node_modules', '.bin', 'webpack'));
   };
 
   Monaca.prototype.getWebpackDevServerBinPath = function() {
@@ -2300,84 +2309,98 @@
   };
 
   Monaca.prototype.transpile = function(projectDir) {
-    var result = {
-      message: "No transpiling needed for " + projectDir
-    };
-
-    if (!this.requireTranspile(projectDir)) {
-      return Q.resolve(result);
+    if (!this.isTranspilable(projectDir)) {
+      return Q.resolve({
+        message: 'This project\'s type does not support transpiling capabilities.\n'
+      });
     }
 
-    var pwd = process.cwd();
+    if (!this.isTranspileEnabled(projectDir)) {
+      return Q.resolve({
+        message: 'The transpiling feature for this project is currently disabled.\n'
+      });
+    }
+
     var deferred = Q.defer();
-    process.stdout.write('Running Transpiler...');
+    this.emitter.emit('output', {
+      type: 'success',
+      message: 'Running Transpiler...'
+    });
+    process.stdout.write('Running Transpiler...\n');
 
     try {
-      if(projectDir !== pwd) {
-        process.chdir(projectDir);
+      process.env.NODE_PATH = USER_CORDOVA;
+
+      // Check for nodejs version dependency requirement for angular 2.
+      var projectConfigPath = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
+      var projectConfig = require(projectConfigPath);
+      if(projectConfig['template-type'] === 'angular2') {
+        if(parseInt(process.version.replace('v', '').replace(/\./g, ''), 10) < 500) {
+          process.stdout.write('Warning: The version of Node JS you are using does not meet the minimum requirements for Angular 2. You may experience errors when transpiling.  Please upgrade Node JS to v5.x.x and NPM to v3.x.x.\n');
+        }
       }
 
-      var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-      var config = require(projectInfoFile);
-      var type = config['template-type'];
-      var pwd = process.cwd();
+      var webpackConfig = path.join(projectDir, 'webpack.prod.config.js');
+      var webpackBinPath = this.getWebpackBinPath();
+      var webpackProcessLog = [];
+      var webpackProcess = child_process.exec(
+        webpackBinPath + ' --progress --config ' + webpackConfig,
+        {
+          cwd: projectDir
+        },
+        function(error, stdout, stderr) {
+          webpackProcessLog.push(error);
+        }
+      );
 
-      if (projectDir !== pwd) {
-        process.chdir(projectDir);
+      var fixLog = function(data) {
+        return data.toString()
+          .split('\n')
+          .filter(function(item) {
+            return item !== '';
+          })
+          .map(function(item) {
+            return item + '\n';
+          });
+      };
+
+      var removeSpecialChars = function(msg) {
+        return msg.replace(/\u001b\[.*?m/g, '')
+          .replace(/[^\w\s%/]/gi, '')
+          .replace(/[\n\s\t\r]+/gi, '');
       }
 
-      if(type === 'react' || type === 'angular2') {
-        process.env.NODE_PATH = USER_CORDOVA;
-
-        if(type === 'angular2') {
-          if(parseInt(process.version.replace('v', '').replace(/\./g, ''), 10) < 500) {
-            console.log('Warning: The version of Node JS you are using does not meet the minimum requirements for Angular 2. You may experience errors when transpiling.  Please upgrade Node JS to v5.x.x and NPM to v3.x.x.');
+      webpackProcess.stdout.on('data', function(data) {
+        fixLog(data).forEach(function(log) {
+          if(removeSpecialChars(log.info) !== '') {
+            webpackProcessLog.push(log.info);
+            process.stdout.write(log.info);
           }
-        }
-
-        var webpack = this.getWebPackModule();
-
-        var loadingTimeoutId;
-        function dot() {
-          loadingTimeoutId = setTimeout(function() {
-            process.stdout.write('.');
-            dot();
-          }, (Math.random() * 2000));
-        }
-        dot();
-
-        var webpackProdConfig = require(path.join(projectDir, 'webpack.prod.config.js'));
-
-        webpack(webpackProdConfig, function(err, stats){
-          clearTimeout(loadingTimeoutId);
-          process.stdout.write('\n');
-
-          if(err) {
-            process.chdir(pwd);
-            return deferred.reject(new Error(err));
-          }
-
-          var jsonStats = stats.toJson();
-          if(jsonStats.errors.length > 0) {
-            var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
-            error.log = jsonStats.errors;
-            process.chdir(pwd);
-            return deferred.reject(error);
-          }
-
-          result.message = "Transpiling succeeded for " + projectDir;
-          result.stats = jsonStats;
-          
-          process.chdir(pwd);
-          deferred.resolve(result);
         });
-      } else {
-        // Template has no transpiler settings.
-        process.chdir(pwd);
-        deferred.resolve(result);
-      }
+      });
+
+      webpackProcess.stderr.on('data', function(data) {
+        fixLog(data).forEach(function(log) {
+          if(removeSpecialChars(log.error) !== '') {
+            webpackProcessLog.push(log.error);
+            process.stderr.write(log.error);
+          }
+        });
+      });
+
+      webpackProcess.on('exit', function(code) {
+        if(code === 1) {
+          var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
+          error.log = webpackProcessLog;
+          deferred.reject(error);
+        } else {
+          deferred.resolve({
+            message:'Transpiling succeeded for ' + projectDir,
+            stats: webpackProcessLog
+          });
+        }
+      });
     } catch (error) {
-      process.chdir(pwd);
       deferred.reject(error);
     }
 
