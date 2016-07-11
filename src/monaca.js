@@ -2313,7 +2313,7 @@
    */
   Monaca.prototype.fetchProjectData = function(projectDir) {
     try {
-      project_json_data = this._safeParse(fs.readFileSync(path.resolve(path.join(projectDir, '.monaca', 'project_info.json'))));
+      var project_json_data = this._safeParse(fs.readFileSync(path.resolve(path.join(projectDir, '.monaca', 'project_info.json'))));
     } catch (e) {
       project_json_data = null;
     }
