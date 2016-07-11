@@ -2119,7 +2119,7 @@
     return deferred.promise;
   };
 
-  function jsStringEscape(string) {
+  function _jsStringEscape(string) {
     return ('' + string).replace(/["'\\\n\r\u2028\u2029]/g, function (character) {
       // Escape all characters not included in SingleStringCharacters and
       // DoubleStringCharacters on
@@ -2202,6 +2202,15 @@
     return deferred.promise;
   };
 
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Get webpack config template and replace string variables with project specific values.
+   * @param {String} Webpack Config Environment Type (prod|dev)
+   * @param {String} Project Directory
+   * @return {String}
+   */
   Monaca.prototype.getWebpackConfig = function(environment, projectDir) {
     try {
       var config = this.fetchProjectData(projectDir);
@@ -2218,11 +2227,19 @@
     }
 
     return fs.readFileSync(asset, 'utf8')
-      .replace(/{{USER_CORDOVA}}/g, jsStringEscape(USER_CORDOVA))
-      .replace(/{{PROJECT_DIR}}/g, jsStringEscape(projectDir))
+      .replace(/{{USER_CORDOVA}}/g, _jsStringEscape(USER_CORDOVA))
+      .replace(/{{PROJECT_DIR}}/g, _jsStringEscape(projectDir))
       ;
   }
 
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Writes webpack configs to the project directory.
+   * @param {String} Project Directory
+   * @return {Promise}
+   */
   Monaca.prototype.generateBuildConfigs = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
 
@@ -2280,13 +2297,15 @@
     return deferred.promise;
   };
 
-  var project_json_data = null;
-
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns a JSON Object of the project's info.
+   * @param {String} Project Directory
+   * @return {Object}
+   */
   Monaca.prototype.fetchProjectData = function(projectDir) {
-    if(project_json_data) {
-      return project_json_data;
-    }
-
     try {
       project_json_data = this._safeParse(fs.readFileSync(path.resolve(path.join(projectDir, '.monaca', 'project_info.json'))));
     } catch (e) {
@@ -2296,6 +2315,14 @@
     return project_json_data;
   }
 
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns true if the type of project supports transpile.
+   * @param {String} Project Directory
+   * @return {Boolean}
+   */
   Monaca.prototype.isTranspilable = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
     
@@ -2307,19 +2334,49 @@
     return type && ( type === 'react' || type === 'angular2' );
   }
 
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns true if user has enabled the project transpile feature.
+   * @param {String} Project Directory
+   * @return {Boolean}
+   */
   Monaca.prototype.isTranspileEnabled = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
     return config.build && config.build.transpile && config.build.transpile.enabled;   
   };
 
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns path to the user's global webpack binary.
+   * @return {String}
+   */
   Monaca.prototype.getWebpackBinPath = function() {
     return path.resolve(path.join(USER_CORDOVA, 'node_modules', '.bin', 'webpack'));
   };
 
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns path to the user's global webpack-de-server binary.
+   * @return {String}
+   */
   Monaca.prototype.getWebpackDevServerBinPath = function() {
     return path.resolve(path.join(USER_CORDOVA, 'node_modules', '.bin', 'webpack-dev-server'));
   };
 
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Transpiles projects that need to be transpiled and are enabled.
+   * @param {String} Project Directory
+   * @return {Promise}
+   */
   Monaca.prototype.transpile = function(projectDir) {
     if (!this.isTranspilable(projectDir)) {
       return Q.resolve({
