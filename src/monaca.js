@@ -2427,39 +2427,16 @@
         }
       );
 
-      var fixLog = function(data) {
-        return data.toString()
-          .split('\n')
-          .filter(function(item) {
-            return item !== '';
-          })
-          .map(function(item) {
-            return item + '\n';
-          });
-      };
-
-      var removeSpecialChars = function(msg) {
-        return msg.replace(/\u001b\[.*?m/g, '')
-          .replace(/[^\w\s%/]/gi, '')
-          .replace(/[\n\s\t\r]+/gi, '');
-      }
-
       webpackProcess.stdout.on('data', function(data) {
-        fixLog(data).forEach(function(log) {
-          if(removeSpecialChars(log.info) !== '') {
-            webpackProcessLog.push(log.info);
-            process.stdout.write(log.info);
-          }
-        });
+        var log = data.toString();
+        webpackProcessLog.push(log.info);
+        process.stdout.write(log.info);
       });
 
       webpackProcess.stderr.on('data', function(data) {
-        fixLog(data).forEach(function(log) {
-          if(removeSpecialChars(log.error) !== '') {
-            webpackProcessLog.push(log.error);
-            process.stderr.write(log.error);
-          }
-        });
+        var log = data.toString();
+        webpackProcessLog.push(log.error);
+        process.stderr.write(log.error);
       });
 
       webpackProcess.on('exit', function(code) {
