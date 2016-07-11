@@ -2095,11 +2095,11 @@
    * @memberof Monaca
    * @description
    *   Runs NPM install command
-   * @param {String} Project's Directory
+   * @param {String} Directory
    * @param {String} Dependencies to install. Omit it to use the directory's package.json
    * @return {Promise}
    */
-  Monaca.prototype._npmInstall = function(projectDir, argvs) {
+  Monaca.prototype._npmInstall = function(dir, argvs) {
     argvs = argvs || [];
     var deferred = Q.defer();
 
@@ -2109,12 +2109,12 @@
           return deferred.reject(err);
         }
 
-        npm.commands.install(projectDir, argvs, function(err, data) {
+        npm.commands.install(dir, argvs, function(err, data) {
           if (err) {
             return deferred.reject(err);
           }
 
-          deferred.resolve(projectDir);
+          deferred.resolve(data);
         });
       });
     }, function(err) {
@@ -2123,6 +2123,29 @@
     });
 
     return deferred.promise;
+  };
+
+  function _jsStringEscape(string) {
+    return ('' + string).replace(/["'\\\n\r\u2028\u2029]/g, function (character) {
+      // Escape all characters not included in SingleStringCharacters and
+      // DoubleStringCharacters on
+      // http://www.ecma-international.org/ecma-262/5.1/#sec-7.8.4
+      switch (character) {
+        case '"':
+        case "'":
+        case '\\':
+          return '\\' + character;
+        // Four possible LineTerminator characters need to be escaped:
+        case '\n':
+          return '\\n';
+        case '\r':
+          return '\\r';
+        case '\u2028':
+          return '\\u2028';
+        case '\u2029':
+          return '\\u2029';
+      }
+    })
   };
 
   /**
@@ -2134,15 +2157,13 @@
    * @return {Promise}
    */
   Monaca.prototype.installBuildDependencies = function(projectDir) {
-    var deferred = Q.defer();
-    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-    var config = require(projectInfoFile);
+    var config = this.fetchProjectData(projectDir);
 
     if(!config.build) {
-      deferred.resolve();
-      return deferred.promise;
+      return Q.resolve(projectDir);
     }
 
+    var deferred = Q.defer();
     var packageJsonFile = path.resolve(path.join(__dirname, '..', 'package.json'));
     var dependencies = require(packageJsonFile).additionalDependencies;
     var installDependencies = [];
@@ -2176,13 +2197,83 @@
 
     if(installDependencies.length > 0) {
       process.stdout.write('\n\nInstalling build dependencies...\n');
-
-      deferred.resolve(this._npmInstall(USER_CORDOVA, installDependencies));
+      this._npmInstall(USER_CORDOVA, installDependencies).then(
+        deferred.resolve.bind(null, projectDir),
+        deferred.reject.bind(null, 'Failed to install build dependencies.')
+      );
     } else {
-      deferred.resolve();
+      deferred.resolve(projectDir);
     }
 
     return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Get webpack config template and replace string variables with project specific values.
+   * @param {String} Webpack Config Environment Type (prod|dev)
+   * @param {String} Project Directory
+   * @return {String}
+   */
+  Monaca.prototype.getWebpackConfig = function(environment, projectDir) {
+    try {
+      var config = this.fetchProjectData(projectDir);
+    } catch(error) {
+      throw 'Failed to require package info.';
+    }
+
+    var framework = config['template-type'];
+    var file = 'webpack.' + environment + '.' + framework +  '.js';
+    var asset = path.resolve(path.join(__dirname, 'template', file));
+
+    if(!fs.existsSync(asset)) {
+      throw 'Failed to locate Webpack config template for framework ' + framework;
+    }
+
+    return fs.readFileSync(asset, 'utf8')
+      .replace(/{{USER_CORDOVA}}/g, _jsStringEscape(USER_CORDOVA))
+      .replace(/{{PROJECT_DIR}}/g, _jsStringEscape(projectDir))
+      ;
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Writes webpack configs to the project directory.
+   * @param {String} Project Directory
+   * @return {Promise}
+   */
+  Monaca.prototype.generateBuildConfigs = function(projectDir) {
+    var config = this.fetchProjectData(projectDir);
+
+    if(!config.build) {
+      return Q.resolve(false);
+    }
+
+    var deferred = Q.defer();
+
+    try {
+      var webpackDevFile = path.resolve(path.join(projectDir, 'webpack.dev.config.js'));
+      if(!fs.existsSync(webpackDevFile)) {
+        var fileContent = this.getWebpackConfig('dev', projectDir);
+        fs.writeFileSync(webpackDevFile, fileContent, 'utf8');
+      }
+
+      var webpackProdFile = path.resolve(path.join(projectDir, 'webpack.prod.config.js'));
+      if(!fs.existsSync(path.resolve(path.join(projectDir, 'webpack.prod.config.js')))) {
+        var fileContent = this.getWebpackConfig('prod', projectDir);
+        fs.writeFileSync(webpackProdFile, fileContent, 'utf8');
+      }
+
+      deferred.resolve(projectDir);
+    } catch (error) {
+      deferred.reject(error);
+    }
+
+    return Q.resolve(projectDir);
   };
 
   /**
@@ -2199,23 +2290,9 @@
     fs.exists(path.resolve(path.join(projectDir, 'package.json')), function(exists) {
       if (exists) {
         process.stdout.write('Installing template dependencies...\n');
-        this._npmInstall(projectDir)
-          .then(
-            function() {
-              var onsenCssSrc = path.join(projectDir, 'node_modules', 'onsenui', 'css');
-              var onsenCssDest = path.join(projectDir, 'www', 'css');
-
-              // concurrency limit
-              ncp.limit = 16;
-              ncp(onsenCssSrc, onsenCssDest, function (err) {
-                if (err) {
-                  deferred.reject('Failed to copy Onsen UI dependencies.');
-                } else {
-                  deferred.resolve(projectDir);
-                }
-              });
-            },
-            deferred.reject.bind(null, 'Failed to install template dependencies.')
+        this._npmInstall(projectDir).then(
+          deferred.resolve.bind(null, projectDir),
+          deferred.reject.bind(null, 'Failed to install template dependencies.')
         );
       }
       else {
@@ -2226,133 +2303,178 @@
     return deferred.promise;
   };
 
-  Monaca.prototype.requireTranspile = function(projectDir) {
-    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-    var config = require(projectInfoFile);
-
-    if (config.build && config.build.transpile && config.build.transpile.enabled) {
-      return true;
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns a JSON Object of the project's info.
+   * @param {String} Project Directory
+   * @return {Object}
+   */
+  Monaca.prototype.fetchProjectData = function(projectDir) {
+    try {
+      project_json_data = this._safeParse(fs.readFileSync(path.resolve(path.join(projectDir, '.monaca', 'project_info.json'))));
+    } catch (e) {
+      project_json_data = null;
     }
 
-    return false;
-  };
-
-  Monaca.prototype.getWebPackConfigs = function(projectDir) {
-    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-    var config = require(projectInfoFile);
-    var type = config['template-type'];
-
-    var extension;
-    var exclude = /(node_modules|bower_components|platforms|www|\.monaca)/;
-    var loader = '';
-    var presets = [
-      path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-es2015')),
-      path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-stage-2'))
-    ];
-    var resolve = {};
-
-    if(type === 'react') {
-      extension = /\.js$/;
-      loader = 'babel-loader';
-      presets.push(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'babel-preset-react')));
-    } else if (type === 'angular2') {
-      extension = /\.ts$/;
-      loader = 'awesome-typescript-loader';
-      resolve = {
-        root: [ path.join(projectDir, 'src') ],
-        extensions: ['', '.ts', '.js']
-      };
-    }
-
-    return {
-      context: projectDir,
-      entry: '.' + path.sep + config.build.transpile.src,
-      output: {
-        path: projectDir,
-        filename: config.build.transpile.dist
-      },
-      module: {
-        loaders: [
-          {
-            test: extension,
-            exclude: exclude,
-            loader: loader,
-            query: {
-              'presets': presets
-            }
-          }
-        ]
-      },
-      resolveLoader: {
-        root: path.resolve(path.join(USER_CORDOVA, 'node_modules'))
-      },
-      resolve: resolve
-    };
+    return project_json_data;
   }
 
-  Monaca.prototype.getWebPackModule = function() {
-    return require(path.resolve(path.join(USER_CORDOVA, 'node_modules', 'webpack')));
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns true if the type of project supports transpile.
+   * @param {String} Project Directory
+   * @return {Boolean}
+   */
+  Monaca.prototype.isTranspilable = function(projectDir) {
+    var config = this.fetchProjectData(projectDir);
+    
+    if(!config) {
+      return false;
+    }
+
+    var type = config['template-type'];
+    return type && ( type === 'react' || type === 'angular2' );
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns true if user has enabled the project transpile feature.
+   * @param {String} Project Directory
+   * @return {Boolean}
+   */
+  Monaca.prototype.isTranspileEnabled = function(projectDir) {
+    var config = this.fetchProjectData(projectDir);
+    return config.build && config.build.transpile && config.build.transpile.enabled;   
   };
 
-  Monaca.prototype.transpile = function(projectDir) {
-    var result = {
-      message: "No transpiling needed for " + projectDir
-    };
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns path to the user's global webpack binary.
+   * @return {String}
+   */
+  Monaca.prototype.getWebpackBinPath = function() {
+    return path.resolve(path.join(USER_CORDOVA, 'node_modules', '.bin', 'webpack'));
+  };
 
-    if (!this.requireTranspile(projectDir)) {
-      return Q.resolve(result);
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns path to the user's global webpack-de-server binary.
+   * @return {String}
+   */
+  Monaca.prototype.getWebpackDevServerBinPath = function() {
+    return path.resolve(path.join(USER_CORDOVA, 'node_modules', '.bin', 'webpack-dev-server'));
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Transpiles projects that need to be transpiled and are enabled.
+   * @param {String} Project Directory
+   * @return {Promise}
+   */
+  Monaca.prototype.transpile = function(projectDir) {
+    if (!this.isTranspilable(projectDir)) {
+      return Q.resolve({
+        message: 'This project\'s type does not support transpiling capabilities.\n'
+      });
+    }
+
+    if (!this.isTranspileEnabled(projectDir)) {
+      return Q.resolve({
+        message: 'The transpiling feature for this project is currently disabled.\n'
+      });
     }
 
     var deferred = Q.defer();
+    this.emitter.emit('output', {
+      type: 'success',
+      message: 'Running Transpiler...'
+    });
+    process.stdout.write('Running Transpiler...\n');
 
     try {
-      var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-      var config = require(projectInfoFile);
-      var type = config['template-type'];
-      var pwd = process.cwd();
+      process.env.NODE_PATH = USER_CORDOVA;
 
-      if (projectDir !== pwd) {
-        process.chdir(projectDir);
-      }
-
-      if(type === 'react' || type === 'angular2') {
-        process.env.NODE_PATH = USER_CORDOVA;
-
-        if(type === 'angular2') {
-          if(parseInt(process.version.replace('v', '').replace(/\./g, ''), 10) < 500) {
-            console.log('Warning: The version of Node JS you are using does not meet the minimum requirements for Angular 2. You may experience errors when transpiling.  Please upgrade Node JS to v5.x.x and NPM to v3.x.x.');
-          }
+      // Check for nodejs version dependency requirement for angular 2.
+      var projectConfig = this.fetchProjectData(projectDir);
+      if(projectConfig['template-type'] === 'angular2') {
+        if(parseInt(process.version.replace('v', '').replace(/\./g, ''), 10) < 500) {
+          process.stdout.write('Warning: The version of Node.js you are using does not meet the minimum requirements for Angular 2. You may experience errors when transpiling.  Please upgrade Node.js to v5.x.x and NPM to v3.x.x.\n');
         }
-
-        var webpack = this.getWebPackModule();
-
-        webpack(this.getWebPackConfigs(projectDir), function(err, stats){
-          if(err) {
-            process.chdir(pwd);
-            return deferred.reject(new Error(err));
-          }
-
-          var jsonStats = stats.toJson();
-          if(jsonStats.errors.length > 0) {
-            var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
-            error.log = jsonStats.errors;
-            process.chdir(pwd);
-            return deferred.reject(error);
-          }
-
-          result.message = "Transpiling succeeded for " + projectDir;
-          result.stats = jsonStats;
-          process.chdir(pwd);
-
-          deferred.resolve(result);
-        });
-      } else {
-        // Template has no transpiler settings.
-        process.chdir(pwd);
-        deferred.resolve(result);
       }
+
+      var webpackConfig = path.join(projectDir, 'webpack.prod.config.js');
+      var webpackBinPath = this.getWebpackBinPath();
+      var webpackProcessLog = [];
+      var webpackProcess = child_process.exec(
+        webpackBinPath + ' --progress --config ' + webpackConfig,
+        {
+          cwd: projectDir
+        },
+        function(error, stdout, stderr) {
+          webpackProcessLog.push(error);
+        }
+      );
+
+      var fixLog = function(data) {
+        return data.toString()
+          .split('\n')
+          .filter(function(item) {
+            return item !== '';
+          })
+          .map(function(item) {
+            return item + '\n';
+          });
+      };
+
+      var removeSpecialChars = function(msg) {
+        return msg.replace(/\u001b\[.*?m/g, '')
+          .replace(/[^\w\s%/]/gi, '')
+          .replace(/[\n\s\t\r]+/gi, '');
+      }
+
+      webpackProcess.stdout.on('data', function(data) {
+        fixLog(data).forEach(function(log) {
+          if(removeSpecialChars(log.info) !== '') {
+            webpackProcessLog.push(log.info);
+            process.stdout.write(log.info);
+          }
+        });
+      });
+
+      webpackProcess.stderr.on('data', function(data) {
+        fixLog(data).forEach(function(log) {
+          if(removeSpecialChars(log.error) !== '') {
+            webpackProcessLog.push(log.error);
+            process.stderr.write(log.error);
+          }
+        });
+      });
+
+      webpackProcess.on('exit', function(code) {
+        if(code === 1) {
+          var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
+          error.log = webpackProcessLog;
+          deferred.reject(error);
+        } else {
+          deferred.resolve({
+            message:'Transpiling succeeded for ' + projectDir,
+            log: webpackProcessLog
+          });
+        }
+      });
     } catch (error) {
-      process.chdir(pwd);
       deferred.reject(error);
     }
 
@@ -2463,7 +2585,8 @@
       .then(fetchFile)
       .then(unzipFile)
       .then(this.installTemplateDependencies.bind(this))
-      .then(this.installBuildDependencies.bind(this));
+      .then(this.installBuildDependencies.bind(this))
+      .then(this.generateBuildConfigs.bind(this));
   };
 
   /**
