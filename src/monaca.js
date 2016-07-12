@@ -2250,7 +2250,7 @@
     var config = this.fetchProjectData(projectDir);
 
     if(!config.build) {
-      return Q.resolve(false);
+      return Q.resolve(projectDir);
     }
 
     var deferred = Q.defer();
@@ -2561,9 +2561,9 @@
     return checkDirectory()
       .then(fetchFile)
       .then(unzipFile)
+      .then(this.generateBuildConfigs.bind(this))
       .then(this.installTemplateDependencies.bind(this))
-      .then(this.installBuildDependencies.bind(this))
-      .then(this.generateBuildConfigs.bind(this));
+      .then(this.installBuildDependencies.bind(this));
   };
 
   /**
