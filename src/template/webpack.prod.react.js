@@ -4,6 +4,7 @@ try {
   var cordovaNodeModules = path.join(os.homedir(), '.cordova', 'node_modules');
   
   var webpack = require(path.join(cordovaNodeModules, 'webpack'));
+  var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
   var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
   var CopyWebpackPlugin = require(path.join(cordovaNodeModules, 'copy-webpack-plugin'));
 } catch (e) {
@@ -73,6 +74,10 @@ module.exports = {
 
   plugins: [
     new ExtractTextPlugin('[name].css'),
+    new HtmlWebpackPlugin({   
+      template: 'src/public/index.html',    
+      chunksSortMode: 'dependency'    
+    }),
     new webpack.NoErrorsPlugin(),
     new webpack.optimize.DedupePlugin(),
     new webpack.optimize.UglifyJsPlugin(),
