@@ -2232,10 +2232,7 @@
       throw 'Failed to locate Webpack config template for framework ' + framework;
     }
 
-    return fs.readFileSync(asset, 'utf8')
-      .replace(/{{USER_CORDOVA}}/g, _jsStringEscape(USER_CORDOVA))
-      .replace(/{{PROJECT_DIR}}/g, _jsStringEscape(projectDir))
-      ;
+    return fs.readFileSync(asset, 'utf8');
   }
 
   /**

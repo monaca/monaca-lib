@@ -1,7 +1,11 @@
 try {
-  var webpack = require('{{USER_CORDOVA}}/node_modules/webpack');
-  var HtmlWebpackPlugin = require('{{USER_CORDOVA}}/node_modules/html-webpack-plugin');
-  var ExtractTextPlugin = require('{{USER_CORDOVA}}/node_modules/extract-text-webpack-plugin');
+  var path = require('path');
+  var os = require('os');
+  var cordovaNodeModules = path.join(os.homedir(), '.cordova', 'node_modules');
+  
+  var webpack = require(path.join(cordovaNodeModules, 'webpack'));
+  var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
+  var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
 } catch (e) {
   throw 'Missing Webpack Build Dependencies.';
 }
@@ -18,24 +22,24 @@ module.exports = {
   ],
 
   output: {
-    path: '{{PROJECT_DIR}}/www',
+    path: path.join(__dirname, 'www'),
     filename: 'dist.js'
   },
 
   resolve: {
     root: [
-      '{{PROJECT_DIR}}/src',
-      '{{PROJECT_DIR}}/node_modules'
+      path.join(__dirname, 'src'),
+      path.join(__dirname, 'node_modules')
     ],
 
     extensions: ['', '.js', '.jsx', '.json', '.css', '.html', '.styl'],
 
     alias: {
-      webpack: '{{USER_CORDOVA}}/node_modules/webpack',
-      react: '{{PROJECT_DIR}}/node_modules/react',
-      'react-hot-loader': '{{USER_CORDOVA}}/node_modules/react-hot-loader',
-      'react-hot-loader/patch': '{{USER_CORDOVA}}/node_modules/react-hot-loader/patch',
-      'webpack-dev-server/client': '{{USER_CORDOVA}}/node_modules/webpack-dev-server/client'
+      webpack: path.join(cordovaNodeModules, 'webpack'),
+      react: path.join(__dirname, 'node_modules', 'react'),
+      'react-hot-loader': path.join(cordovaNodeModules, 'react-hot-loader'),
+      'react-hot-loader/patch': path.join(cordovaNodeModules, 'react-hot-loader', 'patch'),
+      'webpack-dev-server/client': path.join(cordovaNodeModules, 'webpack-dev-server', 'client')
     }
   },
 
@@ -47,12 +51,14 @@ module.exports = {
 
       query: {
         presets: [
-          '{{USER_CORDOVA}}/node_modules/babel-preset-es2015',
-          '{{USER_CORDOVA}}/node_modules/babel-preset-stage-2',
-          '{{USER_CORDOVA}}/node_modules/babel-preset-react'
+          path.join(cordovaNodeModules, 'babel-preset-es2015'),
+          path.join(cordovaNodeModules, 'babel-preset-stage-2'),
+          path.join(cordovaNodeModules, 'babel-preset-react')
         ],
 
-        plugins: ['{{USER_CORDOVA}}/node_modules/react-hot-loader/babel']
+        plugins: [
+          path.join(cordovaNodeModules, 'react-hot-loader', 'babel')
+        ]
       }
     }, {
       test: /\.html$/,
@@ -65,11 +71,11 @@ module.exports = {
       loaders: ['style-loader', 'css-loader', 'stylus-loader'],
     }, {
       test: /\.css$/,
-      exclude: '{{PROJECT_DIR}}/src',
+      exclude: path.join(__dirname, 'src'),
       loader: ExtractTextPlugin.extract('style', 'css?sourceMap')
     }, {
       test: /\.css$/,
-      include: '{{PROJECT_DIR}}/src',
+      include: path.join(__dirname, 'src'),
       loader: 'raw'
     }]
   },
@@ -84,15 +90,17 @@ module.exports = {
   ],
 
   resolveLoader: {
-    root: '{{USER_CORDOVA}}/node_modules'
+    root: cordovaNodeModules
   },
 
   devServer: {
     contentBase: './src/public',
     colors: true,
-    inline: true,
+    inline: false,
+    historyApiFallback: true,
     port: 8000,
     stats: 'minimal',
-    hot: false // live reload will not trigger for index.html if hot is enabled.
+    hot: true,
+    host: '0.0.0.0'
   }
 };

@@ -1,8 +1,12 @@
 try {
-  var webpack = require('{{USER_CORDOVA}}/node_modules/webpack');
-  var ExtractTextPlugin = require('{{USER_CORDOVA}}/node_modules/extract-text-webpack-plugin');
-  var CopyWebpackPlugin = require('{{USER_CORDOVA}}/node_modules/copy-webpack-plugin');
-  var HtmlWebpackPlugin = require('{{USER_CORDOVA}}/node_modules/html-webpack-plugin');
+  var path = require('path');
+  var os = require('os');
+  var cordovaNodeModules = path.join(os.homedir(), '.cordova', 'node_modules');
+
+  var webpack = require(path.join(cordovaNodeModules, 'webpack'));
+  var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
+  var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
+  var CopyWebpackPlugin = require(path.join(cordovaNodeModules, 'copy-webpack-plugin'));
 } catch (e) {
   throw 'Missing Webpack Build Dependencies.';
 }
@@ -15,16 +19,17 @@ module.exports = {
   },
 
   output: {
-    path: '{{PROJECT_DIR}}/www',
+    path: path.join(__dirname, 'www'),
     filename: '[name].js',
     chunkFilename: '[id].chunk.js'
   },
 
   resolve: {
     root: [
-      '{{PROJECT_DIR}}/src',
-      '{{PROJECT_DIR}}/node_modules'
+      path.join(__dirname, 'src'),
+      path.join(__dirname, 'node_modules')
     ],
+
     extensions: ['', '.ts', '.js', '.json', '.css', '.html', '.styl']
   },
 
@@ -35,8 +40,8 @@ module.exports = {
 
       query: {
         presets: [
-          '{{USER_CORDOVA}}/node_modules/babel-preset-es2015',
-          '{{USER_CORDOVA}}/node_modules/babel-preset-stage-2'
+          path.join(cordovaNodeModules, 'babel-preset-es2015'),
+          path.join(cordovaNodeModules, 'babel-preset-stage-2')
         ]
       }
     }, {
@@ -50,11 +55,11 @@ module.exports = {
       loaders: ['style-loader', 'css-loader', 'stylus-loader'],
     }, {
       test: /\.css$/,
-      exclude: '{{PROJECT_DIR}}/src/app',
+      exclude: path.join(__dirname, 'src', 'app'),
       loader: ExtractTextPlugin.extract('style', 'css?sourceMap')
     }, {
       test: /\.css$/,
-      include: '{{PROJECT_DIR}}/src/app',
+      include: path.join(__dirname, 'src', 'app'),
       loader: 'raw'
     }],
 
@@ -82,11 +87,11 @@ module.exports = {
     new webpack.optimize.DedupePlugin(),
     new webpack.optimize.UglifyJsPlugin(),
     new CopyWebpackPlugin([{
-      from: '{{PROJECT_DIR}}/src/public',
+      from: path.join(__dirname, 'src', 'public'),
     }])
   ],
 
   resolveLoader: {
-    root: '{{USER_CORDOVA}}/node_modules'
+    root: cordovaNodeModules
   }
 };
