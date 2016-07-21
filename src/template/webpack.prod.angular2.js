@@ -7,11 +7,15 @@ try {
   var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
   var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
   var CopyWebpackPlugin = require(path.join(cordovaNodeModules, 'copy-webpack-plugin'));
+  var autoprefixer = require(path.join(cordovaNodeModules, 'autoprefixer'));
+  var precss = require(path.join(cordovaNodeModules, 'precss'));
 } catch (e) {
-  throw 'Missing Webpack Build Dependencies.';
+  throw new Error('Missing Webpack Build Dependencies.');
 }
 
 module.exports = {
+  context: __dirname,
+
   entry: {
     'polyfills': './src/polyfills.ts',
     'vendor': './src/vendor.ts',
@@ -52,7 +56,7 @@ module.exports = {
       loader: 'file?name=assets/[name].[hash].[ext]'
     }, {
       test: /\.styl$/,
-      loaders: ['style-loader', 'css-loader', 'stylus-loader'],
+      loader: 'style!css!postcss!stylus',
     }, {
       test: /\.css$/,
       exclude: path.join(__dirname, 'src', 'app'),
@@ -61,9 +65,16 @@ module.exports = {
       test: /\.css$/,
       include: path.join(__dirname, 'src', 'app'),
       loader: 'raw'
+    }, {
+      test: /\.json$/,
+      loader: 'json'
     }],
 
     noParse: [/.+zone\.js\/dist\/.+/, /.+angular2\/bundles\/.+/, /angular2-polyfills\.js/]
+  },
+
+  postcss: function() {
+    return [precss, autoprefixer];
   },
 
   ts: {
@@ -75,13 +86,18 @@ module.exports = {
   },
 
   plugins: [
+    new webpack.DefinePlugin({
+      'process.env': {
+        'NODE_ENV': JSON.stringify('production')
+      }
+    }),
     new ExtractTextPlugin('[name].css'),
     new webpack.optimize.CommonsChunkPlugin({
       name: ['app', 'vendor', 'polyfills']
     }),
-    new HtmlWebpackPlugin({   
-      template: 'src/public/index.html',    
-      chunksSortMode: 'dependency'    
+    new HtmlWebpackPlugin({
+      template: 'src/public/index.html',
+      chunksSortMode: 'dependency'
     }),
     new webpack.NoErrorsPlugin(),
     new webpack.optimize.DedupePlugin(),

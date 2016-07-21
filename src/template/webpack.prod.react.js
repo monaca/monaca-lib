@@ -2,23 +2,27 @@ try {
   var path = require('path');
   var os = require('os');
   var cordovaNodeModules = path.join(os.homedir(), '.cordova', 'node_modules');
-  
+
   var webpack = require(path.join(cordovaNodeModules, 'webpack'));
   var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
   var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
   var CopyWebpackPlugin = require(path.join(cordovaNodeModules, 'copy-webpack-plugin'));
+  var autoprefixer = require(path.join(cordovaNodeModules, 'autoprefixer'));
+  var precss = require(path.join(cordovaNodeModules, 'precss'));
 } catch (e) {
-  throw 'Missing Webpack Build Dependencies.';
+  throw new Error('Missing Webpack Build Dependencies.');
 }
 
 module.exports = {
+  context: __dirname,
+
   entry: [
-    './src/main.js'
+    './src/main'
   ],
 
   output: {
     path: path.join(__dirname, 'www'),
-    filename: 'dist.js'
+    filename: 'bundle.js'
   },
 
   resolve: {
@@ -31,7 +35,9 @@ module.exports = {
 
     alias: {
       webpack: path.join(cordovaNodeModules, 'webpack'),
-      react: path.join(__dirname, 'node_modules', 'react')
+      react: path.join(__dirname, 'node_modules', 'react'),
+      'react-hot-loader': path.join(cordovaNodeModules, 'react-hot-loader'),
+      'react-hot-loader/patch': path.join(cordovaNodeModules, 'react-hot-loader', 'patch')
     }
   },
 
@@ -39,7 +45,7 @@ module.exports = {
     loaders: [{
       test: /\.(js|jsx)$/,
       loader: 'babel',
-      exclude: /(react-onsenui|onsenui.js|bower_components|www|platforms|\.monaca)/,
+      include: path.join(__dirname, 'src'),
 
       query: {
         presets: [
@@ -60,7 +66,7 @@ module.exports = {
       loader: 'file?name=assets/[name].[hash].[ext]'
     }, {
       test: /\.styl$/,
-      loaders: ['style-loader', 'css-loader', 'stylus-loader'],
+      loader: 'style!css!postcss!stylus',
     }, {
       test: /\.css$/,
       exclude: path.join(__dirname, 'src'),
@@ -69,14 +75,26 @@ module.exports = {
       test: /\.css$/,
       include: path.join(__dirname, 'src'),
       loader: 'raw'
+    }, {
+      test: /\.json$/,
+      loader: 'json'
     }]
   },
 
+  postcss: function() {
+    return [precss, autoprefixer];
+  },
+
   plugins: [
+    new webpack.DefinePlugin({
+      'process.env': {
+        'NODE_ENV': JSON.stringify('production')
+      }
+    }),
     new ExtractTextPlugin('[name].css'),
-    new HtmlWebpackPlugin({   
-      template: 'src/public/index.html',    
-      chunksSortMode: 'dependency'    
+    new HtmlWebpackPlugin({
+      template: 'src/public/index.html',
+      chunksSortMode: 'dependency'
     }),
     new webpack.NoErrorsPlugin(),
     new webpack.optimize.DedupePlugin(),

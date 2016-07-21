@@ -6,12 +6,17 @@ try {
   var webpack = require(path.join(cordovaNodeModules, 'webpack'));
   var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
   var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
+  var autoprefixer = require(path.join(cordovaNodeModules, 'autoprefixer'));
+  var precss = require(path.join(cordovaNodeModules, 'precss'));
 } catch (e) {
-  throw 'Missing Webpack Build Dependencies.';
+  throw new Error('Missing Webpack Build Dependencies.');
 }
+
+var port = +(process.env.WP_PORT) || 8000;
 
 module.exports = {
   devtool: 'eval-source-map',
+  context: __dirname,
   debug: true,
 
   entry: {
@@ -54,7 +59,7 @@ module.exports = {
       loader: 'file?name=assets/[name].[hash].[ext]'
     }, {
       test: /\.styl$/,
-      loaders: ['style-loader', 'css-loader', 'stylus-loader'],
+      loader: 'style!css!postcss!stylus',
     }, {
       test: /\.css$/,
       exclude: path.join(__dirname, 'src', 'app'),
@@ -63,9 +68,16 @@ module.exports = {
       test: /\.css$/,
       include: path.join(__dirname, 'src', 'app'),
       loader: 'raw'
+    }, {
+      test: /\.json$/,
+      loader: 'json'
     }],
 
     noParse: [/.+zone\.js\/dist\/.+/, /.+angular2\/bundles\/.+/, /angular2-polyfills\.js/]
+  },
+
+  postcss: function() {
+    return [precss, autoprefixer];
   },
 
   ts: {
@@ -95,7 +107,8 @@ module.exports = {
     contentBase: './src/public',
     colors: true,
     inline: true,
-    port: 8000,
+    port: port,
+    host: '0.0.0.0',
     stats: 'minimal'
   }
 };
