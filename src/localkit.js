@@ -501,6 +501,10 @@
                     this.monaca.emitter.emit('output', eventContent);
                   }.bind(this),
                   function(error) {
+                    if (error.action) {
+                      return this.emitter.emit('action', error);
+                    }
+
                     var eventContent = {
                       type: 'error',
                       message: error.message

@@ -2393,6 +2393,14 @@
       });
     }
 
+    var webpackConfig = path.join(projectDir, 'webpack.prod.config.js');
+    if(!fs.existsSync(path.resolve(webpackConfig))) {
+      var error = new Error('\nAppears that this project is not configured properly. This may be due to a recent update.\nPlease check this guide to update your project:\n https://github.com/monaca/monaca-lib/blob/master/updateProject.md \n');
+      error.action = 'reconfigurate';
+
+      return Q.reject(error);
+    }
+
     var deferred = Q.defer();
     this.emitter.emit('output', {
       type: 'success',
@@ -2411,13 +2419,15 @@
         }
       }
 
-      var webpackConfig = path.join(projectDir, 'webpack.prod.config.js');
       var webpackBinPath = this.getWebpackBinPath();
       var webpackProcessLog = [];
       var webpackProcess = child_process.exec(
-        webpackBinPath + ' --progress --config ' + webpackConfig,
+        webpackBinPath + ' --progress -p --config ' + webpackConfig,
         {
-          cwd: projectDir
+          cwd: projectDir,
+          env: {
+            NODE_ENV: JSON.stringify('production')
+          }
         },
         function(error, stdout, stderr) {
           webpackProcessLog.push(error);
@@ -2443,7 +2453,7 @@
           deferred.reject(error);
         } else {
           deferred.resolve({
-            message:'Transpiling succeeded for ' + projectDir,
+            message: 'Transpiling succeeded for ' + projectDir,
             log: webpackProcessLog
           });
         }
