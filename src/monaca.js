@@ -2257,12 +2257,16 @@
       if(!fs.existsSync(webpackDevFile)) {
         var fileContent = this.getWebpackConfig('dev', projectDir);
         fs.writeFileSync(webpackDevFile, fileContent, 'utf8');
+      } else {
+        process.stdout.write('webpack.dev.config.js already exists. Skipping.\n'.warn);
       }
 
       var webpackProdFile = path.resolve(path.join(projectDir, 'webpack.prod.config.js'));
       if(!fs.existsSync(path.resolve(path.join(projectDir, 'webpack.prod.config.js')))) {
         var fileContent = this.getWebpackConfig('prod', projectDir);
         fs.writeFileSync(webpackProdFile, fileContent, 'utf8');
+      } else {
+        process.stdout.write('webpack.prod.config.js already exists. Skipping.\n'.warn);
       }
 
       deferred.resolve(projectDir);
