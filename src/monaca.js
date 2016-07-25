@@ -2409,6 +2409,19 @@
     });
     process.stdout.write('Running Transpiler...\n');
 
+    var rl;
+    if (process.platform === 'win32') {
+      rl = require('readline').createInterface({
+        input: process.stdin,
+        output: process.stdout
+      });
+
+      rl.on('SIGINT', function() {
+        process.stderr.write('\nCanceled\n'.error);
+        child_process.exec('taskkill /pid ' + process.pid + ' /T /F');
+      });
+    }
+
     try {
       process.env.NODE_PATH = USER_CORDOVA;
 
@@ -2448,6 +2461,10 @@
       });
 
       webpackProcess.on('exit', function(code) {
+        if(process.platform === 'win32' && rl) {
+          rl.close();
+        }
+
         if(code === 1) {
           var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
           error.log = webpackProcessLog;
