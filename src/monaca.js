@@ -2429,9 +2429,9 @@
         webpackBinPath + ' --progress -p --config ' + webpackConfig,
         {
           cwd: projectDir,
-          env: {
+          env: extend({}, process.env, {
             NODE_ENV: JSON.stringify('production')
-          }
+          })
         },
         function(error, stdout, stderr) {
           webpackProcessLog.push(error);
