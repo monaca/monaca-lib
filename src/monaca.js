@@ -320,14 +320,14 @@
       return true;
     }
 
-    // Allow all config files in root directory.
-    if (/^\/(.*config\..*|.*.json)$/.test(f)) {
-      return true;
-    }
-
     // Exclude other hidden files and folders from being uploaded.
     if (f.indexOf('/.') >= 0 && source === "uploadProject") {
       return false;
+    }
+
+    // Allow all config files in root directory.
+    if (/^\/(.*config\..*|.*.json)$/.test(f)) {
+      return true;
     }
 
     // Platform specific files.
