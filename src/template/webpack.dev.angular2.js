@@ -6,8 +6,10 @@ try {
   var webpack = require(path.join(cordovaNodeModules, 'webpack'));
   var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
   var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
+
   var autoprefixer = require(path.join(cordovaNodeModules, 'autoprefixer'));
   var precss = require(path.join(cordovaNodeModules, 'precss'));
+
 } catch (e) {
   throw new Error('Missing Webpack Build Dependencies.');
 }
@@ -18,11 +20,12 @@ module.exports = {
   devtool: 'eval-source-map',
   context: __dirname,
   debug: true,
+  cache: true,
 
   entry: {
-    'polyfills': './src/polyfills.ts',
-    'vendor': './src/vendor.ts',
-    'app': './src/main.ts'
+    'polyfills': './src/polyfills',
+    'vendor': './src/vendor',
+    'app': './src/main'
   },
 
   output: {
@@ -37,19 +40,24 @@ module.exports = {
       path.join(__dirname, 'node_modules')
     ],
 
-    extensions: ['', '.ts', '.js', '.json', '.css', '.html', '.styl']
+    extensions: ['', '.ts', '.js', '.json', '.css', '.html', '.styl'],
+
+    unsafeCache: true,
   },
 
   module: {
     loaders: [{
       test: /\.ts$/,
       loader: 'ts',
+      include: path.join(__dirname, 'src'),
 
       query: {
         presets: [
           path.join(cordovaNodeModules, 'babel-preset-es2015'),
           path.join(cordovaNodeModules, 'babel-preset-stage-2')
-        ]
+        ],
+
+        cacheDirectory: true,
       }
     }, {
       test: /\.html$/,
@@ -94,7 +102,7 @@ module.exports = {
       name: ['app', 'vendor', 'polyfills']
     }),
     new HtmlWebpackPlugin({
-      template: 'src/public/index.html',
+      template: 'src/public/index.ejs',
       chunksSortMode: 'dependency'
     })
   ],

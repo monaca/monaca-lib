@@ -7,24 +7,34 @@ try {
   var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
   var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
   var CopyWebpackPlugin = require(path.join(cordovaNodeModules, 'copy-webpack-plugin'));
+  var ProgressBarPlugin = require(path.join(cordovaNodeModules, 'progress-bar-webpack-plugin'));
+
   var autoprefixer = require(path.join(cordovaNodeModules, 'autoprefixer'));
   var precss = require(path.join(cordovaNodeModules, 'precss'));
+
 } catch (e) {
   throw new Error('Missing Webpack Build Dependencies.');
 }
 
+var useCache = !!process.env.WP_CACHE;
+
 module.exports = {
   context: __dirname,
+  cache: useCache,
+  stats: {
+    warnings: false,
+    children: false
+  },
 
   entry: {
-    'polyfills': './src/polyfills.ts',
-    'vendor': './src/vendor.ts',
-    'app': './src/main.ts'
+    'polyfills': './src/polyfills',
+    'vendor': './src/vendor',
+    'app': './src/main'
   },
 
   output: {
     path: path.join(__dirname, 'www'),
-    filename: '[name].js',
+    filename: '[name].bundle.js',
     chunkFilename: '[id].chunk.js'
   },
 
@@ -34,19 +44,24 @@ module.exports = {
       path.join(__dirname, 'node_modules')
     ],
 
-    extensions: ['', '.ts', '.js', '.json', '.css', '.html', '.styl']
+    extensions: ['', '.ts', '.js', '.json', '.css', '.html', '.styl'],
+
+    unsafeCache: useCache
   },
 
   module: {
     loaders: [{
       test: /\.ts$/,
       loader: 'ts',
+      include: path.join(__dirname, 'src'),
 
       query: {
         presets: [
           path.join(cordovaNodeModules, 'babel-preset-es2015'),
           path.join(cordovaNodeModules, 'babel-preset-stage-2')
-        ]
+        ],
+
+        cacheDirectory: useCache
       }
     }, {
       test: /\.html$/,
@@ -96,15 +111,25 @@ module.exports = {
       name: ['app', 'vendor', 'polyfills']
     }),
     new HtmlWebpackPlugin({
-      template: 'src/public/index.html',
-      chunksSortMode: 'dependency'
+      template: 'src/public/index.ejs',
+      chunksSortMode: 'dependency',
+      externalCSS: ['components/loader.css'],
+      externalJS: ['components/loader.js'],
+      minify: {
+        collapseWhitespace: true,
+        conservativeCollapse: true,
+        removeAttributeQuotes: true,
+        removeComments: true
+      }
     }),
     new webpack.NoErrorsPlugin(),
     new webpack.optimize.DedupePlugin(),
     new webpack.optimize.UglifyJsPlugin(),
     new CopyWebpackPlugin([{
       from: path.join(__dirname, 'src', 'public'),
-    }])
+      ignore: ['index.ejs']
+    }]),
+    new ProgressBarPlugin()
   ],
 
   resolveLoader: {
