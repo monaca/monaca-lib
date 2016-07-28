@@ -2427,24 +2427,25 @@
       var webpackProcessLog = [];
 
       var binPath = webpackBinPath;
-      var parameters = ['-p', '--config', webpackConfig, (options.watch ? ' --watch' : ''), ' --'];
+      var parameters = ['-p', '--config', webpackConfig];
+
+      if(options.watch) {
+        parameters.push('--watch');
+      }
 
       if(process.platform === 'win32') {
         binPath = 'cmd';
         parameters.unshift('/c', webpackBinPath);
       }
 
-      var webpackProcess = child_process.spawn(
-        binPath,  [parameters.join(' ')],
-        {
-          cwd: path.resolve(projectDir),
-          env: extend({}, process.env, {
-            NODE_ENV: JSON.stringify('production'),
-            WP_CACHE: options.cache || ''
-          }),
-          stdio: 'inherit'
-        }
-      );
+      var webpackProcess = child_process.spawn(binPath, parameters, {
+        cwd: path.resolve(projectDir),
+        env: extend({}, process.env, {
+          NODE_ENV: JSON.stringify('production'),
+          WP_CACHE: options.cache || ''
+        }),
+        stdio: 'inherit'
+      });
 
       webpackProcess.on('exit', function(code) {
 
