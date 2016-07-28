@@ -2379,9 +2379,12 @@
    * @description
    *   Transpiles projects that need to be transpiled and are enabled.
    * @param {String} Project Directory
+   * @param {Object} Options
    * @return {Promise}
    */
-  Monaca.prototype.transpile = function(projectDir) {
+  Monaca.prototype.transpile = function(projectDir, options) {
+    options = options || {};
+
     if (!this.isTranspilable(projectDir)) {
       return Q.resolve({
         message: 'This project\'s type does not support transpiling capabilities.\n'
@@ -2394,7 +2397,7 @@
       });
     }
 
-    var webpackConfig = path.join(projectDir, 'webpack.prod.config.js');
+    var webpackConfig = path.resolve(projectDir, 'webpack.prod.config.js');
     if(!fs.existsSync(path.resolve(webpackConfig))) {
       var error = new Error('\nAppears that this project is not configured properly. This may be due to a recent update.\nPlease check this guide to update your project:\n https://github.com/monaca/monaca-lib/blob/master/updateProject.md \n');
       error.action = 'reconfigurate';
@@ -2409,19 +2412,6 @@
     });
     process.stdout.write('Running Transpiler...\n');
 
-    var rl;
-    if (process.platform === 'win32') {
-      rl = require('readline').createInterface({
-        input: process.stdin,
-        output: process.stdout
-      });
-
-      rl.on('SIGINT', function() {
-        process.stderr.write('\nCanceled\n'.error);
-        child_process.exec('taskkill /pid ' + process.pid + ' /T /F');
-      });
-    }
-
     try {
       process.env.NODE_PATH = USER_CORDOVA;
 
@@ -2435,35 +2425,28 @@
 
       var webpackBinPath = this.getWebpackBinPath();
       var webpackProcessLog = [];
-      var webpackProcess = child_process.exec(
-        webpackBinPath + ' --progress -p --config ' + webpackConfig,
+
+      var binPath = webpackBinPath;
+      var parameters = ['-p', '--config', webpackConfig, (options.watch ? ' --watch' : ''), ' --'];
+
+      if(process.platform === 'win32') {
+        binPath = 'cmd';
+        parameters.unshift('/c', webpackBinPath);
+      }
+
+      var webpackProcess = child_process.spawn(
+        binPath,  [parameters.join(' ')],
         {
-          cwd: projectDir,
+          cwd: path.resolve(projectDir),
           env: extend({}, process.env, {
-            NODE_ENV: JSON.stringify('production')
-          })
-        },
-        function(error, stdout, stderr) {
-          webpackProcessLog.push(error);
+            NODE_ENV: JSON.stringify('production'),
+            WP_CACHE: options.cache || ''
+          }),
+          stdio: 'inherit'
         }
       );
 
-      webpackProcess.stdout.on('data', function(data) {
-        var log = data.toString();
-        webpackProcessLog.push(log.info);
-        process.stdout.write(log.info);
-      });
-
-      webpackProcess.stderr.on('data', function(data) {
-        var log = data.toString();
-        webpackProcessLog.push(log.error);
-        process.stderr.write(log.error);
-      });
-
       webpackProcess.on('exit', function(code) {
-        if(process.platform === 'win32' && rl) {
-          rl.close();
-        }
 
         if(code === 1) {
           var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
@@ -2471,7 +2454,7 @@
           deferred.reject(error);
         } else {
           deferred.resolve({
-            message: 'Transpiling succeeded for ' + projectDir,
+            message: 'Transpiling finished for ' + projectDir,
             log: webpackProcessLog
           });
         }

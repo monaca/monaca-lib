@@ -472,7 +472,6 @@
         else {
 
           var fileWatcher = new FileWatcher();
-          var fileWatcherTranspiler = new FileWatcher();
 
           try {
             fileWatcher.onchange(function(changeType, filePath) {
@@ -484,43 +483,6 @@
                 projectPath: projectPath
               });
             }.bind(this));
-
-
-            try {
-              fileWatcherTranspiler.onchange(function(changeType, filePath) {
-                this.monaca.transpile(path.resolve(projectPath)).then(
-                  function(result) {
-                    var eventContent = {
-                      type: 'success',
-                      message: result.message
-                    };
-                    if (result.warnings) {
-                      eventContent.log = result.warnings;
-                      eventContent.logType = "warning";
-                    }
-                    this.monaca.emitter.emit('output', eventContent);
-                  }.bind(this),
-                  function(error) {
-                    if (error.action) {
-                      return this.emitter.emit('action', error);
-                    }
-
-                    var eventContent = {
-                      type: 'error',
-                      message: error.message
-                    };
-                    if (error.log) {
-                      eventContent.log = error.log;
-                      eventContent.logType = "error";
-                    }
-                    this.monaca.emitter.emit('output', eventContent);
-                  }.bind(this)
-                );
-              }.bind(this));
-              fileWatcherTranspiler.run(path.join(projectPath, 'src'));
-            } catch (error) {
-              // project does not have source folder to transpile.
-            }
 
             if (this.isWatching()) {
               fileWatcher.run(path.join(projectPath, 'www'));
