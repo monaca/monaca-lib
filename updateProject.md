@@ -15,12 +15,9 @@ For existing projects, please follow these steps below for basic support:
 
 1. Generate Webpack configuration files and install the new build dependencies:
 
-  a. For Monaca CLI:
-    1. Run `monaca transpile --generate-config`
-    2. Run `monaca transpile --install-dependencies`
+  a. For Monaca CLI: Run `monaca reconfigure`
 
-  b. For Monaca LocalKit:
-    1. When trying to transpile a project you will see a dialog about project misconfiguration. Follow the instructions.
+  b. For Monaca LocalKit: When trying to transpile a project you will see a dialog about project misconfiguration. Follow the instructions.
 
 2. Update `src/main.js` content:
 
@@ -65,5 +62,3 @@ For existing projects, please follow these steps below for basic support:
 7. Move `<project>/www/index.html` to `<project>/src/public/index.ejs`. Notice that the extension changes to `ejs`.
 
 8. Move other static assets from `<project>/www/*` to `<project>/src/public/*`.
-
-

@@ -33,6 +33,7 @@
     "buffer-crc32": "^0.2.4",
     "extend": "^2.0.0",
     "extract-zip": "^1.5.0",
+    "fs-extra": "0.30.0",
     "glob": "^5.0.14",
     "global-npm": "^0.3.0",
     "lockfile": "^1.0.0",

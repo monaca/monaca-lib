@@ -6,7 +6,7 @@
     request = require('request'),
     os = require('os'),
     path = require('path'),
-    fs = require('fs'),
+    fs = require('fs-extra'),
     shell = require('shelljs'),
     crc32 = require('buffer-crc32'),
     nconf = require('nconf'),
@@ -20,7 +20,6 @@
     tmp = require('tmp'),
     extract = require('extract-zip'),
     glob = require('glob'),
-    ncp = require('ncp').ncp,
     EventEmitter = require('events'),
     npm;
 
@@ -2278,6 +2277,31 @@
    * @method
    * @memberof Monaca
    * @description
+   *   Copies Monaca components folder to www.
+   * @param {String} Project Directory
+   * @return {Promise}
+   */
+  Monaca.prototype.initComponents = function(projectDir) {
+    var deferred = Q.defer();
+    var componentsPath = path.join(projectDir, 'www', 'components');
+    fs.exists(componentsPath, function(exists) {
+      if (exists) {
+        process.stdout.write(('www/components already exists. Skipping.\n').warn);
+        return deferred.resolve(projectDir);
+      } else {
+        fs.copy(path.resolve(__dirname, 'template', 'components'), componentsPath, function(error) {
+          return error ? deferred.reject(error) : deferred.resolve(projectDir);
+        });
+      }
+    });
+
+    return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *   Installs the template's dependencies.
    * @param {String} Project's Directory
    * @return {Promise}
@@ -2400,7 +2424,7 @@
     var webpackConfig = path.resolve(projectDir, 'webpack.prod.config.js');
     if(!fs.existsSync(path.resolve(webpackConfig))) {
       var error = new Error('\nAppears that this project is not configured properly. This may be due to a recent update.\nPlease check this guide to update your project:\n https://github.com/monaca/monaca-lib/blob/master/updateProject.md \n');
-      error.action = 'reconfigurate';
+      error.action = 'reconfiguration';
 
       return Q.reject(error);
     }
@@ -2570,6 +2594,7 @@
     return checkDirectory()
       .then(fetchFile)
       .then(unzipFile)
+      .then(this.initComponents.bind(this))
       .then(this.generateBuildConfigs.bind(this))
       .then(this.installTemplateDependencies.bind(this))
       .then(this.installBuildDependencies.bind(this));
