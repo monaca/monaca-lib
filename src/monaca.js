@@ -6,7 +6,7 @@
     request = require('request'),
     os = require('os'),
     path = require('path'),
-    fs = require('fs'),
+    fs = require('fs-extra'),
     shell = require('shelljs'),
     crc32 = require('buffer-crc32'),
     nconf = require('nconf'),
@@ -20,7 +20,6 @@
     tmp = require('tmp'),
     extract = require('extract-zip'),
     glob = require('glob'),
-    ncp = require('ncp').ncp,
     EventEmitter = require('events'),
     npm;
 
@@ -320,14 +319,14 @@
       return true;
     }
 
-    // Allow all config files in root directory.
-    if (/^\/config.*/.test(f)) {
-      return true;
-    }
-
     // Exclude other hidden files and folders from being uploaded.
     if (f.indexOf('/.') >= 0 && source === "uploadProject") {
       return false;
+    }
+
+    // Allow all config files in root directory.
+    if (/^\/(.*config\..*|.*.json)$/.test(f)) {
+      return true;
     }
 
     // Platform specific files.
@@ -355,7 +354,7 @@
 
     if (allowFiles.length > 0) {
       // Only include files in /www, /merges and /plugins folders.
-      if (/^\/(?!www\/|www$|merges\/|merges$|plugins\/|plugins$).*/.test(f)) {
+      if (/^\/(?!www\/|www$|merges\/|merges$|plugins\/|plugins$|src\/|src$|typings\/|typings$).*/.test(f)) {
         return false;
       } else {
         // Check if file is present in one of the /www, /merges and /plugins folders and also in list of allowed files.
@@ -367,7 +366,7 @@
       }
     } else {
       // Only include files in /www, /merges and /plugins folders.
-      return !/^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(f);
+      return !/^\/(www\/|merges\/|plugins\/|src\/|typings\/|[^/]*$)/.test(f);
     }
   };
 
@@ -1614,124 +1613,121 @@
   Monaca.prototype.uploadProject = function(projectDir, options) {
     var deferred = Q.defer();
 
-    localProperties.get(projectDir, 'project_id').then(
+    this.transpile(projectDir).then(
+      localProperties.get.bind(this, projectDir, 'project_id'),
+      function(error) {
+        deferred.reject(error);
+      }
+    ).then(
       function(projectId) {
-        this.transpile(projectDir).then(
-          Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)]).then(
-            function(files) {
-              var localFiles = files[0],
-                remoteFiles = files[1];
+        Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)]).then(
+          function(files) {
+            var localFiles = files[0],
+              remoteFiles = files[1];
 
-              // Fetch list of files after ignoring files/directories in .monacaignore file.
-              var allowFiles = this._filterIgnoreList(projectDir);
+            // Fetch list of files after ignoring files/directories in .monacaignore file.
+            var allowFiles = this._filterIgnoreList(projectDir);
 
-              var filesToBeDeleted = {};
+            var filesToBeDeleted = {};
 
-              for (var f in remoteFiles) {
-                // If file on Monaca Cloud doesn't exist locally then it should be deleted from Cloud.
-                if (!localFiles.hasOwnProperty(f)) {
-                  filesToBeDeleted[f] = remoteFiles[f];
-                }
+            for (var f in remoteFiles) {
+              // If file on Monaca Cloud doesn't exist locally then it should be deleted from Cloud.
+              if (!localFiles.hasOwnProperty(f)) {
+                filesToBeDeleted[f] = remoteFiles[f];
               }
-              if (options && !options.dryrun && options.delete) {
-                this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted)).then(
-                  function() {
-                    console.log(Object.keys(filesToBeDeleted)
-                      .map(function(f) {
-                        return "deleted -> " + f;
-                      })
-                      .join("\n")
-                    );
-                  },
-                  function(err) {
-                    console.log("\nfile delete error ->  : " + JSON.stringify(err));
-                  }
-                )
-              }
-
-              // Filter out directories and unchanged files.
-              this._filterFiles(localFiles, remoteFiles);
-
-              var keys = [];
-
-              // Checks if the file/dir are included in a directory that can be uploaded.
-              for (var file in localFiles) {
-                if (this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
-                  keys.push(file);
-                }
-              }
-
-              // Modified files.
-              var modifiedFiles = {
-                uploaded: {},
-                deleted: filesToBeDeleted
-              };
-
-              for (var i in keys) {
-                if (localFiles[keys[i]]) {
-                  modifiedFiles.uploaded[keys[i]] = localFiles[keys[i]];
-                }
-              }
-
-              // If dryrun option is set, just return the files to be uploaded.
-              if (options && options.dryrun) {
-                return deferred.resolve(modifiedFiles);
-              }
-
-              var totalLength = keys.length,
-                currentIndex = 0,
-                qLimit = qlimit(4);
-
-              var uploadFile = function(key) {
-                var d = Q.defer();
-                var absolutePath = path.join(projectDir, key.substr(1));
-
-                this.uploadFile(projectId, absolutePath, key).then(
-                  function(remotePath) {
-                    deferred.notify({
-                      path: remotePath,
-                      total: totalLength,
-                      index: currentIndex
-                    });
-                    d.resolve();
-                  },
-                  function(error) {
-                    d.reject(error);
-                  }
-                  )
-                  .finally(
-                    function() {
-                      currentIndex++;
-                    }
-                  );
-                return d.promise;
-              }.bind(this);
-
-              Q.all(keys.map(qLimit(function(key) {
-                if (localFiles.hasOwnProperty(key)) {
-                  return uploadFile(key);
-                }
-              }.bind(this)))).then(
+            }
+            if (options && !options.dryrun && options.delete) {
+              this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted)).then(
                 function() {
-                  deferred.resolve(modifiedFiles);
+                  console.log(Object.keys(filesToBeDeleted)
+                    .map(function(f) {
+                      return "deleted -> " + f;
+                    })
+                    .join("\n")
+                  );
+                },
+                function(err) {
+                  console.log("\nfile delete error ->  : " + JSON.stringify(err));
+                }
+              )
+            }
+
+            // Filter out directories and unchanged files.
+            this._filterFiles(localFiles, remoteFiles);
+
+            var keys = [];
+
+            // Checks if the file/dir are included in a directory that can be uploaded.
+            for (var file in localFiles) {
+              if (this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
+                keys.push(file);
+              }
+            }
+
+            // Modified files.
+            var modifiedFiles = {
+              uploaded: {},
+              deleted: filesToBeDeleted
+            };
+
+            for (var i in keys) {
+              if (localFiles[keys[i]]) {
+                modifiedFiles.uploaded[keys[i]] = localFiles[keys[i]];
+              }
+            }
+
+            // If dryrun option is set, just return the files to be uploaded.
+            if (options && options.dryrun) {
+              return deferred.resolve(modifiedFiles);
+            }
+
+            var totalLength = keys.length,
+              currentIndex = 0,
+              qLimit = qlimit(4);
+
+            var uploadFile = function(key) {
+              var d = Q.defer();
+              var absolutePath = path.join(projectDir, key.substr(1));
+
+              this.uploadFile(projectId, absolutePath, key).then(
+                function(remotePath) {
+                  deferred.notify({
+                    path: remotePath,
+                    total: totalLength,
+                    index: currentIndex
+                  });
+                  d.resolve();
                 },
                 function(error) {
-                  deferred.reject(error);
+                  d.reject(error);
                 }
-              );
-            }.bind(this),
-            function(error) {
-              deferred.reject(error);
-            }
-          ),
+                )
+                .finally(
+                  function() {
+                    currentIndex++;
+                  }
+                );
+              return d.promise;
+            }.bind(this);
+
+            Q.all(keys.map(qLimit(function(key) {
+              if (localFiles.hasOwnProperty(key)) {
+                return uploadFile(key);
+              }
+            }.bind(this)))).then(
+              function() {
+                deferred.resolve(modifiedFiles);
+              },
+              function(error) {
+                deferred.reject(error);
+              }
+            );
+          }.bind(this),
           function(error) {
             deferred.reject(error);
           }
         );
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
+      }.bind(this)
     );
 
     return deferred.promise;
@@ -2257,12 +2253,16 @@
       if(!fs.existsSync(webpackDevFile)) {
         var fileContent = this.getWebpackConfig('dev', projectDir);
         fs.writeFileSync(webpackDevFile, fileContent, 'utf8');
+      } else {
+        process.stdout.write('webpack.dev.config.js already exists. Skipping.\n'.warn);
       }
 
       var webpackProdFile = path.resolve(path.join(projectDir, 'webpack.prod.config.js'));
       if(!fs.existsSync(path.resolve(path.join(projectDir, 'webpack.prod.config.js')))) {
         var fileContent = this.getWebpackConfig('prod', projectDir);
         fs.writeFileSync(webpackProdFile, fileContent, 'utf8');
+      } else {
+        process.stdout.write('webpack.prod.config.js already exists. Skipping.\n'.warn);
       }
 
       deferred.resolve(projectDir);
@@ -2271,6 +2271,31 @@
     }
 
     return Q.resolve(projectDir);
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Copies Monaca components folder to www.
+   * @param {String} Project Directory
+   * @return {Promise}
+   */
+  Monaca.prototype.initComponents = function(projectDir) {
+    var deferred = Q.defer();
+    var componentsPath = path.join(projectDir, 'www', 'components');
+    fs.exists(componentsPath, function(exists) {
+      if (exists) {
+        process.stdout.write(('www/components already exists. Skipping.\n').warn);
+        return deferred.resolve(projectDir);
+      } else {
+        fs.copy(path.resolve(__dirname, 'template', 'components'), componentsPath, function(error) {
+          return error ? deferred.reject(error) : deferred.resolve(projectDir);
+        });
+      }
+    });
+
+    return deferred.promise;
   };
 
   /**
@@ -2378,9 +2403,12 @@
    * @description
    *   Transpiles projects that need to be transpiled and are enabled.
    * @param {String} Project Directory
+   * @param {Object} Options
    * @return {Promise}
    */
-  Monaca.prototype.transpile = function(projectDir) {
+  Monaca.prototype.transpile = function(projectDir, options) {
+    options = options || {};
+
     if (!this.isTranspilable(projectDir)) {
       return Q.resolve({
         message: 'This project\'s type does not support transpiling capabilities.\n'
@@ -2391,6 +2419,14 @@
       return Q.resolve({
         message: 'The transpiling feature for this project is currently disabled.\n'
       });
+    }
+
+    var webpackConfig = path.resolve(projectDir, 'webpack.prod.config.js');
+    if(!fs.existsSync(path.resolve(webpackConfig))) {
+      var error = new Error('\nAppears that this project is not configured properly. This may be due to a recent update.\nPlease check this guide to update your project:\n https://github.com/monaca/monaca-lib/blob/master/updateProject.md \n');
+      error.action = 'reconfiguration';
+
+      return Q.reject(error);
     }
 
     var deferred = Q.defer();
@@ -2411,39 +2447,39 @@
         }
       }
 
-      var webpackConfig = path.join(projectDir, 'webpack.prod.config.js');
       var webpackBinPath = this.getWebpackBinPath();
       var webpackProcessLog = [];
-      var webpackProcess = child_process.exec(
-        webpackBinPath + ' --progress --config ' + webpackConfig,
-        {
-          cwd: projectDir
-        },
-        function(error, stdout, stderr) {
-          webpackProcessLog.push(error);
-        }
-      );
 
-      webpackProcess.stdout.on('data', function(data) {
-        var log = data.toString();
-        webpackProcessLog.push(log.info);
-        process.stdout.write(log.info);
-      });
+      var binPath = webpackBinPath;
+      var parameters = ['-p', '--config', webpackConfig];
 
-      webpackProcess.stderr.on('data', function(data) {
-        var log = data.toString();
-        webpackProcessLog.push(log.error);
-        process.stderr.write(log.error);
+      if(options.watch) {
+        parameters.push('--watch');
+      }
+
+      if(process.platform === 'win32') {
+        binPath = 'cmd';
+        parameters.unshift('/c', webpackBinPath);
+      }
+
+      var webpackProcess = child_process.spawn(binPath, parameters, {
+        cwd: path.resolve(projectDir),
+        env: extend({}, process.env, {
+          NODE_ENV: JSON.stringify('production'),
+          WP_CACHE: options.cache || ''
+        }),
+        stdio: 'inherit'
       });
 
       webpackProcess.on('exit', function(code) {
+
         if(code === 1) {
           var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
           error.log = webpackProcessLog;
           deferred.reject(error);
         } else {
           deferred.resolve({
-            message:'Transpiling succeeded for ' + projectDir,
+            message: 'Transpiling finished for ' + projectDir,
             log: webpackProcessLog
           });
         }
@@ -2558,6 +2594,7 @@
     return checkDirectory()
       .then(fetchFile)
       .then(unzipFile)
+      .then(this.initComponents.bind(this))
       .then(this.generateBuildConfigs.bind(this))
       .then(this.installTemplateDependencies.bind(this))
       .then(this.installBuildDependencies.bind(this));

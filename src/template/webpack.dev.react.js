@@ -2,28 +2,38 @@ try {
   var path = require('path');
   var os = require('os');
   var cordovaNodeModules = path.join(os.homedir(), '.cordova', 'node_modules');
-  
+
   var webpack = require(path.join(cordovaNodeModules, 'webpack'));
   var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
   var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
+
+  var autoprefixer = require(path.join(cordovaNodeModules, 'autoprefixer'));
+  var precss = require(path.join(cordovaNodeModules, 'precss'));
+
 } catch (e) {
-  throw 'Missing Webpack Build Dependencies.';
+  throw new Error('Missing Webpack Build Dependencies.');
 }
+
+var host = process.env.WP_HOST || '127.0.0.1';
+var port = +(process.env.WP_PORT) || 8000;
 
 module.exports = {
   devtool: 'eval-source-map',
+  context: __dirname,
   debug: true,
+  cache: true,
 
   entry: [
     'react-hot-loader/patch',
-    'webpack-dev-server/client?http://0.0.0.0:8000/',
+    'webpack-dev-server/client?http://0.0.0.0:' + port + '/',
     'webpack/hot/only-dev-server',
-    './src/main.js'
+    './src/main'
   ],
 
   output: {
     path: path.join(__dirname, 'www'),
-    filename: 'dist.js'
+    filename: 'bundle.js',
+    publicPath: 'http://' + host + ':' + port + '/'
   },
 
   resolve: {
@@ -34,9 +44,10 @@ module.exports = {
 
     extensions: ['', '.js', '.jsx', '.json', '.css', '.html', '.styl'],
 
+    unsafeCache: true,
+
     alias: {
       webpack: path.join(cordovaNodeModules, 'webpack'),
-      react: path.join(__dirname, 'node_modules', 'react'),
       'react-hot-loader': path.join(cordovaNodeModules, 'react-hot-loader'),
       'react-hot-loader/patch': path.join(cordovaNodeModules, 'react-hot-loader', 'patch'),
       'webpack-dev-server/client': path.join(cordovaNodeModules, 'webpack-dev-server', 'client')
@@ -47,7 +58,7 @@ module.exports = {
     loaders: [{
       test: /\.(js|jsx)$/,
       loader: 'babel',
-      exclude: /(react-onsenui|onsenui.js|bower_components|www|platforms|\.monaca)/,
+      include: path.join(__dirname, 'src'),
 
       query: {
         presets: [
@@ -55,6 +66,8 @@ module.exports = {
           path.join(cordovaNodeModules, 'babel-preset-stage-2'),
           path.join(cordovaNodeModules, 'babel-preset-react')
         ],
+
+        cacheDirectory: true,
 
         plugins: [
           path.join(cordovaNodeModules, 'react-hot-loader', 'babel')
@@ -68,7 +81,7 @@ module.exports = {
       loader: 'file?name=assets/[name].[hash].[ext]'
     }, {
       test: /\.styl$/,
-      loaders: ['style-loader', 'css-loader', 'stylus-loader'],
+      loader: 'style!css!postcss!stylus'
     }, {
       test: /\.css$/,
       exclude: path.join(__dirname, 'src'),
@@ -77,14 +90,21 @@ module.exports = {
       test: /\.css$/,
       include: path.join(__dirname, 'src'),
       loader: 'raw'
+    }, {
+      test: /\.json$/,
+      loader: 'json'
     }]
+  },
+
+  postcss: function() {
+    return [precss, autoprefixer];
   },
 
   plugins: [
     new webpack.HotModuleReplacementPlugin(),
     new ExtractTextPlugin('[name].css'),
     new HtmlWebpackPlugin({
-      template: 'src/public/index.html',
+      template: 'src/public/index.ejs',
       chunksSortMode: 'dependency'
     })
   ],
@@ -98,9 +118,9 @@ module.exports = {
     colors: true,
     inline: false,
     historyApiFallback: true,
-    port: 8000,
+    host: '0.0.0.0',
+    port: port,
     stats: 'minimal',
-    hot: true,
-    host: '0.0.0.0'
+    hot: true
   }
 };
