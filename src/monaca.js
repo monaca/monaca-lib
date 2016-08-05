@@ -320,6 +320,14 @@
       return true;
     }
 
+    if (f.indexOf('/.monaca/android/AndroidManifest.xml') == 0) {
+      return true;
+    }
+
+    if (f.indexOf('/.monaca/ios/MonacaApp-Info.plist') == 0) {
+      return true;
+    }
+
     // Allow all config files in root directory.
     if (/^\/config.*/.test(f)) {
       return true;
@@ -355,7 +363,7 @@
 
     if (allowFiles.length > 0) {
       // Only include files in /www, /merges and /plugins folders.
-      if (/^\/(?!www\/|www$|merges\/|merges$|plugins\/|plugins$).*/.test(f)) {
+      if (/^\/(?!www\/|www$|merges\/|merges$|plugins\/|plugins$|res\/|res$).*/.test(f)) {
         return false;
       } else {
         // Check if file is present in one of the /www, /merges and /plugins folders and also in list of allowed files.
@@ -367,7 +375,7 @@
       }
     } else {
       // Only include files in /www, /merges and /plugins folders.
-      return !/^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(f);
+      return !/^\/(www\/|merges\/|plugins\/|res\/|[^/]*$)/.test(f);
     }
   };
 
