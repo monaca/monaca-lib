@@ -3028,7 +3028,7 @@
       alias: alias,
       service: service,
       parameters: request_parameters,
-      build_id: build_id,
+      build_queue_id: build_id,
       ci_queue_id: ci_queue_id || null
     }).then(
       function(requestClient) {
