@@ -333,6 +333,45 @@
     return allFiles;
   };
 
+  /**
+   * Submits a post request.
+   * 
+   * @param {object} data - Post Form Data
+   * @param {object} qs - QueryString Data
+   */
+  Monaca.prototype._postRequest = function(data, qs) {
+    var deferred = Q.defer();
+    var qsDefault = {};
+
+    if (this.tokens && this.tokens.api) {
+      qsDefault.api_token = this.tokens.api;
+    }
+
+    var options = {
+      method: 'POST',
+      // rejectUnauthorized: false,
+      encoding: null,
+      headers: {
+        Cookie: this.tokens.session
+      },
+      timeout: 300 * 1000
+    };
+
+    options.qs = extend(qsDefault, qs);
+    options.form = data; 
+
+    this.getConfig('http_proxy').then(
+      function(httpProxy) {
+        options.proxy = httpProxy;
+        deferred.resolve(request.defaults(options));
+      }.bind(this),
+      function(error) {
+        deferred.reject(error);
+      }
+    );
+
+    return deferred.promise;
+  };
 
   Monaca.prototype._createRequestClient = function(data) {
     var deferred = Q.defer(), qs = {};
@@ -3024,7 +3063,7 @@
     
     var unknownErrorMsg = 'An unknown error has occurred while attempting to submit build distribution request. (alias: ' + alias + '; parameters: ' + JSON.stringify(request_parameters) + ')';
 
-    this._createRequestClient({
+    this._postRequest({
       alias: alias,
       service: service,
       parameters: request_parameters,
