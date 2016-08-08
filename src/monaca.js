@@ -1899,13 +1899,12 @@
 
   Monaca.prototype.pollBuildStatus = function(projectId, queueId) {
     var deferred = Q.defer();
-
-    var url = '/project/' + projectId + '/build/status/' + queueId;
+    var buildRoot = '/project/' + projectId + '/build';
 
     var interval = setInterval(function() {
-      this._post(url).then(
-        function(response) {
-          var result = JSON.parse(response).result;
+      this._post(buildRoot + '/status/' + queueId).then(
+        function(data) {
+          var result = this._safeParse(data.body).result;
 
           deferred.notify(result.description);
 
@@ -1914,11 +1913,12 @@
 
             if (result.status === 'finish') {
               deferred.resolve(result.description);
-            } else {
-              this._post(url).then(
-                function(response) {
-                  deferred.reject(JSON.parse(response).result.error_message);
-                },
+            }
+            else {
+              this._post(buildRoot + '/result/' + queueId).then(
+                function(data) {
+                  deferred.reject(this._safeParse(data.body).result.error_message);
+                }.bind(this),
                 function(error) {
                   deferred.reject(error);
                 }
@@ -1992,49 +1992,15 @@
       deferred.reject(new Error('Must specify build platform.'));
     }
 
-    var pollBuild = function(queueId) {
-      var deferred = Q.defer();
-
-      var interval = setInterval(function() {
-        this._post(buildRoot + '/status/' + queueId).then(
-          function(data) {
-            var result = this._safeParse(data.body).result;
-
-            deferred.notify(result.description);
-
-            if (result.finished) {
-              clearInterval(interval);
-
-              if (result.status === 'finish') {
-                deferred.resolve(result.description);
-              }
-              else {
-                this._post(buildRoot + '/result/' + queueId).then(
-                  function(data) {
-                    deferred.reject(this._safeParse(data.body).result.error_message);
-                  }.bind(this),
-                  function(error) {
-                    deferred.reject(error);
-                  }
-                );
-              }
-            }
-          }.bind(this),
-          function(error) {
-            clearInterval(interval);
-            deferred.reject(error);
-          }
-        );
-      }.bind(this), 1000);
-
-      return deferred.promise;
-    }.bind(this);
-
     this._post(buildRoot, params).then(
       function(data) {
         var queueId = this._safeParse(data.body).result.queue_id;
 
-        pollBuild(queueId).then(
+        if(skipPolling) {
+          return deferred.resolve(queueId);
+        }
+
+        this.pollBuildStatus(projectId, queueId).then(
           function() {
             this._post(buildRoot + '/result/' + queueId).then(
               function(data) {
@@ -2060,7 +2026,6 @@
 
     return deferred.promise;
   };
-
 
   /**
    * @method
