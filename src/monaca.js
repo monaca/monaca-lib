@@ -422,47 +422,7 @@
 
     return allFiles;
   };
-
-  /**
-   * Submits a post request.
-   * 
-   * @param {object} data - Post Form Data
-   * @param {object} qs - QueryString Data
-   */
-  Monaca.prototype._postRequest = function(data, qs) {
-    var deferred = Q.defer();
-    var qsDefault = {};
-
-    if (this.tokens && this.tokens.api) {
-      qsDefault.api_token = this.tokens.api;
-    }
-
-    var options = {
-      method: 'POST',
-      // rejectUnauthorized: false,
-      encoding: null,
-      headers: {
-        Cookie: this.tokens.session
-      },
-      timeout: 300 * 1000
-    };
-
-    options.qs = extend(qsDefault, qs);
-    options.form = data; 
-
-    this.getConfig('http_proxy').then(
-      function(httpProxy) {
-        options.proxy = httpProxy;
-        deferred.resolve(request.defaults(options));
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-    return deferred.promise;
-  };
-
+  
   Monaca.prototype._createRequestClient = function(data) {
     var deferred = Q.defer(), qs = {};
 
@@ -3257,47 +3217,33 @@
    * @return {Promise}
    */
   Monaca.prototype.distribute = function(alias, service, request_parameters, build_id, projectId, ci_queue_id) {
-    var deferred = Q.defer();
-
     if(!projectId) {
       projectId = this.getProjectId();
     }
     
     var unknownErrorMsg = 'An unknown error has occurred while attempting to submit build distribution request. (alias: ' + alias + '; parameters: ' + JSON.stringify(request_parameters) + ')';
+    var resource = '/project/' + projectId + '/distribute';
 
-    this._postRequest({
+    return this._post(resource, {
       alias: alias,
       service: service,
       parameters: request_parameters,
       build_queue_id: build_id,
       ci_queue_id: ci_queue_id || null
     }).then(
-      function(requestClient) {
-        requestClient.post({
-            rejectUnauthorized: false,
-            url: this.apiRoot + '/project/' + projectId + '/distribute',
-            json: true
-          },
-          function(error, response, body) {
-            if (error) {
-              deferred.reject(unknownErrorMsg);
-            } else {
-              if(body.status === 'error' || body.status === 'fail') {
-                deferred.reject(body.message || unknownErrorMsg);
-              } else {
-                deferred.resolve(body);
-              }
-            }
-          }.bind(this)
-        );
-      }.bind(this),
+      function(response) {
+        var body = this._safeParse(response.body);
 
-      function(error) {
-        deferred.reject(unknownErrorMsg);
+        if(body.status === 'error' || body.status === 'fail') {
+          return Q.reject(body.message || unknownErrorMsg);
+        } else {
+          return Q.resolve(body);
+        }
+      }.bind(this),
+      function() {
+        return Q.reject(unknownErrorMsg);
       }
     );
-
-    return deferred.promise;
   }
 
   module.exports = Monaca;
