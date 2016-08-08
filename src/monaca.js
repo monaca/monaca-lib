@@ -6,7 +6,7 @@
     request = require('request'),
     os = require('os'),
     path = require('path'),
-    fs = require('fs'),
+    fs = require('fs-extra'),
     shell = require('shelljs'),
     crc32 = require('buffer-crc32'),
     nconf = require('nconf'),
@@ -20,7 +20,8 @@
     tmp = require('tmp'),
     extract = require('extract-zip'),
     glob = require('glob'),
-    ncp = require('ncp').ncp;
+    EventEmitter = require('events'),
+    npm;
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -57,6 +58,14 @@
    *   );
    */
   var Monaca = function(apiRoot, options) {
+    // Parameters are optional.
+    if (typeof apiRoot === 'object') {
+      options = apiRoot;
+      apiRoot = undefined;
+    } else {
+      options = options || {};
+    }
+
     /**
      * @description
      *   Root of Monaca IDE API.
@@ -105,12 +114,34 @@
 
     /**
      * @description
-     *   Package name.
-     * @name Monaca#packageName
+     *   Client type.
+     * @name Monaca#clientType
      * @type string
      */
+    Object.defineProperty(this, 'clientType', {
+      value: options.clientType || 'local',
+      writable: false
+    });
+
+    /**
+     * @description
+     *   Client version.
+     * @name Monaca#clientVersion
+     * @type string
+     */
+    Object.defineProperty(this, 'clientVersion', {
+      value: options.clientVersion || '0.0.0',
+      writable: false
+    });
+
+    /**
+     * @description
+     *   Debug.
+     * @name Monaca#debug
+     * @type boolean
+     */
     Object.defineProperty(this, 'debug', {
-      value: (options && options.hasOwnProperty("debug") && options.debug === true),
+      value: (options.hasOwnProperty('debug') && options.debug === true),
       writable: false
     });
 
@@ -125,41 +156,130 @@
     if (this.debug) {
       request.debug = true;
     }
+
+    this.emitter = new EventEmitter();
+    this._monacaData = this._loadAllData();
+  };
+
+
+  Monaca.prototype._generateUUIDv4 = function(a, b) {
+    for (
+      b = a = ''; a++ < 36; b += a * 51 & 52 ?
+      (
+        a ^ 15 ?
+        8 ^ Math.random() *
+        (a ^ 20 ? 16 : 4) :
+        4
+      ).toString(16) :
+      '-'
+    );
+    return b;
+  };
+
+  Monaca.prototype.getTrackId = function() {
+    if (this.getData('trackId')) {
+      return Q.resolve(this.getData('trackId'));
+    }
+    return this.setData({
+      trackId: this._generateUUIDv4()
+    }).then(Q.resolve.bind(null, this.getData('trackId')));
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Reports any event to Monaca backend. It keeps the previous promise flow.
+   * @param {object} report - Report object. Must contain 'event'.
+   *  Optional values are 'arg1' and 'otherArgs'.
+   * @param {any} resolvedValue - Optional. This parameter will be returned by the promise.
+   * @return {Promise}
+   * @example
+   *   monaca.reportAnalytics({event: 'create'})
+   *     .then(nextMethod)
+   */
+  Monaca.prototype.reportAnalytics = function(report, resolvedValue) {
+    return this.getTrackId().then(
+      function(trackId) {
+        var form = extend({}, report, { event: 'monaca-lib-' + report.event }, {
+          trackId: trackId,
+          clientType: this.clientType,
+          version: this.version,
+          clientId: this.getData('clientId')
+        });
+
+        return this._post(this.apiRoot + '/user/track', form)
+          .then(Q.resolve.bind(null, resolvedValue), Q.resolve.bind(null, resolvedValue));
+
+      }.bind(this),
+      Q.resolve.bind(null, resolvedValue)
+    );
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Reports a fail event to Monaca backend. This must be used with a rejected promise.
+   *  It keeps the rejected promise flow.
+   * @param {object} report - Report object. Must contain 'event'.
+   *  Optional values are 'arg1' and 'otherArgs'.
+   * @param {any} resolvedValue - Optional. This parameter will be returned by the promise.
+   * @return {Rejected promise}
+   * @example
+   *   monaca.reportFail({event: 'create'})
+   *     .catch(handleErrors)
+   */
+  Monaca.prototype.reportFail = function(report, error) {
+    report.errorDetail = error === 'object' ? error.message : error;
+    return this.reportAnalytics(extend({}, report, { event: report.event + '-fail' }))
+      .then(Q.reject.bind(null, error));
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Reports a finish event to Monaca backend. It keeps the previous promise flow.
+   * @param {object} report - Report object. Must contain 'event'.
+   *  Optional values are 'arg1' and 'otherArgs'.
+   * @param {any} resolvedValue - Optional. This parameter will be returned by the promise.
+   * @return {Promise}
+   * @example
+   *   monaca.reportAnalytics({event: 'create'})
+   *     .then(nextMethod)
+   */
+  Monaca.prototype.reportFinish = function(report, resolvedValue) {
+    return this.reportAnalytics(extend({}, report, { event: report.event + '-finish' }), resolvedValue);
+  };
+
+  Monaca.prototype._safeParse = function(jsonString) {
+    try {
+      return JSON.parse(jsonString);
+    } catch(e) {
+      throw new Error('Not a JSON response.');
+    }
   };
 
   Monaca.prototype._loadAllData = function() {
-    var deferred = Q.defer();
-
-    fs.exists(USER_DATA_FILE, function(exists) {
-      if (exists) {
-        fs.readFile(USER_DATA_FILE, function(error, data) {
-          if (error) {
-            deferred.reject(error);
-          }
-          else {
-            try {
-              deferred.resolve(JSON.parse(data));
-            }
-            catch (err) {
-              deferred.reject(err);
-            }
-          }
-        });
+    var data;
+    try {
+      data = require(USER_DATA_FILE);
+    } catch(e) {
+      if (e.code === 'MODULE_NOT_FOUND') {
+        return {};
       }
-      else {
-        deferred.resolve({});
-      }
-    });
-
-    return deferred.promise;
+      throw e;
+    }
+    return data;
   };
 
-  Monaca.prototype._saveAllData = function(data) {
+  Monaca.prototype._saveAllData = function() {
     var deferred = Q.defer(),
       jsonData;
 
     try {
-      jsonData = JSON.stringify(data);
+      jsonData = JSON.stringify(this._monacaData);
     }
     catch (error) {
       return deferred.reject(error);
@@ -183,43 +303,13 @@
     return deferred.promise;
   };
 
-  Monaca.prototype.setData = function(key, value) {
-    var deferred = Q.defer();
-
-    this._loadAllData().then(
-      function(data) {
-        data[key] = value;
-
-        this._saveAllData(data).then(
-          function() {
-            deferred.resolve(value);
-          },
-          function(error) {
-            deferred.reject(error);
-          }
-        );
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-    return deferred.promise;
+  Monaca.prototype.setData = function(data) {
+    extend(this._monacaData, data);
+    return this._saveAllData();
   };
 
   Monaca.prototype.getData = function(key) {
-    var deferred = Q.defer();
-
-    this._loadAllData().then(
-      function(data) {
-        deferred.resolve(data[key]);
-      },
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-    return deferred.promise;
+    return this._monacaData[key];
   };
 
   //Used to filter the uploaded/downloaded files/dirs based on patterns
@@ -229,14 +319,14 @@
       return true;
     }
 
-    // Allow all config files in root directory.
-    if (/^\/config.*/.test(f)) {
-      return true;
-    }
-
     // Exclude other hidden files and folders from being uploaded.
     if (f.indexOf('/.') >= 0 && source === "uploadProject") {
       return false;
+    }
+
+    // Allow all config files in root directory.
+    if (/^\/(.*config\..*|.*.json)$/.test(f)) {
+      return true;
     }
 
     // Platform specific files.
@@ -264,7 +354,7 @@
 
     if (allowFiles.length > 0) {
       // Only include files in /www, /merges and /plugins folders.
-      if (/^\/(?!www\/|www$|merges\/|merges$|plugins\/|plugins$).*/.test(f)) {
+      if (/^\/(?!www\/|www$|merges\/|merges$|plugins\/|plugins$|src\/|src$|typings\/|typings$).*/.test(f)) {
         return false;
       } else {
         // Check if file is present in one of the /www, /merges and /plugins folders and also in list of allowed files.
@@ -276,7 +366,7 @@
       }
     } else {
       // Only include files in /www, /merges and /plugins folders.
-      return !/^\/(www\/|merges\/|plugins\/|[^/]*$)/.test(f);
+      return !/^\/(www\/|merges\/|plugins\/|src\/|typings\/|[^/]*$)/.test(f);
     }
   };
 
@@ -388,7 +478,7 @@
       function(httpProxy) {
         var requestClient = request.defaults({
           qs: qs,
-          // rejectUnauthorized: false,
+          rejectUnauthorized: false,
           encoding: null,
           proxy: httpProxy,
           headers: {
@@ -406,7 +496,7 @@
     return deferred.promise;
   };
 
-  Monaca.prototype._request = function(method, resource, data, requestClient) {
+  Monaca.prototype._request = function(method, resource, data, requestClient, isFile ) {
     method = method.toUpperCase();
     resource = resource.match(/^https?\:\/\//) ? resource : (this.apiRoot + resource);
     var deferred = Q.defer();
@@ -417,17 +507,29 @@
 
     createRequestClient().then(
       function(requestClient) {
-        requestClient({
+        var hashData = null;
+        if (! isFile) {
+          hashData = {
             method: method,
             url: resource,
             form: method === 'POST' ? data : undefined
-          },
+          };
+        } else {
+          hashData = {
+            method: method,
+            url: resource,
+            formData: method === 'POST' ? data : undefined
+          };
+        }
+
+        requestClient(
+          hashData ,
           function(error, response, body) {
             if (error) {
               deferred.reject(error.code);
             } else {
               if (response.statusCode === 200) {
-                deferred.resolve(body);
+                deferred.resolve({body: body, response: response});
               } else if (response.statusCode === 401 && resource.startsWith(this.apiRoot) && !this.retry) {
                   this.retry = true;
                   this.relogin().then(function() {
@@ -447,7 +549,7 @@
               }
             }
           }.bind(this)
-        )
+        );
       }.bind(this),
       function(error) {
         deferred.reject(error);
@@ -462,6 +564,10 @@
 
   Monaca.prototype._post = function(resource, data) {
     return this._request('POST', resource, data);
+  };
+
+  Monaca.prototype._post_file = function(resource, data) {
+    return this._request('POST', resource, data, null, true );
   };
 
   /**
@@ -496,7 +602,7 @@
             shell.mkdir('-p', parentDir);
           }
 
-          fs.writeFile(localPath, data, function(error) {
+          fs.writeFile(localPath, data.body, function(error) {
             if (error) {
               deferred.reject(error);
             }
@@ -546,9 +652,10 @@
             deferred.reject(error);
           }
           else {
-            this._post('/project/' + projectId + '/file/save', {
+            this._post_file('/project/' + projectId + '/file/save', {
               path: remotePath,
-              contentBase64: data.toString('base64')
+//              contentBase64: data.toString('base64')
+              file: fs.createReadStream(localPath)
             }).then(
               function() {
                 deferred.resolve(remotePath);
@@ -613,67 +720,40 @@
       form.email = arguments[0];
       form.password = arguments[1];
     }
+    return this._post(this.apiRoot + '/user/login', form)
+      .then(
+        function(data) {
+          var body = this._safeParse(data.body),
+            response = data.response;
+          if (body.status === 'ok') {
+            var headers = response.caseless.dict;
+            return this.setData({
+              'reloginToken': body.result.token,
+              'clientId': body.result.clientId,
+              'x-monaca-param-api-token': headers['x-monaca-param-api-token'],
+              'x-monaca-param-session': headers['x-monaca-param-session']
+            })
+            .then(
+              function() {
+                this.tokens = {
+                  api: headers['x-monaca-param-api-token'],
+                  session: headers['x-monaca-param-session']
+                };
 
-    Q.all([this.getData('clientId'), this.getConfig('http_proxy')]).then(
-      function(data) {
-        var clientId = data[0],
-          httpProxy = data[1];
+                this.loginBody = body.result;
+                this._loggedIn = true;
 
-        if (clientId) {
-          form.clientId = clientId;
-        }
-        request.post({
-         // rejectUnauthorized: false,
-          url: this.apiRoot + '/user/login',
-          proxy: httpProxy,
-          form: form
-        },
-        function(error, response, body) {
-          try {
-            var _body = JSON.parse(body || '{}');
-          } catch (e) {
-            deferred.reject(new Error('Not a JSON response.'));
+                return Q.resolve();
+              }.bind(this),
+              Q.reject
+            );
           }
-          if (error) {
-            deferred.reject(error.code);
-          }
-          else {
-            if (response.statusCode == 200) {
 
-              var headers = response.caseless.dict;
+          return Q.reject(body);
 
-              this.setData('reloginToken', _body.result.token)
-                .then(this.setData.bind(this, 'clientId', _body.result.clientId), deferred.reject)
-                .then(this.setData.bind(this, 'x-monaca-param-api-token', headers['x-monaca-param-api-token']), deferred.reject)
-                .then(this.setData.bind(this, 'x-monaca-param-session', headers['x-monaca-param-session']), deferred.reject)
-                .then(
-                  function() {
-                    this.tokens = {
-                      api: headers['x-monaca-param-api-token'],
-                      session: headers['x-monaca-param-session']
-                    };
-
-                    this.loginBody = _body.result;
-                    this._loggedIn = true;
-
-                    deferred.resolve();
-                  }.bind(this),
-                  deferred.reject
-                );
-            }
-            else {
-              deferred.reject(_body);
-            }
-          }
-        }.bind(this));
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-
-    return deferred.promise;
+        }.bind(this),
+        Q.reject
+      );
   };
 
   /**
@@ -697,22 +777,20 @@
    *   );
    */
   Monaca.prototype.prepareSession = function(options) {
-    return Q.all([
-      this.getData('x-monaca-param-api-token'),
-      this.getData('x-monaca-param-session')
-    ]).then(
-      function(values) {
-        if (!values[0] || !values[1]) {
-          return this.relogin(options);
-        }
+    var apiToken = this.getData('x-monaca-param-api-token'),
+      session = this.getData('x-monaca-param-session');
 
-        this.tokens = {
-          api: values[0],
-          session: values[1]
-        };
-        this._loggedIn = true;
-      }.bind(this)
-    );
+    if (!apiToken || !session) {
+      return this.relogin(options);
+    }
+
+    this.tokens = {
+      api: apiToken,
+      session: session
+    };
+    this._loggedIn = true;
+
+    return Q.resolve();
   };
 
   /**
@@ -736,31 +814,14 @@
    *   );
    */
   Monaca.prototype.relogin = function(options) {
-    var deferred = Q.defer();
-
     options = options || {};
 
-    this.getData('reloginToken').then(
-      function(reloginToken) {
-        if (typeof(reloginToken) !== 'string' || reloginToken === '') {
-          return deferred.reject(new Error('Not a valid relogin token.'));
-        }
+    var reloginToken = this.getData('reloginToken');
+    if (typeof reloginToken !== 'string' || reloginToken === '') {
+      return Q.reject(new Error('Not a valid relogin token.'));
+    }
 
-        this._login(reloginToken, options).then(
-          function() {
-            deferred.resolve();
-          },
-          function(error) {
-            deferred.reject(error);
-          }
-        );
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-    return deferred.promise;
+    return this._login(reloginToken, options);
   };
 
   /**
@@ -812,19 +873,22 @@
   Monaca.prototype.logout = function() {
     var deferred = Q.defer();
 
-    this.setData('reloginToken', '')
-      .then(this.setData.bind(this, 'clientId', ''), deferred.reject)
-      .then(this.setData.bind(this, 'x-monaca-param-api-token', ''), deferred.reject)
-      .then(this.setData.bind(this, 'x-monaca-param-session', ''), deferred.reject)
-      .then(
-        function() {
-          delete this.tokens;
-          this._loggedIn = false;
+    this.setData({
+      'reloginToken': '',
+      'clientId': '',
+      'x-monaca-param-api-token': '',
+      'x-monaca-param-session': '',
+      'trackId': ''
+    })
+    .then(
+      function() {
+        delete this.tokens;
+        this._loggedIn = false;
 
-          deferred.resolve();
-        }.bind(this),
-        deferred.reject
-      );
+        deferred.resolve();
+      }.bind(this),
+      deferred.reject
+    );
 
     return deferred.promise;
   };
@@ -865,42 +929,23 @@
       }
     };
 
-    this.getConfig('http_proxy').then(
-      function(httpProxy) {
-        request.post({
-//          rejectUnauthorized: false,
-          url: this.webApiRoot + '/register',
-          proxy: httpProxy,
-          form: form
-        },
-        function(error, response, body) {
-          try {
-            var _body = JSON.parse(body || '{}');
-          } catch (e) {
-            return deferred.reject(new Error('Not a JSON response.'));
-          }
-          if (error) {
-            return deferred.reject(error.code);
+    return this._post(this.webApiRoot + '/register', form)
+      .then(
+        function(data) {
+          var body = this._safeParse(data.body);
+          if (body.status === 'ok') {
+            return Q.resolve(body.result.submitOK.token);
           }
 
-          if (_body.status === 'ok') {
-            deferred.resolve(_body.result.submitOK.token);
-          } else {
-            var errorMessage = _body.title;
-            Object.keys(_body.result.formError).forEach(function(key) {
-              errorMessage += '\n' + key + ': ' + _body.result.formError[key];
-            });
+          var errorMessage = body.title;
+          Object.keys(body.result.formError).forEach(function(key) {
+            errorMessage += '\n' + key + ': ' + body.result.formError[key];
+          });
 
-            deferred.reject(new Error(errorMessage));
-          }
-        }.bind(this));
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-    return deferred.promise;
+          return Q.reject(new Error(errorMessage));
+        }.bind(this),
+        Q.reject
+      );
   };
 
   /**
@@ -924,43 +969,24 @@
     options = options || {};
     var deferred = Q.defer();
 
-    this.getConfig('http_proxy').then(
-      function(httpProxy) {
-        request.post({
-         // rejectUnauthorized: false,
-          url: this.webApiRoot + '/check_activate',
-          proxy: httpProxy,
-          form: {
-            language: options.language || 'en',
-            clientType: options.clientType || 'local',
-            version: options.version || this.packageName + ' ' + this.version,
-            os: os.platform(),
-            param: token
-          }
-        },
-        function(error, response, body) {
-          try {
-            var _body = JSON.parse(body || '{}');
-          } catch (e) {
-            return deferred.reject(new Error('Not a JSON response.'));
-          }
-          if (error) {
-            return deferred.reject(error.code);
-          }
+    return this._post(this.webApiRoot + '/check_activate', {
+      language: options.language || 'en',
+      clientType: options.clientType || 'local',
+      version: options.version || this.packageName + ' ' + this.version,
+      os: os.platform(),
+      param: token
+    })
+    .then(
+      function(data) {
+        var body = this._safeParse(data.body);
+        if (body.status === 'ok') {
+          return body.result === 1 ? Q.resolve() : Q.reject();
+        }
 
-          if (_body.status === 'ok') {
-            _body.result === 1 ? deferred.resolve() : deferred.reject();
-          } else {
-            deferred.reject(_body.title);
-          }
-        }.bind(this));
+        return Q.reject(body.title);
       }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
+      Q.reject
     );
-
-    return deferred.promise;
   };
 
   /**
@@ -987,17 +1013,13 @@
 
     return this._get('/project/' + projectId + '/can_build_app')
     .then(
-      function(response) {
-        try {
-          var data = JSON.parse(response);
-        } catch (err) {
-          return Q.reject(new Error(err));
-        }
+      function(data) {
+        var body = this._safeParse(data.body);
 
-        if (data.status === 'ok') {
+        if (body.status === 'ok') {
 
           var checkError = function() {
-            var platformContent = data.result[platform];
+            var platformContent = body.result[platform];
 
             if (!platformContent) {
               return 'Specified platform is not supported or doesn\'t exist.';
@@ -1060,12 +1082,12 @@
           if (errorMessage) {
             return Q.reject(new Error(errorMessage));
           } else {
-            return Q.resolve(data);
+            return Q.resolve(body);
           }
         } else {
-          return Q.reject(new Error(data.status + " - " + data.message));
+          return Q.reject(new Error(body.status + " - " + body.message));
         }
-      },
+      }.bind(this),
       function(err) {
         if (err.code === 404) {
           return Q.reject(new Error("Cannot reach the server, contact Monaca Support. Error code: " + err.code));
@@ -1088,9 +1110,9 @@
     var deferred = Q.defer();
 
     this._get('/user/getSessionUrl', { url: url }).then(
-      function(response) {
-        deferred.resolve(JSON.parse(response).result.url);
-      },
+      function(data) {
+        deferred.resolve(this._safeParse(data.body).result.url);
+      }.bind(this),
       function(error) {
         deferred.reject(error);
       }
@@ -1163,9 +1185,9 @@
     options.disableStatusUpdate = options.disableStatusUpdate ? 1 : 0;
 
     this._get('/user/info/news', options ? options : {} ).then(
-      function(response) {
-        deferred.resolve(JSON.parse(response));
-      },
+      function(data) {
+        deferred.resolve(this._safeParse(data.body));
+      }.bind(this),
       function(error) {
         deferred.reject(error);
       }
@@ -1193,9 +1215,9 @@
     var deferred = Q.defer();
 
     this._get('/user/projects').then(
-      function(response) {
-        deferred.resolve(JSON.parse(response).result.items);
-      },
+      function(data) {
+        deferred.resolve(this._safeParse(data.body).result.items);
+      }.bind(this),
       function(error) {
         deferred.reject(error);
       }
@@ -1271,8 +1293,8 @@
     var deferred = Q.defer();
 
     this._post('/project/' + projectId + '/file/tree').then(
-      function(response) {
-        deferred.resolve(JSON.parse(response).result.items);
+      function(data) {
+        deferred.resolve(JSON.parse(data.body).result.items);
       },
       function(error) {
         deferred.reject(error);
@@ -1530,18 +1552,9 @@
     options.isBuildOnly = options.isBuildOnly ? 1 : 0;
 
     this._post('/user/project/create', options).then(
-      function(response) {
-        var data;
-
-        try {
-          data = JSON.parse(response).result;
-        }
-        catch (error) {
-          return deferred.reject(error);
-        }
-
-        deferred.resolve(data);
-      },
+      function(data) {
+        deferred.resolve(this._safeParse(data.body).result);
+      }.bind(this),
       function(error) {
         deferred.reject(error);
       }
@@ -1638,124 +1651,121 @@
   Monaca.prototype.uploadProject = function(projectDir, options) {
     var deferred = Q.defer();
 
-    localProperties.get(projectDir, 'project_id').then(
+    this.transpile(projectDir).then(
+      localProperties.get.bind(this, projectDir, 'project_id'),
+      function(error) {
+        deferred.reject(error);
+      }
+    ).then(
       function(projectId) {
-        this.transpile(projectDir).then(
-          Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)]).then(
-            function(files) {
-              var localFiles = files[0],
-                remoteFiles = files[1];
+        Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)]).then(
+          function(files) {
+            var localFiles = files[0],
+              remoteFiles = files[1];
 
-              // Fetch list of files after ignoring files/directories in .monacaignore file.
-              var allowFiles = this._filterIgnoreList(projectDir);
+            // Fetch list of files after ignoring files/directories in .monacaignore file.
+            var allowFiles = this._filterIgnoreList(projectDir);
 
-              var filesToBeDeleted = {};
+            var filesToBeDeleted = {};
 
-              for (var f in remoteFiles) {
-                // If file on Monaca Cloud doesn't exist locally then it should be deleted from Cloud.
-                if (!localFiles.hasOwnProperty(f)) {
-                  filesToBeDeleted[f] = remoteFiles[f];
-                }
+            for (var f in remoteFiles) {
+              // If file on Monaca Cloud doesn't exist locally then it should be deleted from Cloud.
+              if (!localFiles.hasOwnProperty(f)) {
+                filesToBeDeleted[f] = remoteFiles[f];
               }
-              if (options && !options.dryrun && options.delete) {
-                this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted)).then(
-                  function() {
-                    console.log(Object.keys(filesToBeDeleted)
-                      .map(function(f) {
-                        return "deleted -> " + f;
-                      })
-                      .join("\n")
-                    );
-                  },
-                  function(err) {
-                    console.log("\nfile delete error ->  : " + JSON.stringify(err));
-                  }
-                )
-              }
-
-              // Filter out directories and unchanged files.
-              this._filterFiles(localFiles, remoteFiles);
-
-              var keys = [];
-
-              // Checks if the file/dir are included in a directory that can be uploaded.
-              for (var file in localFiles) {
-                if (this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
-                  keys.push(file);
-                }
-              }
-
-              // Modified files.
-              var modifiedFiles = {
-                uploaded: {},
-                deleted: filesToBeDeleted
-              };
-
-              for (var i in keys) {
-                if (localFiles[keys[i]]) {
-                  modifiedFiles.uploaded[keys[i]] = localFiles[keys[i]];
-                }
-              }
-
-              // If dryrun option is set, just return the files to be uploaded.
-              if (options && options.dryrun) {
-                return deferred.resolve(modifiedFiles);
-              }
-
-              var totalLength = keys.length,
-                currentIndex = 0,
-                qLimit = qlimit(4);
-
-              var uploadFile = function(key) {
-                var d = Q.defer();
-                var absolutePath = path.join(projectDir, key.substr(1));
-
-                this.uploadFile(projectId, absolutePath, key).then(
-                  function(remotePath) {
-                    deferred.notify({
-                      path: remotePath,
-                      total: totalLength,
-                      index: currentIndex
-                    });
-                    d.resolve();
-                  },
-                  function(error) {
-                    d.reject(error);
-                  }
-                  )
-                  .finally(
-                    function() {
-                      currentIndex++;
-                    }
-                  );
-                return d.promise;
-              }.bind(this);
-
-              Q.all(keys.map(qLimit(function(key) {
-                if (localFiles.hasOwnProperty(key)) {
-                  return uploadFile(key);
-                }
-              }.bind(this)))).then(
+            }
+            if (options && !options.dryrun && options.delete) {
+              this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted)).then(
                 function() {
-                  deferred.resolve(modifiedFiles);
+                  console.log(Object.keys(filesToBeDeleted)
+                    .map(function(f) {
+                      return "deleted -> " + f;
+                    })
+                    .join("\n")
+                  );
+                },
+                function(err) {
+                  console.log("\nfile delete error ->  : " + JSON.stringify(err));
+                }
+              )
+            }
+
+            // Filter out directories and unchanged files.
+            this._filterFiles(localFiles, remoteFiles);
+
+            var keys = [];
+
+            // Checks if the file/dir are included in a directory that can be uploaded.
+            for (var file in localFiles) {
+              if (this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
+                keys.push(file);
+              }
+            }
+
+            // Modified files.
+            var modifiedFiles = {
+              uploaded: {},
+              deleted: filesToBeDeleted
+            };
+
+            for (var i in keys) {
+              if (localFiles[keys[i]]) {
+                modifiedFiles.uploaded[keys[i]] = localFiles[keys[i]];
+              }
+            }
+
+            // If dryrun option is set, just return the files to be uploaded.
+            if (options && options.dryrun) {
+              return deferred.resolve(modifiedFiles);
+            }
+
+            var totalLength = keys.length,
+              currentIndex = 0,
+              qLimit = qlimit(4);
+
+            var uploadFile = function(key) {
+              var d = Q.defer();
+              var absolutePath = path.join(projectDir, key.substr(1));
+
+              this.uploadFile(projectId, absolutePath, key).then(
+                function(remotePath) {
+                  deferred.notify({
+                    path: remotePath,
+                    total: totalLength,
+                    index: currentIndex
+                  });
+                  d.resolve();
                 },
                 function(error) {
-                  deferred.reject(error);
+                  d.reject(error);
                 }
-              );
-            }.bind(this),
-            function(error) {
-              deferred.reject(error);
-            }
-          ),
+                )
+                .finally(
+                  function() {
+                    currentIndex++;
+                  }
+                );
+              return d.promise;
+            }.bind(this);
+
+            Q.all(keys.map(qLimit(function(key) {
+              if (localFiles.hasOwnProperty(key)) {
+                return uploadFile(key);
+              }
+            }.bind(this)))).then(
+              function() {
+                deferred.resolve(modifiedFiles);
+              },
+              function(error) {
+                deferred.reject(error);
+              }
+            );
+          }.bind(this),
           function(error) {
             deferred.reject(error);
           }
         );
-      }.bind(this),
-      function(error) {
-        deferred.reject(error);
-      }
+      }.bind(this)
     );
 
     return deferred.promise;
@@ -2022,32 +2032,66 @@
       deferred.reject(new Error('Must specify build platform.'));
     }
 
-    this._post(buildRoot, params).then(
-      function(response) {
-        var queueId = JSON.parse(response).result.queue_id;
+    var pollBuild = function(queueId) {
+      var deferred = Q.defer();
 
-        if(skipPolling) {
-          deferred.resolve(queueId);
-        } else {
-          this.pollBuildStatus(projectId, queueId).then(
-            function() {
-              this._post(buildRoot + '/result/' + queueId).then(
-                function(response) {
-                  deferred.resolve(JSON.parse(response).result);
-                },
-                function(error) {
-                  deferred.reject(error);
-                }
-              );
-            }.bind(this),
-            function(error) {
-              deferred.reject(error);
-            },
-            function(progress) {
-              deferred.notify(progress);
+      var interval = setInterval(function() {
+        this._post(buildRoot + '/status/' + queueId).then(
+          function(data) {
+            var result = this._safeParse(data.body).result;
+
+            deferred.notify(result.description);
+
+            if (result.finished) {
+              clearInterval(interval);
+
+              if (result.status === 'finish') {
+                deferred.resolve(result.description);
+              }
+              else {
+                this._post(buildRoot + '/result/' + queueId).then(
+                  function(data) {
+                    deferred.reject(this._safeParse(data.body).result.error_message);
+                  }.bind(this),
+                  function(error) {
+                    deferred.reject(error);
+                  }
+                );
+              }
             }
-          );
-        }
+          }.bind(this),
+          function(error) {
+            clearInterval(interval);
+            deferred.reject(error);
+          }
+        );
+      }.bind(this), 1000);
+
+      return deferred.promise;
+    }.bind(this);
+
+    this._post(buildRoot, params).then(
+      function(data) {
+        var queueId = this._safeParse(data.body).result.queue_id;
+
+        pollBuild(queueId).then(
+          function() {
+            this._post(buildRoot + '/result/' + queueId).then(
+              function(data) {
+                deferred.resolve(this._safeParse(data.body).result);
+              }.bind(this),
+              function(error) {
+                deferred.reject(error);
+              }
+            );
+          }.bind(this),
+          function(error) {
+            deferred.reject(error);
+          },
+          function(progress) {
+            deferred.notify(progress);
+          }
+        );
       }.bind(this),
       function(error) {
         deferred.reject(error);
@@ -2078,24 +2122,103 @@
   Monaca.prototype.getTemplates = function() {
     return this._get('/user/templates')
       .then(
-        function(response) {
-          var data;
+        function(data) {
+          var body = this._safeParse(data.body);
 
-          try {
-            data = JSON.parse(response);
+          if (body.status === 'ok') {
+            return Q.resolve(body.result);
+          } else {
+            return Q.reject(body.status);
           }
-          catch (e) {
-            return Q.reject(e);
-          }
-
-          if (data.status === 'ok') {
-            return data.result;
-          }
-          else {
-            return Q.reject(data.status);
-          }
-        }
+        }.bind(this),
+        Q.reject
       );
+  };
+
+  Monaca.prototype._npmInit = function() {
+    if (npm) {
+      return Q.resolve(npm);
+    }
+
+    var npmModules = ['npm', 'global-npm'];
+
+    for (var i in npmModules) {
+      try {
+        npm = require(npmModules[i]);
+      } catch (err) {
+        if (i == (npmModules.length - 1)) {
+          if (err.code === 'MODULE_NOT_FOUND') {
+            err.message = 'npm module not found, add it in order to be able to use this functionality.';
+          } else {
+            err.message = 'There is an issue with npm. Error code: ' + err.code;
+          }
+
+          return Q.reject(err);
+        }
+      }
+
+      if (npm) {
+        return Q.resolve(npm);
+      }
+    }
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Runs NPM install command
+   * @param {String} Directory
+   * @param {String} Dependencies to install. Omit it to use the directory's package.json
+   * @return {Promise}
+   */
+  Monaca.prototype._npmInstall = function(dir, argvs) {
+    argvs = argvs || [];
+    var deferred = Q.defer();
+
+    this._npmInit().then(function() {
+      npm.load({}, function (err) {
+        if (err) {
+          return deferred.reject(err);
+        }
+
+        npm.commands.install(dir, argvs, function(err, data) {
+          if (err) {
+            return deferred.reject(err);
+          }
+
+          deferred.resolve(data);
+        });
+      });
+    }, function(err) {
+      console.error(err.message);
+      process.exit(1);
+    });
+
+    return deferred.promise;
+  };
+
+  function _jsStringEscape(string) {
+    return ('' + string).replace(/["'\\\n\r\u2028\u2029]/g, function (character) {
+      // Escape all characters not included in SingleStringCharacters and
+      // DoubleStringCharacters on
+      // http://www.ecma-international.org/ecma-262/5.1/#sec-7.8.4
+      switch (character) {
+        case '"':
+        case "'":
+        case '\\':
+          return '\\' + character;
+        // Four possible LineTerminator characters need to be escaped:
+        case '\n':
+          return '\\n';
+        case '\r':
+          return '\\r';
+        case '\u2028':
+          return '\\u2028';
+        case '\u2029':
+          return '\\u2029';
+      }
+    })
   };
 
   /**
@@ -2107,67 +2230,147 @@
    * @return {Promise}
    */
   Monaca.prototype.installBuildDependencies = function(projectDir) {
-    var deferred = Q.defer();
-    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-    var config = require(projectInfoFile);
+    var config = this.fetchProjectData(projectDir);
 
     if(!config.build) {
-      deferred.resolve();
-      return deferred.promise;
+      return Q.resolve(projectDir);
     }
 
+    var deferred = Q.defer();
     var packageJsonFile = path.resolve(path.join(__dirname, '..', 'package.json'));
     var dependencies = require(packageJsonFile).additionalDependencies;
     var installDependencies = [];
 
+    if(!fs.existsSync(USER_CORDOVA)) {
+      fs.mkdirSync(USER_CORDOVA);
+    }
+    if(!fs.existsSync(NPM_PACKAGE_FILE)) {
+      fs.writeFileSync(NPM_PACKAGE_FILE, '{}');
+    }
+    var nodeModules = path.join(USER_CORDOVA, 'node_modules');
+    if(!fs.existsSync(nodeModules)) {
+      fs.mkdirSync(nodeModules);
+    }
+
     Object.keys(dependencies).forEach(function(key) {
+      var dep;
       try {
-        var dep = require(path.join(USER_CORDOVA, 'node_modules', key, 'package.json'));
-        if (dependencies[key] !== dep.version) {
-          installDependencies.push(key + '@' + dependencies[key]);
-        }
+        dep = require(path.join(USER_CORDOVA, 'node_modules', key, 'package.json'));
       } catch (e) {
-        installDependencies.push(key + '@' + dependencies[key]);
+      } finally {
+        if (!dep || dep.version !== dependencies[key]) {
+          installDependencies.push(key + '@' + dependencies[key]);
+          var depPath = path.join(nodeModules, key)
+          if(!fs.existsSync(depPath)) {
+            fs.mkdirSync(depPath);
+          }
+        }
       }
     });
 
     if(installDependencies.length > 0) {
-      if(!fs.existsSync(USER_CORDOVA)) {
-        fs.mkdirSync(USER_CORDOVA);
-      }
-
-      if(!fs.existsSync(NPM_PACKAGE_FILE)) {
-        fs.writeFileSync(NPM_PACKAGE_FILE, '{}');
-      }
-
-      process.stdout.write('Installing build dependencies...\n');
-
-      var cmd = 'npm install ' + installDependencies.join(' ') + ' --loglevel=error';
-      var childProcess = child_process.exec(cmd, {
-        cwd: USER_CORDOVA
-      });
-
-      childProcess.on('exit', function(code) {
-        if (code === 0) {
-          deferred.resolve();
-        }
-        else {
-          process.stderr.write('Failed to install build dependencies.');
-
-          deferred.reject('Failed installing packages.');
-        }
-      });
-
-      childProcess.stdout.on('data', function(data) {
-        process.stdout.write(data);
-      });
-
-      childProcess.stderr.on('data', function(data) {
-        process.stderr.write(data);
-      });
+      process.stdout.write('\n\nInstalling build dependencies...\n');
+      this._npmInstall(USER_CORDOVA, installDependencies).then(
+        deferred.resolve.bind(null, projectDir),
+        deferred.reject.bind(null, 'Failed to install build dependencies.')
+      );
     } else {
-      deferred.resolve();
+      deferred.resolve(projectDir);
     }
+
+    return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Get webpack config template and replace string variables with project specific values.
+   * @param {String} Webpack Config Environment Type (prod|dev)
+   * @param {String} Project Directory
+   * @return {String}
+   */
+  Monaca.prototype.getWebpackConfig = function(environment, projectDir) {
+    try {
+      var config = this.fetchProjectData(projectDir);
+    } catch(error) {
+      throw 'Failed to require package info.';
+    }
+
+    var framework = config['template-type'];
+    var file = 'webpack.' + environment + '.' + framework +  '.js';
+    var asset = path.resolve(path.join(__dirname, 'template', file));
+
+    if(!fs.existsSync(asset)) {
+      throw 'Failed to locate Webpack config template for framework ' + framework;
+    }
+
+    return fs.readFileSync(asset, 'utf8');
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Writes webpack configs to the project directory.
+   * @param {String} Project Directory
+   * @return {Promise}
+   */
+  Monaca.prototype.generateBuildConfigs = function(projectDir) {
+    var config = this.fetchProjectData(projectDir);
+
+    if(!config.build) {
+      return Q.resolve(projectDir);
+    }
+
+    var deferred = Q.defer();
+
+    try {
+      var webpackDevFile = path.resolve(path.join(projectDir, 'webpack.dev.config.js'));
+      if(!fs.existsSync(webpackDevFile)) {
+        var fileContent = this.getWebpackConfig('dev', projectDir);
+        fs.writeFileSync(webpackDevFile, fileContent, 'utf8');
+      } else {
+        process.stdout.write('webpack.dev.config.js already exists. Skipping.\n'.warn);
+      }
+
+      var webpackProdFile = path.resolve(path.join(projectDir, 'webpack.prod.config.js'));
+      if(!fs.existsSync(path.resolve(path.join(projectDir, 'webpack.prod.config.js')))) {
+        var fileContent = this.getWebpackConfig('prod', projectDir);
+        fs.writeFileSync(webpackProdFile, fileContent, 'utf8');
+      } else {
+        process.stdout.write('webpack.prod.config.js already exists. Skipping.\n'.warn);
+      }
+
+      deferred.resolve(projectDir);
+    } catch (error) {
+      deferred.reject(error);
+    }
+
+    return Q.resolve(projectDir);
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Copies Monaca components folder to www.
+   * @param {String} Project Directory
+   * @return {Promise}
+   */
+  Monaca.prototype.initComponents = function(projectDir) {
+    var deferred = Q.defer();
+    var componentsPath = path.join(projectDir, 'www', 'components');
+    fs.exists(componentsPath, function(exists) {
+      if (exists) {
+        process.stdout.write(('www/components already exists. Skipping.\n').warn);
+        return deferred.resolve(projectDir);
+      } else {
+        fs.copy(path.resolve(__dirname, 'template', 'components'), componentsPath, function(error) {
+          return error ? deferred.reject(error) : deferred.resolve(projectDir);
+        });
+      }
+    });
 
     return deferred.promise;
   };
@@ -2186,109 +2389,178 @@
     fs.exists(path.resolve(path.join(projectDir, 'package.json')), function(exists) {
       if (exists) {
         process.stdout.write('Installing template dependencies...\n');
-
-        var cmd = 'npm install --loglevel=error';
-        var npmProcess = child_process.exec(cmd, {
-          cwd: projectDir
-        });
-
-        npmProcess.on('exit', function(code) {
-          if (code === 0) {
-            var onsenCssSrc = path.join(projectDir, 'node_modules', 'onsenui', 'css');
-            var onsenCssDest = path.join(projectDir, 'www', 'css');
-
-            // concurrency limit
-            ncp.limit = 16;
-            ncp(onsenCssSrc, onsenCssDest, function (err) {
-              if (err) {
-                deferred.reject('Failed to copy Onsen UI dependencies.');
-              } else {
-                deferred.resolve(projectDir);
-              }
-            });
-          }
-          else {
-            deferred.reject('Failed to install template dependencies.');
-          }
-        });
-
-        npmProcess.stdout.on('data', function(data) {
-          process.stdout.write(data);
-        });
-
-        npmProcess.stderr.on('data', function(data) {
-          process.stderr.write(data);
-        });
+        this._npmInstall(projectDir).then(
+          deferred.resolve.bind(null, projectDir),
+          deferred.reject.bind(null, 'Failed to install template dependencies.')
+        );
       }
       else {
         deferred.resolve(projectDir);
       }
-    });
+    }.bind(this));
 
     return deferred.promise;
   };
 
-  Monaca.prototype.requireTranspile = function(projectDir) {
-    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-    var config = require(projectInfoFile);
-
-    if (config.build && config.build.transpile && config.build.transpile.enabled) {
-      return true;
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns a JSON Object of the project's info.
+   * @param {String} Project Directory
+   * @return {Object}
+   */
+  Monaca.prototype.fetchProjectData = function(projectDir) {
+    try {
+      var project_json_data = this._safeParse(fs.readFileSync(path.resolve(path.join(projectDir, '.monaca', 'project_info.json'))));
+    } catch (e) {
+      project_json_data = null;
     }
-    return false;
+
+    return project_json_data;
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns true if the type of project supports transpile.
+   * @param {String} Project Directory
+   * @return {Boolean}
+   */
+  Monaca.prototype.isTranspilable = function(projectDir) {
+    var config = this.fetchProjectData(projectDir);
+    
+    if(!config) {
+      return false;
+    }
+
+    var type = config['template-type'];
+    return type && ( type === 'react' || type === 'angular2' );
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns true if user has enabled the project transpile feature.
+   * @param {String} Project Directory
+   * @return {Boolean}
+   */
+  Monaca.prototype.isTranspileEnabled = function(projectDir) {
+    var config = this.fetchProjectData(projectDir);
+    return config.build && config.build.transpile && config.build.transpile.enabled;   
   };
 
-  Monaca.prototype.transpile = function(projectDir) {
-    var projectInfoFile = path.resolve(path.join(projectDir, '.monaca', 'project_info.json'));
-    var config = require(projectInfoFile);
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns path to the user's global webpack binary.
+   * @return {String}
+   */
+  Monaca.prototype.getWebpackBinPath = function() {
+    return path.resolve(path.join(USER_CORDOVA, 'node_modules', '.bin', 'webpack'));
+  };
 
-    if (!this.requireTranspile(projectDir)) {
-      return Q.resolve();
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns path to the user's global webpack-de-server binary.
+   * @return {String}
+   */
+  Monaca.prototype.getWebpackDevServerBinPath = function() {
+    return path.resolve(path.join(USER_CORDOVA, 'node_modules', '.bin', 'webpack-dev-server'));
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Transpiles projects that need to be transpiled and are enabled.
+   * @param {String} Project Directory
+   * @param {Object} Options
+   * @return {Promise}
+   */
+  Monaca.prototype.transpile = function(projectDir, options) {
+    options = options || {};
+
+    if (!this.isTranspilable(projectDir)) {
+      return Q.resolve({
+        message: 'This project\'s type does not support transpiling capabilities.\n'
+      });
+    }
+
+    if (!this.isTranspileEnabled(projectDir)) {
+      return Q.resolve({
+        message: 'The transpiling feature for this project is currently disabled.\n'
+      });
+    }
+
+    var webpackConfig = path.resolve(projectDir, 'webpack.prod.config.js');
+    if(!fs.existsSync(path.resolve(webpackConfig))) {
+      var error = new Error('\nAppears that this project is not configured properly. This may be due to a recent update.\nPlease check this guide to update your project:\n https://github.com/monaca/monaca-lib/blob/master/updateProject.md \n');
+      error.action = 'reconfiguration';
+
+      return Q.reject(error);
     }
 
     var deferred = Q.defer();
+    this.emitter.emit('output', {
+      type: 'success',
+      message: 'Running Transpiler...'
+    });
+    process.stdout.write('Running Transpiler...\n');
 
     try {
-      var src = config.build.transpile.src;
-      var dist = config.build.transpile.dist;
-      var type = config['template-type'];
+      process.env.NODE_PATH = USER_CORDOVA;
 
-      if(type === 'react') {
-        process.env.NODE_PATH = USER_CORDOVA;
-
-        var nodeModuleDir = path.join(USER_CORDOVA, 'node_modules');
-        var browserify = require(path.resolve(path.join(nodeModuleDir, 'browserify')));
-        var babelify = require(path.resolve(path.join(nodeModuleDir, 'babelify')));
-        var es2015Preset = require(path.resolve(path.join(nodeModuleDir, 'babel-preset-es2015')));
-        var reactPreset = require(path.resolve(path.join(nodeModuleDir, 'babel-preset-react')));
-
-        var stream = browserify()
-            .add(src)
-            .transform(babelify, {presets: [es2015Preset, reactPreset]})
-            .bundle();
-
-        stream.on('error', function(error) {
-          deferred.reject(error);
-        });
-
-        var buffers = [];
-        stream.on('data', function(buffer) {
-          buffers.push(buffer);
-        });
-
-        stream.on('end', function() {
-          fs.writeFile(dist, Buffer.concat(buffers), function(error) {
-            if (error) {
-              deferred.reject(error);
-            } else {
-              deferred.resolve();
-            }
-          });
-        });
-      } else {
-        // Template has no transpiler settings.
-        deferred.resolve();
+      // Check for nodejs version dependency requirement for angular 2.
+      var projectConfig = this.fetchProjectData(projectDir);
+      if(projectConfig['template-type'] === 'angular2') {
+        if(parseInt(process.version.replace('v', '').replace(/\./g, ''), 10) < 500) {
+          process.stdout.write('Warning: The version of Node.js you are using does not meet the minimum requirements for Angular 2. You may experience errors when transpiling.  Please upgrade Node.js to v5.x.x and NPM to v3.x.x.\n');
+        }
       }
+
+      var webpackBinPath = this.getWebpackBinPath();
+      var webpackProcessLog = [];
+
+      var binPath = webpackBinPath;
+      var parameters = ['-p', '--config', webpackConfig];
+
+      if(options.watch) {
+        parameters.push('--watch');
+      }
+
+      if(process.platform === 'win32') {
+        binPath = 'cmd';
+        parameters.unshift('/c', webpackBinPath);
+      }
+
+      var webpackProcess = child_process.spawn(binPath, parameters, {
+        cwd: path.resolve(projectDir),
+        env: extend({}, process.env, {
+          NODE_ENV: JSON.stringify('production'),
+          WP_CACHE: options.cache || ''
+        }),
+        stdio: 'inherit'
+      });
+
+      webpackProcess.on('exit', function(code) {
+
+        if(code === 1) {
+          var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
+          error.log = webpackProcessLog;
+          deferred.reject(error);
+        } else {
+          deferred.resolve({
+            message: 'Transpiling finished for ' + projectDir,
+            log: webpackProcessLog
+          });
+        }
+      });
     } catch (error) {
       deferred.reject(error);
     }
@@ -2306,6 +2578,7 @@
    * @return {Promise}
    */
   Monaca.prototype.downloadTemplate = function(resource, destinationDir) {
+
     var checkDirectory = function() {
       var deferred = Q.defer();
 
@@ -2389,14 +2662,19 @@
     var fetchFile = function() {
       process.stdout.write('\nDownloading template...\n');
 
-      return this._get(resource);
+      return this._get(resource)
+        .then(function(data) {
+          return Q.resolve(data.body);
+        });
     }.bind(this);
 
     return checkDirectory()
       .then(fetchFile)
       .then(unzipFile)
-      .then(this.installTemplateDependencies)
-      .then(this.installBuildDependencies);
+      .then(this.initComponents.bind(this))
+      .then(this.generateBuildConfigs.bind(this))
+      .then(this.installTemplateDependencies.bind(this))
+      .then(this.installBuildDependencies.bind(this));
   };
 
   /**
@@ -2425,59 +2703,38 @@
     return deferred.promise;
   };
 
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Get current config file.
-   * @return {Promise}
-   */
-  Monaca.prototype.getConfigFile = function() {
-    var deferred = Q.defer();
-
-    deferred.resolve(this._configFile || CONFIG_FILE);
-
-    return deferred.promise;
-  };
-
   Monaca.prototype._ensureConfigFile = function() {
-    var deferred = Q.defer();
+    var deferred = Q.defer(),
+      configFile = this._configFile || CONFIG_FILE;
 
-    // Ensure that config file exists.
-    this.getConfigFile().then(
-      function(configFile) {
-        var parentDir = path.dirname(configFile);
+    var parentDir = path.dirname(configFile);
 
-        fs.exists(parentDir, function(exists) {
-          if (!exists) {
-            try {
-              shell.mkdir('-p', parentDir);
-            }
-            catch (err) {
-              return deferred.reject(err);
-            }
-          }
+    fs.exists(parentDir, function(exists) {
+      if (!exists) {
+        try {
+          shell.mkdir('-p', parentDir);
+        }
+        catch (err) {
+          return deferred.reject(err);
+        }
+      }
 
-          fs.exists(configFile, function(exists) {
-            if (!exists) {
-              fs.writeFile(configFile, '{}', function(err) {
-                if (err) {
-                  deferred.reject(err);
-                }
-                else {
-                  deferred.resolve(configFile);
-                }
-              });
+      fs.exists(configFile, function(exists) {
+        if (!exists) {
+          fs.writeFile(configFile, '{}', function(err) {
+            if (err) {
+              deferred.reject(err);
             }
             else {
               deferred.resolve(configFile);
             }
           });
-        });
-      },
-      function() {
-      }
-    );
+        }
+        else {
+          deferred.resolve(configFile);
+        }
+      });
+    });
 
     return deferred.promise;
   };
@@ -2510,8 +2767,8 @@
     else if (typeof value === 'undefined') {
       throw new Error('"value" must exist.');
     }
-    else if (typeof value !== 'string') {
-      throw new Error('"value" must be a string.');
+    else if (typeof value !== 'string' && value !== null) {
+      throw new Error('"value" must be a string or null.');
     }
 
     var deferred = Q.defer();
@@ -2541,7 +2798,13 @@
 
             try {
               var ob = JSON.parse(data);
-              ob[key] = value;
+
+              if (value === null) {
+                value = ob[key];
+                delete ob[key];
+              } else {
+                ob[key] = value;
+              }
 
               fs.writeFile(configFile, JSON.stringify(ob), function(error) {
                 unlock();
@@ -2578,68 +2841,7 @@
    * @return {Promise}
    */
   Monaca.prototype.removeConfig = function(key) {
-    if (typeof key === 'undefined') {
-      throw new Error('"key" must exist.');
-    }
-    else if (typeof key !== 'string') {
-      throw new Error('"key" must be a string.');
-    }
-
-    var deferred = Q.defer();
-
-    this._ensureConfigFile().then(
-      function(configFile) {
-        var lockFile = configFile + '.lock';
-
-        lockfile.lock(lockFile, {wait: 10000}, function(error) {
-          if (error) {
-            return deferred.reject(error);
-          }
-
-          var unlock = function() {
-            lockfile.unlock(lockFile, function(error) {
-              if (error) {
-                console.error(error);
-              }
-            });
-          };
-
-          fs.readFile(configFile, function(error, data) {
-            if (error) {
-              unlock();
-              return deferred.reject(error);
-            }
-
-            try {
-              var ob = JSON.parse(data),
-                value = ob[key];
-
-              delete ob[key];
-
-              fs.writeFile(configFile, JSON.stringify(ob), function(error) {
-                unlock();
-
-                if (error) {
-                  deferred.reject(error);
-                }
-                else {
-                  deferred.resolve(value);
-                }
-              });
-            }
-            catch (err) {
-              unlock();
-              deferred.reject(err);
-            }
-          });
-        });
-      },
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-    return deferred.promise;
+    return this.setConfig(key, null);
   };
 
   /**

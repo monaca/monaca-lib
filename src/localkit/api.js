@@ -23,9 +23,18 @@
       '/api/projects': this.projectsApi.bind(this),
       '/api/project/:project_id/file/tree': this.fileTreeApi.bind(this),
       '/api/project/:project_id/file/read': this.fileReadApi.bind(this),
+      '/api/project/:project_id/started': this.noop.bind(this),
+      '/api/project/:project_id/stopped': this.noop.bind(this),
       '/api/debugger/inspect': this.inspectApi.bind(this),
       '/api/local/auth': this.localAuthApi.bind(this)
     };
+  };
+
+  Api.prototype.noop = function(request, response) {
+    response.end(JSON.stringify({
+      status: 'ok',
+      code: 200
+    }));
   };
 
   Api.prototype.sendJsonResponse = function(response, code, message, result, encrypt, pairingKey) {

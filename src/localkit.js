@@ -58,31 +58,31 @@
 
     this.projects = [];
 
-    Object.defineProperty(this.projects, "hasOwnProperty", { 
+    Object.defineProperty(this.projects, "hasOwnProperty", {
       enumerable: false,
-      value: function(id) { 
+      value: function(id) {
         for(var p in this.projects) {
           if ( this.projects[p][id] ) {
-            return true; 
+            return true;
           }
         }
-        return false; 
+        return false;
       }.bind(this)
     });
 
-    Object.defineProperty(this.projects, "getProjectById", { 
+    Object.defineProperty(this.projects, "getProjectById", {
       enumerable: false,
-      value: function(id) { 
+      value: function(id) {
         for(var p in this.projects) {
           if ( this.projects[p][id] ) {
             return this.projects[p][id];
           }
         }
-        return null; 
+        return null;
       }.bind(this)
     });
 
-    Object.defineProperty(this.projects, "getAllProjectIds", { 
+    Object.defineProperty(this.projects, "getAllProjectIds", {
       enumerable: false,
       value: function() {
         var keys = [];
@@ -95,9 +95,9 @@
       }.bind(this)
     });
 
-    Object.defineProperty(this.projects, "deleteProjectById", { 
+    Object.defineProperty(this.projects, "deleteProjectById", {
       enumerable: false,
-      value: function(id) { 
+      value: function(id) {
         for(var p in this.projects) {
           if ( this.projects[p][id] ) {
             return this.projects.splice(this.projects.indexOf(this.projects[p]),1);
@@ -138,7 +138,7 @@
      * @type boolean
      */
     this.httpServerRunning = false;
-    
+
     this.httpServerPort = null;
     this.httpServerIpaddr = null;
 
@@ -233,8 +233,8 @@
       requestToken: requestToken,
       companionClientIdHash: clientIdHash
     }).then(
-      function(response) {
-        deferred.resolve(JSON.parse(response).result.pairingKey);
+      function(data) {
+        deferred.resolve(JSON.parse(data.body).result.pairingKey);
       },
       function(error) {
         deferred.reject(error);
@@ -262,7 +262,7 @@
 
     return '0.0.0.0';
   };
-  
+
   /**
    * @method
    * @memberof Localkit
@@ -272,14 +272,14 @@
    */
   Localkit.prototype.getHttpServerInfo = function() {
     var deferred = Q.defer();
-    
+
     var result = {
       ipaddr: this.httpServerIpaddr,
       port: this.httpServerPort,
       status: this.httpServerRunning
     }
     deferred.resolve(result);
-    
+
     return deferred.promise;
   }
 
@@ -354,7 +354,7 @@
         this.httpServerRunning = true;
         this.httpServerPort = port;
         this.httpServerIpaddr = this._getLocalIp();
-        
+
         deferred.resolve({
           address: this._getLocalIp(),
           port: port
@@ -459,7 +459,7 @@
   Localkit.prototype.addProject = function(projectPath, options) {
     var deferred = Q.defer(),
       options = options || {};
-    
+
     this.monaca.getLocalProjectId(projectPath).then(
       function(projectId) {
         if (!fs.existsSync(path.join(projectPath, 'www'))) {
@@ -472,7 +472,6 @@
         else {
 
           var fileWatcher = new FileWatcher();
-          var fileWatcherTranspiler = new FileWatcher();
 
           try {
             fileWatcher.onchange(function(changeType, filePath) {
@@ -484,16 +483,6 @@
                 projectPath: projectPath
               });
             }.bind(this));
-
-
-            try {
-              fileWatcherTranspiler.onchange(function(changeType, filePath) {
-                this.monaca.transpile(projectPath);
-              }.bind(this));
-              fileWatcherTranspiler.run(path.join(projectPath, 'src'));
-            } catch (error) {
-              // project does not have source folder to transpile.
-            }
 
             if (this.isWatching()) {
               fileWatcher.run(path.join(projectPath, 'www'));
@@ -509,7 +498,7 @@
             path: projectPath,
             name: options.name
           }
-          this.projects.unshift(obj); 
+          this.projects.unshift(obj);
 
           deferred.resolve(projectId);
         }
@@ -888,12 +877,12 @@
           this.monaca.getProjectInfo(_project.path)
             .then(
               function(project) {
- 
+
                 var project_path = _project.path;
                 if (project_path == '.') {
                    project_path = process.cwd();
                 }
- 
+
                 project.name = _project.name || project.name;
                 project.frameworkVersion = "";
                 try {
