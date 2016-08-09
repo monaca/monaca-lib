@@ -2195,7 +2195,7 @@
       process.stdout.write('\n\nInstalling build dependencies...\n');
       this._npmInstall(USER_CORDOVA, installDependencies).then(
         deferred.resolve.bind(null, projectDir),
-        deferred.reject.bind(null, 'Failed to install build dependencies.')
+        deferred.reject.bind(null, new Error('Failed to install build dependencies.'))
       );
     } else {
       deferred.resolve(projectDir);
