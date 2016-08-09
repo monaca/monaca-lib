@@ -316,8 +316,7 @@
    * Filters files and directories from being uploaded and downloaded
    */
   Monaca.prototype._fileFilter = function(f, allowFiles, projectDir, source) {
-    // Upload/download .monaca/project_info.json
-    if (f.indexOf('/.monaca/project_info.json') == 0) {
+    if (/^\/\.monaca\/(project_info\.json|android\/AndroidManifest\.xml|ios\/MonacaApp-Info\.plist)$/.test(f)) {
       return true;
     }
 
@@ -336,7 +335,7 @@
       || /^\/platforms\/(chrome|winrt)\//.test(f)
 
       // Everything else
-      || /^\/(www|merges|plugins|src|typings)(\/?$|\/)/.test(f)
+      || /^\/(www|merges|plugins|src|typings|res)(\/?$|\/)/.test(f)
     ) {
       return true;
     }
@@ -347,7 +346,7 @@
       && (allowFiles.indexOf(path.join(projectDir, f)) >= 0)
     );
   };
-  
+
   Monaca.prototype._filterFiles = function(dst, src) {
     for (var key in dst) {
       if (dst.hasOwnProperty(key)) {
