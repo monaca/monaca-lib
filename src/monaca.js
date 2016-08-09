@@ -312,10 +312,11 @@
     return this._monacaData[key];
   };
 
-  //Used to filter the uploaded/downloaded files/dirs based on patterns
+  /**
+   * Filters files and directories from being uploaded and downloaded
+   */
   Monaca.prototype._fileFilter = function(f, allowFiles, projectDir, source) {
-    // Upload/download .monaca/project_info.json
-    if (f.indexOf('/.monaca/project_info.json') == 0) {
+    if (/^\/\.monaca\/(project_info\.json|android\/AndroidManifest\.xml|ios\/MonacaApp-Info\.plist)$/.test(f)) {
       return true;
     }
 
@@ -323,51 +324,27 @@
     if (f.indexOf('/.') >= 0 && source === "uploadProject") {
       return false;
     }
+    
+    if (
+      // Allow all config files in root directory.
+      /^\/(.*config\..*|.*.json)$/.test(f)
+      // Platform specific files.
 
-    // Allow all config files in root directory.
-    if (/^\/(.*config\..*|.*.json)$/.test(f)) {
-      return true;
-    }
+      || /^\/platforms\/ios\/(MonacaApp\/|MonacaApp-Info.plist$)/.test(f)
+      || /^\/platforms\/android\/(res\/|AndroidManifest.xml$)/.test(f)
+      || /^\/platforms\/(chrome|winrt)\//.test(f)
 
-    // Platform specific files.
-    if (f.indexOf('/platforms/ios/MonacaApp-Info.plist') >= 0) {
+      // Everything else
+      || /^\/(www|merges|plugins|src|typings|res)(\/?$|\/)/.test(f)
+    ) {
       return true;
     }
-    if (/^\/platforms\/ios\/MonacaApp\/Resources\/icons\/icon[\.a-z0-9@x-]*\.png$/.test(f)) {
-      return true;
-    }
-    if (/^\/platforms\/ios\/MonacaApp\/Resources\/splash\/Default[a-zA-Z0-9@\-\.~]+\.png$/.test(f)) {
-      return true;
-    }
-    if (f.indexOf('/platforms/android/AndroidManifest.xml') >= 0) {
-      return true;
-    }
-    if (/^\/platforms\/android\/res\/drawable\-[a-z]+\/(icon|screen[\.9]*)\.png$/.test(f)) {
-      return true;
-    }
-    if (/^\/platforms\/android\/res\/drawable.+\/screen.+.png$/.test(f)) {
-      return true;
-    }
-    if (/^\/platforms\/(chrome|winrt)\/[^\/]+$/.test(f)) {
-      return true;
-    }
-
-    if (allowFiles.length > 0) {
-      // Only include files in /www, /merges and /plugins folders.
-      if (/^\/(?!www\/|www$|merges\/|merges$|plugins\/|plugins$|src\/|src$|typings\/|typings$).*/.test(f)) {
-        return false;
-      } else {
-        // Check if file is present in one of the /www, /merges and /plugins folders and also in list of allowed files.
-        if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + f) >= 0) {
-          return true;
-        } else {
-          return false;
-        }
-      }
-    } else {
-      // Only include files in /www, /merges and /plugins folders.
-      return !/^\/(www\/|merges\/|plugins\/|src\/|typings\/|[^/]*$)/.test(f);
-    }
+    
+    // Check if file is present in one of the /www, /merges and /plugins folders and also in list of allowed files.
+    return (
+      allowFiles.length > 0
+      && (allowFiles.indexOf(path.join(projectDir, f)) >= 0)
+    );
   };
 
   Monaca.prototype._filterFiles = function(dst, src) {
