@@ -2254,7 +2254,7 @@
         var fileContent = this.getWebpackConfig('dev', projectDir);
         fs.writeFileSync(webpackDevFile, fileContent, 'utf8');
       } else {
-        process.stdout.write('webpack.dev.config.js already exists. Skipping.\n'.warn);
+        process.stdout.write('webpack.dev.config.js already exists. Skipping.\n');
       }
 
       var webpackProdFile = path.resolve(path.join(projectDir, 'webpack.prod.config.js'));
@@ -2262,7 +2262,7 @@
         var fileContent = this.getWebpackConfig('prod', projectDir);
         fs.writeFileSync(webpackProdFile, fileContent, 'utf8');
       } else {
-        process.stdout.write('webpack.prod.config.js already exists. Skipping.\n'.warn);
+        process.stdout.write('webpack.prod.config.js already exists. Skipping.\n');
       }
 
       deferred.resolve(projectDir);
@@ -2286,7 +2286,7 @@
     var componentsPath = path.join(projectDir, 'www', 'components');
     fs.exists(componentsPath, function(exists) {
       if (exists) {
-        process.stdout.write(('www/components already exists. Skipping.\n').warn);
+        process.stdout.write('www/components already exists. Skipping.\n');
         return deferred.resolve(projectDir);
       } else {
         fs.copy(path.resolve(__dirname, 'template', 'components'), componentsPath, function(error) {
@@ -2353,7 +2353,7 @@
    */
   Monaca.prototype.isTranspilable = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
-    
+
     if(!config) {
       return false;
     }
@@ -2372,7 +2372,7 @@
    */
   Monaca.prototype.isTranspileEnabled = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
-    return config.build && config.build.transpile && config.build.transpile.enabled;   
+    return config.build && config.build.transpile && config.build.transpile.enabled;
   };
 
   /**
