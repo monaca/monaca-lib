@@ -2492,6 +2492,14 @@
           });
         }
       });
+
+      if(options.watch) {
+        deferred.resolve({
+          message: 'Watching directory "' + projectDir + '" for changes...',
+          pid: webpackProcess.pid
+        });
+      }
+
     } catch (error) {
       deferred.reject(error);
     }
