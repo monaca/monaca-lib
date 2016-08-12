@@ -1000,9 +1000,6 @@
             if (!platformContent.is_start_file_exist) {
               return 'Your project is missing the startup file (usually index.html).';
             }
-            if (platformContent.manifest_error) {
-              return 'Your AndroidManifest.xml has an invalid value. Please fix it and try again.';
-            }
             if (typeof platformContent.can_build_for[buildType] === 'undefined') {
               return platform + ' ' + buildType + ' build is not supported or doesn\'t exist.';
             }
