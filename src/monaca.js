@@ -2468,8 +2468,19 @@
           NODE_ENV: JSON.stringify('production'),
           WP_CACHE: options.cache || ''
         }),
-        stdio: 'inherit'
+        stdio: (this.clientType === 'cli') ? 'inherit' : 'pipe'
       });
+
+      if(this.clientType === 'localkit') {
+        webpackProcess.stdout.on('data',
+          function(data) {
+            this.emitter.emit('output', {
+              type: 'progress',
+              message: data
+            });
+          }.bind(this)
+        );
+      }
 
       webpackProcess.on('exit', function(code) {
 
