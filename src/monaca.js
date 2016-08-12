@@ -1012,9 +1012,6 @@
               }
             }
             if (platform === 'ios') {
-              if (platformContent.info_plist_error) {
-                return 'Your Info.plist file has an invalid content. Please fix it and try again.';
-              }
               if (!platformContent.has_splash_and_icons) {
                 return 'Your project is missing splash screens and/or icons. Please open remote build settings to configure.';
               }
