@@ -2388,7 +2388,7 @@
    * @return {String}
    */
   Monaca.prototype.getWebpackBinPath = function() {
-    return path.resolve(path.join(USER_CORDOVA, 'node_modules', '.bin', 'webpack'));
+    return path.resolve(path.join(USER_CORDOVA, 'node_modules', '.bin', (process.platform === 'win32' ? 'webpack.cmd' : 'webpack')));
   };
 
   /**
@@ -2452,29 +2452,32 @@
         }
       }
 
-      var webpackBinPath = this.getWebpackBinPath();
       var webpackProcessLog = [];
 
-      var binPath = webpackBinPath;
       var parameters = ['-p', '--config', webpackConfig];
-
       if(options.watch) {
         parameters.push('--watch');
       }
 
-      if(process.platform === 'win32') {
-        binPath = 'cmd';
-        parameters.unshift('/c', webpackBinPath);
-      }
-
-      var webpackProcess = child_process.spawn(binPath, parameters, {
+      var webpackProcess = child_process.spawn(this.getWebpackBinPath(), parameters, {
         cwd: path.resolve(projectDir),
         env: extend({}, process.env, {
           NODE_ENV: JSON.stringify('production'),
           WP_CACHE: options.cache || ''
         }),
-        stdio: 'inherit'
+        stdio: (this.clientType === 'cli') ? 'inherit' : 'pipe'
       });
+
+      if(this.clientType === 'localkit') {
+        webpackProcess.stdout.on('data',
+          function(data) {
+            this.emitter.emit('output', {
+              type: 'progress',
+              message: data
+            });
+          }.bind(this)
+        );
+      }
 
       webpackProcess.on('exit', function(code) {
 
