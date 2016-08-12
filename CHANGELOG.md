@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v2.1.0
+----
+* monaca and localkit: Various fixes
+* monaca: Webpack dev server support
+
 v1.1.13
 ----
 * monaca: Allowed upload/download for config files inside the root directory.
