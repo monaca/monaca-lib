@@ -2045,7 +2045,7 @@
    *     });
    */
   Monaca.prototype.getTemplates = function() {
-    return this._get('/user/templates')
+    return this._get('/user/templates', { version: this.version })
       .then(
         function(data) {
           var body = this._safeParse(data.body);
