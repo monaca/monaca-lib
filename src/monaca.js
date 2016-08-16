@@ -2425,7 +2425,9 @@
 
     var webpackConfig = path.resolve(projectDir, 'webpack.prod.config.js');
     if(!fs.existsSync(path.resolve(webpackConfig))) {
-      var error = new Error('\nAppears that this project is not configured properly. This may be due to a recent update.\nPlease check this guide to update your project:\n https://github.com/monaca/monaca-lib/blob/master/updateProject.md \n');
+      var error = new Error();
+      error.link = 'https://github.com/monaca/monaca-lib/blob/master/updateProject.md';
+      error.message = '\nAppears that this project is not configured properly. This may be due to a recent update.\nPlease check this guide to update your project:\n ' + error.link + ' \n';
       error.action = 'reconfiguration';
 
       return Q.reject(error);
