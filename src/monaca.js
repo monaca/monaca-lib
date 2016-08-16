@@ -2403,6 +2403,27 @@
    * @method
    * @memberof Monaca
    * @description
+   *   Returns path to the webpack config file.
+   * @return {String}
+   */
+  Monaca.prototype.getWebpackConfigFile = function(projectDir, environment) {
+    var webpackConfig = path.resolve(projectDir, 'webpack.' + environment + '.config.js');
+    if(!fs.existsSync(webpackConfig)) {
+      var error = new Error();
+      error.link = 'https://github.com/monaca/monaca-lib/blob/master/updateProject.md';
+      error.message = '\nAppears that this project is not configured properly. This may be due to a recent update.\nPlease check this guide to update your project:\n ' + error.link + ' \n';
+      error.action = 'reconfiguration';
+
+      throw error;
+    }
+
+    return webpackConfig;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *   Transpiles projects that need to be transpiled and are enabled.
    * @param {String} Project Directory
    * @param {Object} Options
@@ -2423,13 +2444,9 @@
       });
     }
 
-    var webpackConfig = path.resolve(projectDir, 'webpack.prod.config.js');
-    if(!fs.existsSync(path.resolve(webpackConfig))) {
-      var error = new Error();
-      error.link = 'https://github.com/monaca/monaca-lib/blob/master/updateProject.md';
-      error.message = '\nAppears that this project is not configured properly. This may be due to a recent update.\nPlease check this guide to update your project:\n ' + error.link + ' \n';
-      error.action = 'reconfiguration';
-
+    try {
+      var webpackConfig = this.getWebpackConfigFile(projectDir, 'prod');
+    } catch(error) {
       return Q.reject(error);
     }
 
