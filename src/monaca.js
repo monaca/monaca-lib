@@ -2491,7 +2491,7 @@
         }));
       });
 
-      deferred.resolve();
+      deferred.resolve(projectDir);
     } else {
        compiler.run(function(err, stats) {
         //console.log(stats.toString({colors: true}));
