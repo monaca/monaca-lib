@@ -2449,19 +2449,6 @@
     } catch(error) {
       return Q.reject(error);
     }
-    var rl;
-    if (process.platform === 'win32') {
-      rl = require('readline').createInterface({
-        input: process.stdin,
-        output: process.stdout
-      });
-
-      rl.on('SIGINT', function() {
-        process.stdout.write('\nStopping http server...\n');
-        rl.close();
-        child_process.exec('taskkill /pid ' + process.pid + ' /T /F');
-      });
-    }
 
     var deferred = Q.defer();
     this.emitter.emit('output', {
@@ -2470,38 +2457,92 @@
     });
     process.stdout.write('Running Transpiler...\n');
 
-    process.env.WP_CACHE = !!options.watch;
+    var parameters = [webpackConfigFile];
+    if (options.watch) {
+      parameters.push('--watch')
+    }
 
-    var webpack = require(path.join(USER_CORDOVA, 'node_modules', 'webpack'));
-    var webpackConfig = require(webpackConfigFile);
+    var webpackProcess = child_process.fork(path.join(__dirname, 'transpile.js'), parameters, {
+      env: extend({}, process.env, {
+        USER_CORDOVA: USER_CORDOVA,
+        NODE_ENV: JSON.stringify('production'),
+        WP_CACHE: options.cache || ''
+      }),
+      silent: (this.clientType === 'localkit'),
+      stdio: [(this.clientType === 'cli') ? 'inherit' : 'pipe']
+    });
 
-    var compiler = webpack(webpackConfig);
+    webpackProcess.on('exit', function(code) {
 
+      if(code === 1) {
+        var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
+        deferred.reject(error);
+      } else {
+        deferred.resolve({
+          message: '\n\nTranspiling finished for ' + projectDir
+        });
+      }
+    });
+
+    if(this.clientType === 'localkit') {
+      webpackProcess.stdout.on('data',
+        function(data) {
+          this.emitter.emit('output', {
+            type: 'progress',
+            message: data
+          });
+        }.bind(this)
+      );
+
+      webpackProcess.stderr.on('data',
+        function(data) {
+          this.emitter.emit('output', {
+            type: 'error',
+            message: data
+          });
+        }.bind(this)
+      );
+    }
 
     if (options.watch) {
-      var watchInstance = compiler.watch({}, function(err, stats) {
-        console.log(stats.toString({
-          chunks: false,
-          chunksModules: false,
-          reasons: false,
-          modules: false,
-          children: false,
-          warnings: false,
-          colors: true
-        }));
-      });
-
-      deferred.resolve(projectDir);
-    } else {
-       compiler.run(function(err, stats) {
-        //console.log(stats.toString({colors: true}));
-        console.log('Compile finished.');
-        if (process.platform === 'win32' && rl) {
-          rl.close();
-        }
-        deferred.resolve(projectDir);
+      deferred.resolve({
+        message: 'Watching directory "' + projectDir + '" for changes...',
+        pid: webpackProcess.pid
       });
     }
+
+    // process.env.WP_CACHE = !!options.watch;
+
+    // var webpack = require(path.join(USER_CORDOVA, 'node_modules', 'webpack'));
+    // var webpackConfig = require(webpackConfigFile);
+
+    // var compiler = webpack(webpackConfig);
+
+
+    // if (options.watch) {
+    //   var watchInstance = compiler.watch({}, function(err, stats) {
+    //     console.log(stats.toString({
+    //       chunks: false,
+    //       chunksModules: false,
+    //       reasons: false,
+    //       modules: false,
+    //       children: false,
+    //       warnings: false,
+    //       colors: true
+    //     }));
+    //   });
+
+    //   deferred.resolve(projectDir);
+    // } else {
+    //    compiler.run(function(err, stats) {
+    //     //console.log(stats.toString({colors: true}));
+    //     console.log('Compile finished.');
+    //     if (process.platform === 'win32' && rl) {
+    //       rl.close();
+    //     }
+    //     deferred.resolve(projectDir);
+    //   });
+    // }
 
     return deferred.promise;
   };
