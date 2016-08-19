@@ -2,10 +2,14 @@
 CHANGELOG
 ====
 
+v2.1.1
+----
+* monaca: Localkit support when running transpiler.
+
 v2.1.0
 ----
-* monaca and localkit: Various fixes
-* monaca: Webpack dev server support
+* monaca and localkit: Various fixes.
+* monaca: Webpack dev server support.
 
 v1.1.13
 ----
