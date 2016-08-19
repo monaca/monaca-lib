@@ -2445,7 +2445,7 @@
     }
 
     try {
-      var webpackConfig = this.getWebpackConfigFile(projectDir, 'prod');
+      var webpackConfigFile = this.getWebpackConfigFile(projectDir, 'prod');
     } catch(error) {
       return Q.reject(error);
     }
@@ -2457,67 +2457,46 @@
     });
     process.stdout.write('Running Transpiler...\n');
 
-    try {
-      process.env.NODE_PATH = USER_CORDOVA;
+    var parameters = [webpackConfigFile];
+    if (options.watch) {
+      parameters.push('--watch')
+    }
 
-      // Check for nodejs version dependency requirement for angular 2.
-      var projectConfig = this.fetchProjectData(projectDir);
-      if(projectConfig['template-type'] === 'angular2') {
-        if(parseInt(process.version.replace('v', '').replace(/\./g, ''), 10) < 500) {
-          process.stdout.write('Warning: The version of Node.js you are using does not meet the minimum requirements for Angular 2. You may experience errors when transpiling.  Please upgrade Node.js to v5.x.x and NPM to v3.x.x.\n');
-        }
-      }
+    var webpackProcess = child_process.fork(path.join(__dirname, 'transpile.js'), parameters, {
+      env: extend({}, process.env, {
+        USER_CORDOVA: USER_CORDOVA,
+        NODE_ENV: JSON.stringify('production'),
+        WP_CACHE: options.cache || ''
+      })
+    });
 
-      var webpackProcessLog = [];
-
-      var parameters = ['-p', '--config', webpackConfig];
-      if(options.watch) {
-        parameters.push('--watch');
-      }
-
-      var webpackProcess = child_process.spawn(this.getWebpackBinPath(), parameters, {
-        cwd: path.resolve(projectDir),
-        env: extend({}, process.env, {
-          NODE_ENV: JSON.stringify('production'),
-          WP_CACHE: options.cache || ''
-        }),
-        stdio: (this.clientType === 'cli') ? 'inherit' : 'pipe'
-      });
-
-      if(this.clientType === 'localkit') {
-        webpackProcess.stdout.on('data',
-          function(data) {
-            this.emitter.emit('output', {
-              type: 'progress',
-              message: data
-            });
-          }.bind(this)
-        );
-      }
-
-      webpackProcess.on('exit', function(code) {
-
-        if(code === 1) {
-          var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
-          error.log = webpackProcessLog;
-          deferred.reject(error);
-        } else {
-          deferred.resolve({
-            message: 'Transpiling finished for ' + projectDir,
-            log: webpackProcessLog
-          });
-        }
-      });
-
-      if(options.watch) {
-        deferred.resolve({
-          message: 'Watching directory "' + projectDir + '" for changes...',
-          pid: webpackProcess.pid
+    webpackProcess.on('message', function(data) {
+      if(this.clientType === 'cli') {
+        process.stdout.write(data + '\n');
+      } else {
+        this.emitter.emit('output', {
+          type: 'progress',
+          message: data
         });
       }
+    }.bind(this));
 
-    } catch (error) {
-      deferred.reject(error);
+    webpackProcess.on('exit', function(code) {
+      if(code === 1) {
+        var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
+        deferred.reject(error);
+      } else {
+        deferred.resolve({
+          message: '\n\nTranspiling finished for ' + projectDir
+        });
+      }
+    });
+
+    if (options.watch) {
+      deferred.resolve({
+        message: 'Watching directory "' + projectDir + '" for changes...',
+        pid: webpackProcess.pid
+      });
     }
 
     return deferred.promise;
