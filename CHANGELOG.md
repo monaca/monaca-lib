@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v2.1.2
+----
+* monaca: Minor improvement to transpiler configuration.
+
 v2.1.1
 ----
 * monaca: Localkit support when running transpiler.
