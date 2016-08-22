@@ -14,7 +14,6 @@ try {
   throw new Error('Missing Webpack Build Dependencies.');
 }
 
-var host = process.env.WP_HOST || '127.0.0.1';
 var port = +(process.env.WP_PORT) || 8000;
 
 module.exports = {
@@ -33,7 +32,7 @@ module.exports = {
   output: {
     path: path.join(__dirname, 'www'),
     filename: 'bundle.js',
-    publicPath: 'http://' + host + ':' + port + '/'
+    publicPath: '/'
   },
 
   resolve: {
