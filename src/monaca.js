@@ -2157,7 +2157,7 @@
   Monaca.prototype.installBuildDependencies = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
 
-    if(!config.build) {
+    if (!config.build) {
       return Q.resolve(projectDir);
     }
 
@@ -2166,14 +2166,14 @@
     var dependencies = require(packageJsonFile).additionalDependencies;
     var installDependencies = [];
 
-    if(!fs.existsSync(USER_CORDOVA)) {
+    if (!fs.existsSync(USER_CORDOVA)) {
       fs.mkdirSync(USER_CORDOVA);
     }
-    if(!fs.existsSync(NPM_PACKAGE_FILE)) {
+    if (!fs.existsSync(NPM_PACKAGE_FILE)) {
       fs.writeFileSync(NPM_PACKAGE_FILE, '{}');
     }
     var nodeModules = path.join(USER_CORDOVA, 'node_modules');
-    if(!fs.existsSync(nodeModules)) {
+    if (!fs.existsSync(nodeModules)) {
       fs.mkdirSync(nodeModules);
     }
 
@@ -2186,14 +2186,14 @@
         if (!dep || dep.version !== dependencies[key]) {
           installDependencies.push(key + '@' + dependencies[key]);
           var depPath = path.join(nodeModules, key)
-          if(!fs.existsSync(depPath)) {
+          if (!fs.existsSync(depPath)) {
             fs.mkdirSync(depPath);
           }
         }
       }
     });
 
-    if(installDependencies.length > 0) {
+    if (installDependencies.length > 0) {
       process.stdout.write('\n\nInstalling build dependencies...\n');
       this._npmInstall(USER_CORDOVA, installDependencies).then(
         deferred.resolve.bind(null, projectDir),
@@ -2226,7 +2226,7 @@
     var file = 'webpack.' + environment + '.' + framework +  '.js';
     var asset = path.resolve(path.join(__dirname, 'template', file));
 
-    if(!fs.existsSync(asset)) {
+    if (!fs.existsSync(asset)) {
       throw 'Failed to locate Webpack config template for framework ' + framework;
     }
 
@@ -2244,7 +2244,7 @@
   Monaca.prototype.generateBuildConfigs = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
 
-    if(!config.build) {
+    if (!config.build) {
       return Q.resolve(projectDir);
     }
 
@@ -2252,7 +2252,7 @@
 
     try {
       var webpackDevFile = path.resolve(path.join(projectDir, 'webpack.dev.config.js'));
-      if(!fs.existsSync(webpackDevFile)) {
+      if (!fs.existsSync(webpackDevFile)) {
         var fileContent = this.getWebpackConfig('dev', projectDir);
         fs.writeFileSync(webpackDevFile, fileContent, 'utf8');
       } else {
@@ -2260,7 +2260,7 @@
       }
 
       var webpackProdFile = path.resolve(path.join(projectDir, 'webpack.prod.config.js'));
-      if(!fs.existsSync(path.resolve(path.join(projectDir, 'webpack.prod.config.js')))) {
+      if (!fs.existsSync(path.resolve(path.join(projectDir, 'webpack.prod.config.js')))) {
         var fileContent = this.getWebpackConfig('prod', projectDir);
         fs.writeFileSync(webpackProdFile, fileContent, 'utf8');
       } else {
@@ -2356,7 +2356,7 @@
   Monaca.prototype.isTranspilable = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
 
-    if(!config) {
+    if (!config) {
       return false;
     }
 
@@ -2408,7 +2408,7 @@
    */
   Monaca.prototype.getWebpackConfigFile = function(projectDir, environment) {
     var webpackConfig = path.resolve(projectDir, 'webpack.' + environment + '.config.js');
-    if(!fs.existsSync(webpackConfig)) {
+    if (!fs.existsSync(webpackConfig)) {
       var error = new Error();
       error.link = 'https://github.com/monaca/monaca-lib/blob/master/updateProject.md';
       error.message = '\nAppears that this project is not configured properly. This may be due to a recent update.\nPlease check this guide to update your project:\n ' + error.link + ' \n';
@@ -2471,7 +2471,7 @@
     });
 
     webpackProcess.on('message', function(data) {
-      if(this.clientType === 'cli') {
+      if (this.clientType === 'cli') {
         process.stdout.write(data + '\n');
       } else {
         this.emitter.emit('output', {
@@ -2482,7 +2482,7 @@
     }.bind(this));
 
     webpackProcess.on('exit', function(code) {
-      if(code === 1) {
+      if (code === 1) {
         var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
         deferred.reject(error);
       } else {
@@ -2901,32 +2901,13 @@
    * @return {Promise}
    */
   Monaca.prototype.isCordovaProject = function(projectDir) {
-    var exists = function(dir) {
-      var deferred = Q.defer();
+    // Files and directories that are required to be a valid Cordova project.
+    var requiredItems = [
+      'www',
+      'config.xml'
+    ];
 
-      fs.exists(dir, function(exists) {
-        if (exists) {
-          deferred.resolve();
-        }
-        else {
-          deferred.reject();
-        }
-      });
-
-      return deferred.promise;
-    }
-
-    return Q.all([
-      exists(path.join(projectDir, 'www')),
-      exists(path.join(projectDir, 'config.xml'))
-    ]).then(
-      function() {
-        return projectDir + ' is a Cordova project.';
-      },
-      function() {
-        return Q.reject(projectDir + ' is not a Cordova project.');
-      }
-    );
+    return this._checkProjectStructure(projectDir, requiredItems);
   };
 
   /**
@@ -2937,60 +2918,46 @@
    * @param {String} projectDir - Project directory.
    * @return {Promise}
    */
-  Monaca.prototype.isMonacaProject = function(projectDir) {
-    var exists = function(dir) {
-      var deferred = Q.defer();
+   Monaca.prototype.isMonacaProject = function(projectDir) {
+    // Files and directories that are required to be a valid Monaca project.
+    var requiredItems = [
+      '.monaca',
+      path.join('.monaca', 'project_info.json')
+    ];
 
-      fs.exists(dir, function(exists) {
-        if (exists) {
-          deferred.resolve();
-        }
-        else {
-          deferred.reject();
-        }
-      });
+    return this._checkProjectStructure(projectDir, requiredItems);
+   };
 
-      return deferred.promise;
+   /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Utility method to check if a folder structure is correct.
+   * @param {String} projectDir - Project directory.
+   * @param {Array} requiredItems - Items to be checked.
+   * @return {Promise}
+   */
+  Monaca.prototype._checkProjectStructure = function(projectDir, requiredItems) {
+    // Log of items that are missing.
+    var missingItems = [];
+
+    // Loop though each file and directory and check if it exists.
+    requiredItems.forEach(function(item) {
+      try {
+        fs.statSync(path.join(projectDir, item));
+      } catch (e) {
+        missingItems.push(path.join(projectDir, item));
+      }
+    });
+
+    // Reject if one or more are missing.
+    if (missingItems.length > 0) {
+      var err = new Error("This is not a valid project, missing: \n\n" + missingItems.join('\n'));
+      return Q.reject(err);
     }
 
-    var hasConfigFile = function() {
-      var configFiles = ['config.xml', 'config.ios.xml', 'config.android.xml'];
-
-      var promises = configFiles
-        .map(
-          function(fileName) {
-            return exists(path.join(projectDir, fileName));
-          }
-        );
-
-      var next = function() {
-        var promise = promises.shift();
-
-        if (!promise) {
-          return Q.reject(new Error('Config file is missing.'));
-        }
-
-        return promise.then(
-          function() {
-            return projectDir;
-          },
-          function() {
-            return next();
-          }
-        );
-      };
-
-      return next();
-    };
-
-    return exists(path.join(projectDir, 'www')).then(
-      function() {
-        return hasConfigFile();
-      },
-      function() {
-        return Q.reject(new Error('"www" directory is missing.'));
-      }
-    );
+    // Valid Monaca Project
+    return Q.resolve(true);
   };
 
   /**
