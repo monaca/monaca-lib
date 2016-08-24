@@ -2157,7 +2157,7 @@
   Monaca.prototype.installBuildDependencies = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
 
-    if(!config.build) {
+    if (!config.build) {
       return Q.resolve(projectDir);
     }
 
@@ -2166,14 +2166,14 @@
     var dependencies = require(packageJsonFile).additionalDependencies;
     var installDependencies = [];
 
-    if(!fs.existsSync(USER_CORDOVA)) {
+    if (!fs.existsSync(USER_CORDOVA)) {
       fs.mkdirSync(USER_CORDOVA);
     }
-    if(!fs.existsSync(NPM_PACKAGE_FILE)) {
+    if (!fs.existsSync(NPM_PACKAGE_FILE)) {
       fs.writeFileSync(NPM_PACKAGE_FILE, '{}');
     }
     var nodeModules = path.join(USER_CORDOVA, 'node_modules');
-    if(!fs.existsSync(nodeModules)) {
+    if (!fs.existsSync(nodeModules)) {
       fs.mkdirSync(nodeModules);
     }
 
@@ -2186,14 +2186,14 @@
         if (!dep || dep.version !== dependencies[key]) {
           installDependencies.push(key + '@' + dependencies[key]);
           var depPath = path.join(nodeModules, key)
-          if(!fs.existsSync(depPath)) {
+          if (!fs.existsSync(depPath)) {
             fs.mkdirSync(depPath);
           }
         }
       }
     });
 
-    if(installDependencies.length > 0) {
+    if (installDependencies.length > 0) {
       process.stdout.write('\n\nInstalling build dependencies...\n');
       this._npmInstall(USER_CORDOVA, installDependencies).then(
         deferred.resolve.bind(null, projectDir),
@@ -2226,7 +2226,7 @@
     var file = 'webpack.' + environment + '.' + framework +  '.js';
     var asset = path.resolve(path.join(__dirname, 'template', file));
 
-    if(!fs.existsSync(asset)) {
+    if (!fs.existsSync(asset)) {
       throw 'Failed to locate Webpack config template for framework ' + framework;
     }
 
@@ -2244,7 +2244,7 @@
   Monaca.prototype.generateBuildConfigs = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
 
-    if(!config.build) {
+    if (!config.build) {
       return Q.resolve(projectDir);
     }
 
@@ -2252,7 +2252,7 @@
 
     try {
       var webpackDevFile = path.resolve(path.join(projectDir, 'webpack.dev.config.js'));
-      if(!fs.existsSync(webpackDevFile)) {
+      if (!fs.existsSync(webpackDevFile)) {
         var fileContent = this.getWebpackConfig('dev', projectDir);
         fs.writeFileSync(webpackDevFile, fileContent, 'utf8');
       } else {
@@ -2260,7 +2260,7 @@
       }
 
       var webpackProdFile = path.resolve(path.join(projectDir, 'webpack.prod.config.js'));
-      if(!fs.existsSync(path.resolve(path.join(projectDir, 'webpack.prod.config.js')))) {
+      if (!fs.existsSync(path.resolve(path.join(projectDir, 'webpack.prod.config.js')))) {
         var fileContent = this.getWebpackConfig('prod', projectDir);
         fs.writeFileSync(webpackProdFile, fileContent, 'utf8');
       } else {
@@ -2356,7 +2356,7 @@
   Monaca.prototype.isTranspilable = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
 
-    if(!config) {
+    if (!config) {
       return false;
     }
 
@@ -2408,7 +2408,7 @@
    */
   Monaca.prototype.getWebpackConfigFile = function(projectDir, environment) {
     var webpackConfig = path.resolve(projectDir, 'webpack.' + environment + '.config.js');
-    if(!fs.existsSync(webpackConfig)) {
+    if (!fs.existsSync(webpackConfig)) {
       var error = new Error();
       error.link = 'https://github.com/monaca/monaca-lib/blob/master/updateProject.md';
       error.message = '\nAppears that this project is not configured properly. This may be due to a recent update.\nPlease check this guide to update your project:\n ' + error.link + ' \n';
@@ -2471,7 +2471,7 @@
     });
 
     webpackProcess.on('message', function(data) {
-      if(this.clientType === 'cli') {
+      if (this.clientType === 'cli') {
         process.stdout.write(data + '\n');
       } else {
         this.emitter.emit('output', {
@@ -2482,7 +2482,7 @@
     }.bind(this));
 
     webpackProcess.on('exit', function(code) {
-      if(code === 1) {
+      if (code === 1) {
         var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
         deferred.reject(error);
       } else {
@@ -2951,7 +2951,7 @@
     });
 
     // Reject if one or more are missing.
-    if(missingItems.length > 0) {
+    if (missingItems.length > 0) {
       var err = new Error("This is not a valid project, missing: \n\n" + missingItems.join('\n'));
       return Q.reject(err);
     }
