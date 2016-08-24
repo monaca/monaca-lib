@@ -2901,32 +2901,13 @@
    * @return {Promise}
    */
   Monaca.prototype.isCordovaProject = function(projectDir) {
-    var exists = function(dir) {
-      var deferred = Q.defer();
+    // Files and directories that are required to be a valid Cordova project.
+    var requiredItems = [
+      'www',
+      'config.xml'
+    ];
 
-      fs.exists(dir, function(exists) {
-        if (exists) {
-          deferred.resolve();
-        }
-        else {
-          deferred.reject();
-        }
-      });
-
-      return deferred.promise;
-    }
-
-    return Q.all([
-      exists(path.join(projectDir, 'www')),
-      exists(path.join(projectDir, 'config.xml'))
-    ]).then(
-      function() {
-        return projectDir + ' is a Cordova project.';
-      },
-      function() {
-        return Q.reject(projectDir + ' is not a Cordova project.');
-      }
-    );
+    return this._checkProjectStructure(projectDir, requiredItems);
   };
 
   /**
@@ -2937,60 +2918,46 @@
    * @param {String} projectDir - Project directory.
    * @return {Promise}
    */
-  Monaca.prototype.isMonacaProject = function(projectDir) {
-    var exists = function(dir) {
-      var deferred = Q.defer();
+   Monaca.prototype.isMonacaProject = function(projectDir) {
+    // Files and directories that are required to be a valid Monaca project.
+    var requiredItems = [
+      '.monaca',
+      path.join('.monaca', 'project_info.json')
+    ];
 
-      fs.exists(dir, function(exists) {
-        if (exists) {
-          deferred.resolve();
-        }
-        else {
-          deferred.reject();
-        }
-      });
+    return this._checkProjectStructure(projectDir, requiredItems);
+   };
 
-      return deferred.promise;
+   /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Utility method to check if a folder structure is correct.
+   * @param {String} projectDir - Project directory.
+   * @param {Array} requiredItems - Items to be checked.
+   * @return {Promise}
+   */
+  Monaca.prototype._checkProjectStructure = function(projectDir, requiredItems) {
+    // Log of items that are missing.
+    var missingItems = [];
+
+    // Loop though each file and directory and check if it exists.
+    requiredItems.forEach(function(item) {
+      try {
+        fs.statSync(path.join(projectDir, item));
+      } catch (e) {
+        missingItems.push(path.join(projectDir, item));
+      }
+    });
+
+    // Reject if one or more are missing.
+    if(missingItems.length > 0) {
+      var err = new Error("This is not a valid project, missing: \n\n" + missingItems.join('\n'));
+      return Q.reject(err);
     }
 
-    var hasConfigFile = function() {
-      var configFiles = ['config.xml', 'config.ios.xml', 'config.android.xml'];
-
-      var promises = configFiles
-        .map(
-          function(fileName) {
-            return exists(path.join(projectDir, fileName));
-          }
-        );
-
-      var next = function() {
-        var promise = promises.shift();
-
-        if (!promise) {
-          return Q.reject(new Error('Config file is missing.'));
-        }
-
-        return promise.then(
-          function() {
-            return projectDir;
-          },
-          function() {
-            return next();
-          }
-        );
-      };
-
-      return next();
-    };
-
-    return exists(path.join(projectDir, 'www')).then(
-      function() {
-        return hasConfigFile();
-      },
-      function() {
-        return Q.reject(new Error('"www" directory is missing.'));
-      }
-    );
+    // Valid Monaca Project
+    return Q.resolve(true);
   };
 
   /**
