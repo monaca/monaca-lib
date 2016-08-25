@@ -145,6 +145,17 @@
       writable: false
     });
 
+    /**
+     * @description
+     *   userCordova.
+     * @name Monaca#userCordova
+     * @type string
+     */
+    Object.defineProperty(this, 'userCordova', {
+      value: USER_CORDOVA,
+      writable: false
+    });
+
     this.tokens = {
       api: null,
       session: null
@@ -2375,28 +2386,6 @@
   Monaca.prototype.isTranspileEnabled = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
     return config.build && config.build.transpile && config.build.transpile.enabled;
-  };
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Returns path to the user's global webpack binary.
-   * @return {String}
-   */
-  Monaca.prototype.getWebpackBinPath = function() {
-    return path.resolve(path.join(USER_CORDOVA, 'node_modules', '.bin', (process.platform === 'win32' ? 'webpack.cmd' : 'webpack')));
-  };
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Returns path to the user's global webpack-de-server binary.
-   * @return {String}
-   */
-  Monaca.prototype.getWebpackDevServerBinPath = function() {
-    return path.resolve(path.join(USER_CORDOVA, 'node_modules', '.bin', 'webpack-dev-server'));
   };
 
   /**
