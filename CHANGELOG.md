@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v2.1.3
+----
+* monaca: Reduce package size.
+* monaca: Improve Webpack output in development mode.
+
 v2.1.2
 ----
 * monaca: Minor improvement to transpiler configuration.
