@@ -6,6 +6,7 @@ try {
   var webpack = require(path.join(cordovaNodeModules, 'webpack'));
   var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
   var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
+  var ProgressBarPlugin = require(path.join(cordovaNodeModules, 'progress-bar-webpack-plugin'));
 
   var autoprefixer = require(path.join(cordovaNodeModules, 'autoprefixer'));
   var precss = require(path.join(cordovaNodeModules, 'precss'));
@@ -13,8 +14,6 @@ try {
 } catch (e) {
   throw new Error('Missing Webpack Build Dependencies.');
 }
-
-var port = +(process.env.WP_PORT) || 8000;
 
 module.exports = {
   devtool: 'eval-source-map',
@@ -104,7 +103,8 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: 'src/public/index.ejs',
       chunksSortMode: 'dependency'
-    })
+    }),
+    new ProgressBarPlugin()
   ],
 
   resolveLoader: {
@@ -115,7 +115,7 @@ module.exports = {
     contentBase: './src/public',
     colors: true,
     inline: true,
-    port: port,
+    port: 8000,
     host: '0.0.0.0',
     stats: 'minimal'
   }

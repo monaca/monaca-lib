@@ -2,6 +2,24 @@
 CHANGELOG
 ====
 
+v2.1.3
+----
+* monaca: Reduce package size.
+* monaca: Improve Webpack output in development mode.
+
+v2.1.2
+----
+* monaca: Minor improvement to transpiler configuration.
+
+v2.1.1
+----
+* monaca: Localkit support when running transpiler.
+
+v2.1.0
+----
+* monaca and localkit: Various fixes.
+* monaca: Webpack dev server support.
+
 v1.1.13
 ----
 * monaca: Allowed upload/download for config files inside the root directory.

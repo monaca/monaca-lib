@@ -145,6 +145,17 @@
       writable: false
     });
 
+    /**
+     * @description
+     *   userCordova.
+     * @name Monaca#userCordova
+     * @type string
+     */
+    Object.defineProperty(this, 'userCordova', {
+      value: USER_CORDOVA,
+      writable: false
+    });
+
     this.tokens = {
       api: null,
       session: null
@@ -319,6 +330,14 @@
       return true;
     }
 
+    if (f.indexOf('/.monaca/android/AndroidManifest.xml') == 0) {
+        return true;
+     }
+
+    if (f.indexOf('/.monaca/ios/MonacaApp-Info.plist') == 0) {
+        return true;
+    }
+
     // Exclude other hidden files and folders from being uploaded.
     if (f.indexOf('/.') >= 0 && source === "uploadProject") {
       return false;
@@ -354,7 +373,7 @@
 
     if (allowFiles.length > 0) {
       // Only include files in /www, /merges and /plugins folders.
-      if (/^\/(?!www\/|www$|merges\/|merges$|plugins\/|plugins$|src\/|src$|typings\/|typings$).*/.test(f)) {
+      if (/^\/(?!www\/|www$|merges\/|merges$|plugins\/|plugins$|src\/|src$|typings\/|typings$|res\/|res$).*/.test(f)) {
         return false;
       } else {
         // Check if file is present in one of the /www, /merges and /plugins folders and also in list of allowed files.
@@ -366,7 +385,7 @@
       }
     } else {
       // Only include files in /www, /merges and /plugins folders.
-      return !/^\/(www\/|merges\/|plugins\/|src\/|typings\/|[^/]*$)/.test(f);
+      return !/^\/(www\/|merges\/|plugins\/|src\/|typings\/|res\/|[^/]*$)/.test(f);
     }
   };
 
@@ -990,9 +1009,6 @@
             if (!platformContent.is_start_file_exist) {
               return 'Your project is missing the startup file (usually index.html).';
             }
-            if (platformContent.manifest_error) {
-              return 'Your AndroidManifest.xml has an invalid value. Please fix it and try again.';
-            }
             if (typeof platformContent.can_build_for[buildType] === 'undefined') {
               return platform + ' ' + buildType + ' build is not supported or doesn\'t exist.';
             }
@@ -1005,9 +1021,6 @@
               }
             }
             if (platform === 'ios') {
-              if (platformContent.info_plist_error) {
-                return 'Your Info.plist file has an invalid content. Please fix it and try again.';
-              }
               if (!platformContent.has_splash_and_icons) {
                 return 'Your project is missing splash screens and/or icons. Please open remote build settings to configure.';
               }
@@ -2045,7 +2058,7 @@
    *     });
    */
   Monaca.prototype.getTemplates = function() {
-    return this._get('/user/templates')
+    return this._get('/user/templates', { version: this.version })
       .then(
         function(data) {
           var body = this._safeParse(data.body);
@@ -2157,7 +2170,7 @@
   Monaca.prototype.installBuildDependencies = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
 
-    if(!config.build) {
+    if (!config.build) {
       return Q.resolve(projectDir);
     }
 
@@ -2166,14 +2179,14 @@
     var dependencies = require(packageJsonFile).additionalDependencies;
     var installDependencies = [];
 
-    if(!fs.existsSync(USER_CORDOVA)) {
+    if (!fs.existsSync(USER_CORDOVA)) {
       fs.mkdirSync(USER_CORDOVA);
     }
-    if(!fs.existsSync(NPM_PACKAGE_FILE)) {
+    if (!fs.existsSync(NPM_PACKAGE_FILE)) {
       fs.writeFileSync(NPM_PACKAGE_FILE, '{}');
     }
     var nodeModules = path.join(USER_CORDOVA, 'node_modules');
-    if(!fs.existsSync(nodeModules)) {
+    if (!fs.existsSync(nodeModules)) {
       fs.mkdirSync(nodeModules);
     }
 
@@ -2186,18 +2199,18 @@
         if (!dep || dep.version !== dependencies[key]) {
           installDependencies.push(key + '@' + dependencies[key]);
           var depPath = path.join(nodeModules, key)
-          if(!fs.existsSync(depPath)) {
+          if (!fs.existsSync(depPath)) {
             fs.mkdirSync(depPath);
           }
         }
       }
     });
 
-    if(installDependencies.length > 0) {
+    if (installDependencies.length > 0) {
       process.stdout.write('\n\nInstalling build dependencies...\n');
       this._npmInstall(USER_CORDOVA, installDependencies).then(
         deferred.resolve.bind(null, projectDir),
-        deferred.reject.bind(null, 'Failed to install build dependencies.')
+        deferred.reject.bind(null, new Error('Failed to install build dependencies.'))
       );
     } else {
       deferred.resolve(projectDir);
@@ -2226,7 +2239,7 @@
     var file = 'webpack.' + environment + '.' + framework +  '.js';
     var asset = path.resolve(path.join(__dirname, 'template', file));
 
-    if(!fs.existsSync(asset)) {
+    if (!fs.existsSync(asset)) {
       throw 'Failed to locate Webpack config template for framework ' + framework;
     }
 
@@ -2244,7 +2257,7 @@
   Monaca.prototype.generateBuildConfigs = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
 
-    if(!config.build) {
+    if (!config.build) {
       return Q.resolve(projectDir);
     }
 
@@ -2252,19 +2265,19 @@
 
     try {
       var webpackDevFile = path.resolve(path.join(projectDir, 'webpack.dev.config.js'));
-      if(!fs.existsSync(webpackDevFile)) {
+      if (!fs.existsSync(webpackDevFile)) {
         var fileContent = this.getWebpackConfig('dev', projectDir);
         fs.writeFileSync(webpackDevFile, fileContent, 'utf8');
       } else {
-        process.stdout.write('webpack.dev.config.js already exists. Skipping.\n'.warn);
+        process.stdout.write('webpack.dev.config.js already exists. Skipping.\n');
       }
 
       var webpackProdFile = path.resolve(path.join(projectDir, 'webpack.prod.config.js'));
-      if(!fs.existsSync(path.resolve(path.join(projectDir, 'webpack.prod.config.js')))) {
+      if (!fs.existsSync(path.resolve(path.join(projectDir, 'webpack.prod.config.js')))) {
         var fileContent = this.getWebpackConfig('prod', projectDir);
         fs.writeFileSync(webpackProdFile, fileContent, 'utf8');
       } else {
-        process.stdout.write('webpack.prod.config.js already exists. Skipping.\n'.warn);
+        process.stdout.write('webpack.prod.config.js already exists. Skipping.\n');
       }
 
       deferred.resolve(projectDir);
@@ -2288,7 +2301,7 @@
     var componentsPath = path.join(projectDir, 'www', 'components');
     fs.exists(componentsPath, function(exists) {
       if (exists) {
-        process.stdout.write(('www/components already exists. Skipping.\n').warn);
+        process.stdout.write('www/components already exists. Skipping.\n');
         return deferred.resolve(projectDir);
       } else {
         fs.copy(path.resolve(__dirname, 'template', 'components'), componentsPath, function(error) {
@@ -2355,8 +2368,8 @@
    */
   Monaca.prototype.isTranspilable = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
-    
-    if(!config) {
+
+    if (!config) {
       return false;
     }
 
@@ -2374,29 +2387,28 @@
    */
   Monaca.prototype.isTranspileEnabled = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
-    return config.build && config.build.transpile && config.build.transpile.enabled;   
+    return config.build && config.build.transpile && config.build.transpile.enabled;
   };
 
   /**
    * @method
    * @memberof Monaca
    * @description
-   *   Returns path to the user's global webpack binary.
+   *   Returns path to the webpack config file.
    * @return {String}
    */
-  Monaca.prototype.getWebpackBinPath = function() {
-    return path.resolve(path.join(USER_CORDOVA, 'node_modules', '.bin', 'webpack'));
-  };
+  Monaca.prototype.getWebpackConfigFile = function(projectDir, environment) {
+    var webpackConfig = path.resolve(projectDir, 'webpack.' + environment + '.config.js');
+    if (!fs.existsSync(webpackConfig)) {
+      var error = new Error();
+      error.link = 'https://github.com/monaca/monaca-lib/blob/master/updateProject.md';
+      error.message = '\nAppears that this project is not configured properly. This may be due to a recent update.\nPlease check this guide to update your project:\n ' + error.link + ' \n';
+      error.action = 'reconfiguration';
 
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Returns path to the user's global webpack-de-server binary.
-   * @return {String}
-   */
-  Monaca.prototype.getWebpackDevServerBinPath = function() {
-    return path.resolve(path.join(USER_CORDOVA, 'node_modules', '.bin', 'webpack-dev-server'));
+      throw error;
+    }
+
+    return webpackConfig;
   };
 
   /**
@@ -2423,11 +2435,9 @@
       });
     }
 
-    var webpackConfig = path.resolve(projectDir, 'webpack.prod.config.js');
-    if(!fs.existsSync(path.resolve(webpackConfig))) {
-      var error = new Error('\nAppears that this project is not configured properly. This may be due to a recent update.\nPlease check this guide to update your project:\n https://github.com/monaca/monaca-lib/blob/master/updateProject.md \n');
-      error.action = 'reconfiguration';
-
+    try {
+      var webpackConfigFile = this.getWebpackConfigFile(projectDir, 'prod');
+    } catch(error) {
       return Q.reject(error);
     }
 
@@ -2438,56 +2448,46 @@
     });
     process.stdout.write('Running Transpiler...\n');
 
-    try {
-      process.env.NODE_PATH = USER_CORDOVA;
+    var parameters = [webpackConfigFile];
+    if (options.watch) {
+      parameters.push('--watch')
+    }
 
-      // Check for nodejs version dependency requirement for angular 2.
-      var projectConfig = this.fetchProjectData(projectDir);
-      if(projectConfig['template-type'] === 'angular2') {
-        if(parseInt(process.version.replace('v', '').replace(/\./g, ''), 10) < 500) {
-          process.stdout.write('Warning: The version of Node.js you are using does not meet the minimum requirements for Angular 2. You may experience errors when transpiling.  Please upgrade Node.js to v5.x.x and NPM to v3.x.x.\n');
-        }
+    var webpackProcess = child_process.fork(path.join(__dirname, 'transpile.js'), parameters, {
+      env: extend({}, process.env, {
+        USER_CORDOVA: USER_CORDOVA,
+        NODE_ENV: JSON.stringify('production'),
+        WP_CACHE: options.cache || ''
+      })
+    });
+
+    webpackProcess.on('message', function(data) {
+      if (this.clientType === 'cli') {
+        process.stdout.write(data + '\n');
+      } else {
+        this.emitter.emit('output', {
+          type: 'progress',
+          message: data
+        });
       }
+    }.bind(this));
 
-      var webpackBinPath = this.getWebpackBinPath();
-      var webpackProcessLog = [];
-
-      var binPath = webpackBinPath;
-      var parameters = ['-p', '--config', webpackConfig];
-
-      if(options.watch) {
-        parameters.push('--watch');
+    webpackProcess.on('exit', function(code) {
+      if (code === 1) {
+        var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
+        deferred.reject(error);
+      } else {
+        deferred.resolve({
+          message: '\n\nTranspiling finished for ' + projectDir
+        });
       }
+    });
 
-      if(process.platform === 'win32') {
-        binPath = 'cmd';
-        parameters.unshift('/c', webpackBinPath);
-      }
-
-      var webpackProcess = child_process.spawn(binPath, parameters, {
-        cwd: path.resolve(projectDir),
-        env: extend({}, process.env, {
-          NODE_ENV: JSON.stringify('production'),
-          WP_CACHE: options.cache || ''
-        }),
-        stdio: 'inherit'
+    if (options.watch) {
+      deferred.resolve({
+        message: 'Watching directory "' + projectDir + '" for changes...',
+        pid: webpackProcess.pid
       });
-
-      webpackProcess.on('exit', function(code) {
-
-        if(code === 1) {
-          var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
-          error.log = webpackProcessLog;
-          deferred.reject(error);
-        } else {
-          deferred.resolve({
-            message: 'Transpiling finished for ' + projectDir,
-            log: webpackProcessLog
-          });
-        }
-      });
-    } catch (error) {
-      deferred.reject(error);
     }
 
     return deferred.promise;
@@ -2892,32 +2892,13 @@
    * @return {Promise}
    */
   Monaca.prototype.isCordovaProject = function(projectDir) {
-    var exists = function(dir) {
-      var deferred = Q.defer();
+    // Files and directories that are required to be a valid Cordova project.
+    var requiredItems = [
+      'www',
+      'config.xml'
+    ];
 
-      fs.exists(dir, function(exists) {
-        if (exists) {
-          deferred.resolve();
-        }
-        else {
-          deferred.reject();
-        }
-      });
-
-      return deferred.promise;
-    }
-
-    return Q.all([
-      exists(path.join(projectDir, 'www')),
-      exists(path.join(projectDir, 'config.xml'))
-    ]).then(
-      function() {
-        return projectDir + ' is a Cordova project.';
-      },
-      function() {
-        return Q.reject(projectDir + ' is not a Cordova project.');
-      }
-    );
+    return this._checkProjectStructure(projectDir, requiredItems);
   };
 
   /**
@@ -2928,60 +2909,46 @@
    * @param {String} projectDir - Project directory.
    * @return {Promise}
    */
-  Monaca.prototype.isMonacaProject = function(projectDir) {
-    var exists = function(dir) {
-      var deferred = Q.defer();
+   Monaca.prototype.isMonacaProject = function(projectDir) {
+    // Files and directories that are required to be a valid Monaca project.
+    var requiredItems = [
+      '.monaca',
+      path.join('.monaca', 'project_info.json')
+    ];
 
-      fs.exists(dir, function(exists) {
-        if (exists) {
-          deferred.resolve();
-        }
-        else {
-          deferred.reject();
-        }
-      });
+    return this._checkProjectStructure(projectDir, requiredItems);
+   };
 
-      return deferred.promise;
+   /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Utility method to check if a folder structure is correct.
+   * @param {String} projectDir - Project directory.
+   * @param {Array} requiredItems - Items to be checked.
+   * @return {Promise}
+   */
+  Monaca.prototype._checkProjectStructure = function(projectDir, requiredItems) {
+    // Log of items that are missing.
+    var missingItems = [];
+
+    // Loop though each file and directory and check if it exists.
+    requiredItems.forEach(function(item) {
+      try {
+        fs.statSync(path.join(projectDir, item));
+      } catch (e) {
+        missingItems.push(path.join(projectDir, item));
+      }
+    });
+
+    // Reject if one or more are missing.
+    if (missingItems.length > 0) {
+      var err = new Error("This is not a valid project, missing: \n\n" + missingItems.join('\n'));
+      return Q.reject(err);
     }
 
-    var hasConfigFile = function() {
-      var configFiles = ['config.xml', 'config.ios.xml', 'config.android.xml'];
-
-      var promises = configFiles
-        .map(
-          function(fileName) {
-            return exists(path.join(projectDir, fileName));
-          }
-        );
-
-      var next = function() {
-        var promise = promises.shift();
-
-        if (!promise) {
-          return Q.reject(new Error('Config file is missing.'));
-        }
-
-        return promise.then(
-          function() {
-            return projectDir;
-          },
-          function() {
-            return next();
-          }
-        );
-      };
-
-      return next();
-    };
-
-    return exists(path.join(projectDir, 'www')).then(
-      function() {
-        return hasConfigFile();
-      },
-      function() {
-        return Q.reject(new Error('"www" directory is missing.'));
-      }
-    );
+    // Valid Monaca Project
+    return Q.resolve(true);
   };
 
   /**
