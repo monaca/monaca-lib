@@ -1476,6 +1476,10 @@
                 }
               }.bind(this)))).then(
                 function() {
+                  return this.setProjectId(destDir, projectId);
+                }.bind(this)
+              ).then(
+                function() {
                   deferred.resolve(destDir);
                 },
                 function(error) {
