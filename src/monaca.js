@@ -2997,7 +2997,7 @@
             name: arg.name,
             description: arg.description || '',
             templateId: 'minimum',
-            isBuildOnly: true
+            isBuildOnly: false
           })
           .then(
             function(info) {
