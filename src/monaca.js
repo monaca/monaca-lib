@@ -1605,6 +1605,87 @@
    * @method
    * @memberof Monaca
    * @description
+   *  Checks file difference between local and remote projects.
+   *  If it succeeds, an object containing the modified/deleted files will be returned.
+   * @param {string} projectDir - Project directory.
+   * @return {Promise}
+   * @example
+   *   monaca.checkModifiedFiles('/my/project/').then(
+   *     function(files) {
+   *       // Modified/deleted files
+   *     },
+   *     function(error) {
+   *       // Error while checking the files.
+   *     }
+   *   );
+   */
+  Monaca.prototype.checkModifiedFiles = function(projectDir) {
+    var deferred = Q.defer();
+
+    this.transpile(projectDir).then(
+      localProperties.get.bind(this, projectDir, 'project_id'),
+      function(error) {
+        deferred.reject(error);
+      }
+    ).then(
+      function(projectId) {
+        Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)]).then(
+          function(files) {
+
+            var localFiles = files[0],
+              remoteFiles = files[1];
+
+            // Fetch list of files after ignoring files/directories in .monacaignore file.
+            var allowFiles = this._filterIgnoreList(projectDir);
+
+            var filesToBeDeleted = {};
+
+            for (var f in remoteFiles) {
+              // If file on Monaca Cloud doesn't exist locally then it should be deleted from Cloud.
+              if (!localFiles.hasOwnProperty(f)) {
+                filesToBeDeleted[f] = remoteFiles[f];
+              }
+            }
+
+            // Filter out directories and unchanged files.
+            this._filterFiles(localFiles, remoteFiles);
+
+            var keys = [];
+
+            // Checks if the file/dir are included in a directory that can be uploaded.
+            for (var file in localFiles) {
+              if (this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
+                keys.push(file);
+              }
+            }
+
+            // Modified files.
+            var modifiedFiles = {
+              uploaded: {},
+              deleted: filesToBeDeleted
+            };
+
+            for (var i in keys) {
+              if (localFiles[keys[i]]) {
+                modifiedFiles.uploaded[keys[i]] = localFiles[keys[i]];
+              }
+            }
+
+            deferred.resolve([filesToBeDeleted, modifiedFiles]);
+          }.bind(this),
+          function(error) {
+            deferred.reject(error);
+          }
+        )
+      }.bind(this)
+      );
+      return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *  Uploads a Monaca project to the Cloud. Will fail if the specified
    *  directory doesn't contain a Monaca project or if the project is
    *  not associated with the logged in user.
