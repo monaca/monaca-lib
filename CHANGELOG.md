@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v2.1.4
+----
+* monaca: Update 'portfinder' dependency.
+
 v2.1.3
 ----
 * monaca: Reduce package size.
