@@ -111,10 +111,8 @@ module.exports = {
       name: ['app', 'vendor', 'polyfills']
     }),
     new HtmlWebpackPlugin({
-      template: 'src/public/index.ejs',
+      template: 'src/public/index.html',
       chunksSortMode: 'dependency',
-      externalCSS: ['components/loader.css'],
-      externalJS: ['components/loader.js'],
       minify: {
         collapseWhitespace: true,
         conservativeCollapse: true,
