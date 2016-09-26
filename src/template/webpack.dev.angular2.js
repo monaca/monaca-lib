@@ -101,7 +101,7 @@ module.exports = {
       name: ['app', 'vendor', 'polyfills']
     }),
     new HtmlWebpackPlugin({
-      template: 'src/public/index.ejs',
+      template: 'src/public/index.html',
       chunksSortMode: 'dependency'
     }),
     new ProgressBarPlugin()
