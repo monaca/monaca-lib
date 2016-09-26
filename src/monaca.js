@@ -457,7 +457,7 @@
       function(httpProxy) {
         var requestClient = request.defaults({
           qs: qs,
-          rejectUnauthorized: false,
+          // rejectUnauthorized: false, // DELETE
           encoding: null,
           proxy: httpProxy,
           headers: {
