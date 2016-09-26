@@ -118,7 +118,6 @@ module.exports = {
     inline: false,
     historyApiFallback: true,
     host: '0.0.0.0',
-    port: 8000,
     stats: 'minimal',
     hot: true
   }

@@ -427,7 +427,7 @@
     }
 
     // We have to append '/**' to get all the subdirectories recursively.
-    allFiles = glob.sync(projectDir + "/**",
+    allFiles = glob.sync(projectDir.replace(/[-[\]{}()*+?.,^$|#]/g, "\\$&") + "/**",
       {
         dot: true,
         ignore: ignoreList
