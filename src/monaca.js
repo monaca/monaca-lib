@@ -1726,6 +1726,7 @@
         if (options && !options.dryrun && options.delete) {
           this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted)).then(
             function() {
+              console.log(Object.keys(filesToBeDeleted)
                 .map(function(f) {
                   return "deleted -> " + f;
                 })
