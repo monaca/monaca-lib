@@ -1622,7 +1622,8 @@
   Monaca.prototype.checkModifiedFiles = function(projectDir, options) {
     var deferred = Q.defer();
 
-    ((options && options.transpile) ? this.transpile(projectDir) : this.getProjectId(projectDir)).then(
+    ((options && options.transpile) ? this.transpile(projectDir) : this.getProjectId(projectDir))
+    .then(
       localProperties.get.bind(this, projectDir, 'project_id'),
       function(error) {
         deferred.reject(error);
@@ -1630,7 +1631,8 @@
     )
     .then(
       function(projectId) {
-        Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)]).then(
+        Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)])
+        .then(
           function(files) {
             var localFiles = files[0],
               remoteFiles = files[1];
@@ -1716,7 +1718,8 @@
   Monaca.prototype.uploadProject = function(projectDir, options) {
     var deferred = Q.defer();
 
-    this.checkModifiedFiles(projectDir, options).then(
+    this.checkModifiedFiles(projectDir, options)
+    .then(
       function(result) {
         var filesToBeDeleted = result.filesToBeDeleted,
           modifiedFiles = result.modifiedFiles,
@@ -1724,7 +1727,8 @@
           projectId = result.projectId;
 
         if (options && !options.dryrun && options.delete) {
-          this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted)).then(
+          this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted))
+          .then(
             function() {
               console.log(Object.keys(filesToBeDeleted)
                 .map(function(f) {
@@ -1776,7 +1780,8 @@
 
         Q.all(keys.map(qLimit(function(key) {
           return uploadFile(key);
-        }.bind(this)))).then(
+        }.bind(this))))
+        .then(
           function() {
             deferred.resolve(modifiedFiles);
           },
