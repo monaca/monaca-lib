@@ -25,5 +25,6 @@ if (watch) {
 } else {
   compiler.run(function(err, stats) {
     process.send(stats.toString(outputStyle));
+    process.exit(err || stats.hasErrors());
   });
 }
