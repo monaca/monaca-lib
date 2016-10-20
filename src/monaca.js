@@ -430,6 +430,7 @@
     allFiles = glob.sync(projectDir.replace(/[-[\]{}()*+?.,^$|#]/g, "\\$&") + "/**",
       {
         dot: true,
+        allowWindowsEscape: true,
         ignore: ignoreList
         .map(function(rule) {
           // Since we are finding files with 'projectDir' which is an absolute path, we need to prepend '**/' for
@@ -441,7 +442,7 @@
 
     return allFiles;
   };
-  
+
   Monaca.prototype._createRequestClient = function(data) {
     var deferred = Q.defer(), qs = {};
 
