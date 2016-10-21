@@ -885,15 +885,19 @@
 
                 project.name = _project.name || project.name;
                 project.frameworkVersion = "";
-                try {
-                  project.frameworkVersion = require(path.join( project_path, '.monaca', 'project_info.json'))["framework_version"]
-                } catch(e) {}
                 project.cordovaVersion = "";
-                try {
-                  project.cordovaVersion = require(path.join( project_path, '.monaca', 'project_info.json'))["cordova_version"]
-                } catch(e) {}
 
-                deferred.resolve(project);
+                var content = fs.readFile(path.join(project_path, '.monaca', 'project_info.json'), function(err, data) {
+                  if (err) {
+                    console.log("Error while reading project_info.json: " + err);
+                  } else {
+                    var parsedContent = JSON.parse(data);
+                    project.frameworkVersion = parsedContent["framework_version"];
+                    project.cordovaVersion = parsedContent["cordova_version"];
+                  }
+
+                  deferred.resolve(project);
+                });
               },
               function(error) {
                 deferred.reject(error);
