@@ -1622,7 +1622,7 @@
   Monaca.prototype.checkModifiedFiles = function(projectDir, options) {
     var projectId;
 
-    return ((options && options.transpile) ? this.transpile(projectDir) : this.getProjectId(projectDir))
+    return ((options && options.skipTranspile) ? this.getProjectId(projectDir) : this.transpile(projectDir))
     .then(
       localProperties.get.bind(this, projectDir, 'project_id')
     )
@@ -1678,11 +1678,6 @@
           projectId: projectId
         });
       }.bind(this)
-    )
-    .catch (
-      function(err) {
-        return Q.reject(err);
-      }
     )
   };
 
