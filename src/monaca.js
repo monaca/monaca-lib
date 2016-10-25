@@ -430,6 +430,7 @@
     allFiles = glob.sync(projectDir.replace(/[-[\]{}()*+?.,^$|#]/g, "\\$&") + "/**",
       {
         dot: true,
+        allowWindowsEscape: true,
         ignore: ignoreList
         .map(function(rule) {
           // Since we are finding files with 'projectDir' which is an absolute path, we need to prepend '**/' for
@@ -441,7 +442,6 @@
 
     return allFiles;
   };
-
 
   Monaca.prototype._createRequestClient = function(data) {
     var deferred = Q.defer(), qs = {};
@@ -700,7 +700,6 @@
       form.email = arguments[0];
       form.password = arguments[1];
     }
-
     return this._post(this.apiRoot + '/user/login', form)
       .then(
         function(data) {
@@ -1956,6 +1955,45 @@
     return deferred.promise;
   };
 
+  Monaca.prototype.pollBuildStatus = function(projectId, queueId) {
+    var deferred = Q.defer();
+    var buildRoot = '/project/' + projectId + '/build';
+
+    var interval = setInterval(function() {
+      this._post(buildRoot + '/status/' + queueId).then(
+        function(data) {
+          var result = this._safeParse(data.body).result;
+
+          deferred.notify(result.description);
+
+          if (result.finished) {
+            clearInterval(interval);
+
+            if (result.status === 'finish') {
+              deferred.resolve(result.description);
+            }
+            else {
+              this._post(buildRoot + '/result/' + queueId).then(
+                function(data) {
+                  deferred.reject(this._safeParse(data.body).result.error_message);
+                }.bind(this),
+                function(error) {
+                  deferred.reject(error);
+                }
+              );
+            }
+          }
+        }.bind(this),
+        function(error) {
+          clearInterval(interval);
+          deferred.reject(error);
+        }
+      );
+    }.bind(this), 1000);
+
+    return deferred.promise;
+  };
+
   /**
    * @method
    * @memberof Monaca
@@ -1994,7 +2032,7 @@
    *     }
    *   );
    */
-  Monaca.prototype.buildProject = function(projectId, params) {
+  Monaca.prototype.buildProject = function(projectId, params, skipPolling) {
     var deferred = Q.defer(),
       buildRoot = '/project/' + projectId + '/build';
 
@@ -2012,49 +2050,15 @@
       deferred.reject(new Error('Must specify build platform.'));
     }
 
-    var pollBuild = function(queueId) {
-      var deferred = Q.defer();
-
-      var interval = setInterval(function() {
-        this._post(buildRoot + '/status/' + queueId).then(
-          function(data) {
-            var result = this._safeParse(data.body).result;
-
-            deferred.notify(result.description);
-
-            if (result.finished) {
-              clearInterval(interval);
-
-              if (result.status === 'finish') {
-                deferred.resolve(result.description);
-              }
-              else {
-                this._post(buildRoot + '/result/' + queueId).then(
-                  function(data) {
-                    deferred.reject(this._safeParse(data.body).result.error_message);
-                  }.bind(this),
-                  function(error) {
-                    deferred.reject(error);
-                  }
-                );
-              }
-            }
-          }.bind(this),
-          function(error) {
-            clearInterval(interval);
-            deferred.reject(error);
-          }
-        );
-      }.bind(this), 1000);
-
-      return deferred.promise;
-    }.bind(this);
-
     this._post(buildRoot, params).then(
       function(data) {
         var queueId = this._safeParse(data.body).result.queue_id;
 
-        pollBuild(queueId).then(
+        if(skipPolling) {
+          return deferred.resolve(queueId);
+        }
+
+        this.pollBuildStatus(projectId, queueId).then(
           function() {
             this._post(buildRoot + '/result/' + queueId).then(
               function(data) {
@@ -2080,7 +2084,6 @@
 
     return deferred.promise;
   };
-
 
   /**
    * @method
@@ -3185,7 +3188,43 @@
     })
     return deferred.promise;
   }
+  
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Send builds to third-party app distribution services.
+   * @return {Promise}
+   */
+  Monaca.prototype.distribute = function(alias, service, request_parameters, build_id, projectId, ci_queue_id) {
+    if(!projectId) {
+      projectId = this.getProjectId();
+    }
+    
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to submit build distribution request. (alias: ' + alias + '; parameters: ' + JSON.stringify(request_parameters) + ')';
+    var resource = '/project/' + projectId + '/distribute';
 
+    return this._post(resource, {
+      alias: alias,
+      service: service,
+      parameters: request_parameters,
+      build_queue_id: build_id,
+      ci_queue_id: ci_queue_id || null
+    }).then(
+      function(response) {
+        var body = this._safeParse(response.body);
+
+        if(body.status === 'error' || body.status === 'fail') {
+          return Q.reject(body.message || unknownErrorMsg);
+        } else {
+          return Q.resolve(body);
+        }
+      }.bind(this),
+      function() {
+        return Q.reject(unknownErrorMsg);
+      }
+    );
+  }
 
   module.exports = Monaca;
 })();

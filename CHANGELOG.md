@@ -2,6 +2,19 @@
 CHANGELOG
 ====
 
+v2.2.1
+----
+* monaca: Added patched minimatch dependency.
+
+v2.2.0
+----
+* monaca: Added CI support.
+
+v2.1.4
+----
+* monaca: Update 'portfinder' dependency.
+* monaca: Fixed escape character bug on project path.
+
 v2.1.3
 ----
 * monaca: Reduce package size.
