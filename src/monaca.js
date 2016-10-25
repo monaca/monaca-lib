@@ -3052,8 +3052,8 @@
         if (arg.delete) {
           options = {'delete' : true};
         }
-        if (arg.transpile) {
-          options.transpile = true;
+        if (arg.skipTranspile) {
+          options.skipTranspile = true;
         }
         return this.uploadProject(arg.path, options);
       }.bind(this);
