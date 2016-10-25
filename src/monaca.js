@@ -1475,6 +1475,10 @@
                 }
               }.bind(this)))).then(
                 function() {
+                  return this.setProjectId(destDir, projectId);
+                }.bind(this)
+              ).then(
+                function() {
                   deferred.resolve(destDir);
                 },
                 function(error) {
@@ -1600,6 +1604,86 @@
    * @method
    * @memberof Monaca
    * @description
+   *  Checks file difference between local and remote projects.
+   *  If it succeeds, an object containing the modified/deleted files will be returned.
+   * @param {string} projectDir - Project directory.
+   * @return {Promise}
+   * @example
+   *   monaca.checkModifiedFiles('/my/project/').then(
+   *     function(files) {
+   *       // Modified/deleted files
+   *     },
+   *     function(error) {
+   *       // Error while checking the files.
+   *     }
+   *   );
+   */
+  Monaca.prototype.checkModifiedFiles = function(projectDir, options) {
+    var projectId;
+
+    return ((options && options.skipTranspile) ? this.getProjectId(projectDir) : this.transpile(projectDir))
+    .then(
+      localProperties.get.bind(this, projectDir, 'project_id')
+    )
+    .then(
+      function(value) {
+        projectId = value;
+        return Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)]);
+      }.bind(this)
+    )
+    .then(
+      function(files) {
+        var localFiles = files[0],
+          remoteFiles = files[1];
+
+        var allowFiles = this._filterIgnoreList(projectDir);
+        var filesToBeDeleted = {};
+
+        for (var f in remoteFiles) {
+          // If file on Monaca Cloud doesn't exist locally then it should be deleted from Cloud.
+          if (!localFiles.hasOwnProperty(f)) {
+            filesToBeDeleted[f] = remoteFiles[f];
+          }
+        }
+
+        // Filter out directories and unchanged files.
+        this._filterFiles(localFiles, remoteFiles);
+
+        var keys = [];
+
+        // Checks if the file/dir are included in a directory that can be uploaded.
+        for (var file in localFiles) {
+          if (this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
+            keys.push(file);
+          }
+        }
+
+        // Modified files.
+        var modifiedFiles = {
+          uploaded: {},
+          deleted: filesToBeDeleted
+        };
+
+        for (var i in keys) {
+          if (localFiles[keys[i]]) {
+            modifiedFiles.uploaded[keys[i]] = localFiles[keys[i]];
+          }
+        }
+
+        return Q.resolve({
+          filesToBeDeleted: filesToBeDeleted,
+          modifiedFiles: modifiedFiles,
+          keys: keys,
+          projectId: projectId
+        });
+      }.bind(this)
+    )
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *  Uploads a Monaca project to the Cloud. Will fail if the specified
    *  directory doesn't contain a Monaca project or if the project is
    *  not associated with the logged in user.
@@ -1625,121 +1709,81 @@
   Monaca.prototype.uploadProject = function(projectDir, options) {
     var deferred = Q.defer();
 
-    this.transpile(projectDir).then(
-      localProperties.get.bind(this, projectDir, 'project_id'),
-      function(error) {
-        deferred.reject(error);
-      }
-    ).then(
-      function(projectId) {
-        Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)]).then(
-          function(files) {
-            var localFiles = files[0],
-              remoteFiles = files[1];
+    this.checkModifiedFiles(projectDir, options)
+    .then(
+      function(result) {
+        var filesToBeDeleted = result.filesToBeDeleted,
+          modifiedFiles = result.modifiedFiles,
+          keys = result.keys,
+          projectId = result.projectId;
 
-            // Fetch list of files after ignoring files/directories in .monacaignore file.
-            var allowFiles = this._filterIgnoreList(projectDir);
-
-            var filesToBeDeleted = {};
-
-            for (var f in remoteFiles) {
-              // If file on Monaca Cloud doesn't exist locally then it should be deleted from Cloud.
-              if (!localFiles.hasOwnProperty(f)) {
-                filesToBeDeleted[f] = remoteFiles[f];
-              }
+        if (options && !options.dryrun && options.delete) {
+          this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted))
+          .then(
+            function() {
+              console.log(Object.keys(filesToBeDeleted)
+                .map(function(f) {
+                  return "deleted -> " + f;
+                })
+                .join("\n")
+              );
+            },
+            function(err) {
+              console.log("\nfile delete error ->  : " + JSON.stringify(err));
             }
-            if (options && !options.dryrun && options.delete) {
-              this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted)).then(
-                function() {
-                  console.log(Object.keys(filesToBeDeleted)
-                    .map(function(f) {
-                      return "deleted -> " + f;
-                    })
-                    .join("\n")
-                  );
-                },
-                function(err) {
-                  console.log("\nfile delete error ->  : " + JSON.stringify(err));
-                }
-              )
+          )
+        }
+
+        // If dryrun option is set, just return the files to be uploaded.
+        if (options && options.dryrun) {
+          return deferred.resolve(modifiedFiles);
+        }
+
+        var totalLength = keys.length,
+          currentIndex = 0,
+          qLimit = qlimit(4);
+
+        var uploadFile = function(key) {
+          var d = Q.defer();
+          var absolutePath = path.join(projectDir, key.substr(1));
+
+          this.uploadFile(projectId, absolutePath, key)
+          .then(
+            function(remotePath) {
+              deferred.notify({
+                path: remotePath,
+                total: totalLength,
+                index: currentIndex
+              });
+              d.resolve();
+            },
+            function(error) {
+              d.reject(error);
             }
-
-            // Filter out directories and unchanged files.
-            this._filterFiles(localFiles, remoteFiles);
-
-            var keys = [];
-
-            // Checks if the file/dir are included in a directory that can be uploaded.
-            for (var file in localFiles) {
-              if (this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
-                keys.push(file);
-              }
+          )
+          .finally(
+            function() {
+              currentIndex++;
             }
+          );
+          return d.promise;
+        }.bind(this);
 
-            // Modified files.
-            var modifiedFiles = {
-              uploaded: {},
-              deleted: filesToBeDeleted
-            };
-
-            for (var i in keys) {
-              if (localFiles[keys[i]]) {
-                modifiedFiles.uploaded[keys[i]] = localFiles[keys[i]];
-              }
-            }
-
-            // If dryrun option is set, just return the files to be uploaded.
-            if (options && options.dryrun) {
-              return deferred.resolve(modifiedFiles);
-            }
-
-            var totalLength = keys.length,
-              currentIndex = 0,
-              qLimit = qlimit(4);
-
-            var uploadFile = function(key) {
-              var d = Q.defer();
-              var absolutePath = path.join(projectDir, key.substr(1));
-
-              this.uploadFile(projectId, absolutePath, key).then(
-                function(remotePath) {
-                  deferred.notify({
-                    path: remotePath,
-                    total: totalLength,
-                    index: currentIndex
-                  });
-                  d.resolve();
-                },
-                function(error) {
-                  d.reject(error);
-                }
-                )
-                .finally(
-                  function() {
-                    currentIndex++;
-                  }
-                );
-              return d.promise;
-            }.bind(this);
-
-            Q.all(keys.map(qLimit(function(key) {
-              if (localFiles.hasOwnProperty(key)) {
-                return uploadFile(key);
-              }
-            }.bind(this)))).then(
-              function() {
-                deferred.resolve(modifiedFiles);
-              },
-              function(error) {
-                deferred.reject(error);
-              }
-            );
-          }.bind(this),
+        Q.all(keys.map(qLimit(function(key) {
+          return uploadFile(key);
+        }.bind(this))))
+        .then(
+          function() {
+            deferred.resolve(modifiedFiles);
+          },
           function(error) {
             deferred.reject(error);
           }
         );
-      }.bind(this)
+      }.bind(this),
+      function(error) {
+        deferred.reject(error);
+      }
     );
 
     return deferred.promise;
@@ -2996,7 +3040,7 @@
             name: arg.name,
             description: arg.description || '',
             templateId: 'minimum',
-            isBuildOnly: true
+            isBuildOnly: false
           })
           .then(
             function(info) {
@@ -3010,6 +3054,9 @@
         var options = null;
         if (arg.delete) {
           options = {'delete' : true};
+        }
+        if (arg.skipTranspile) {
+          options.skipTranspile = true;
         }
         return this.uploadProject(arg.path, options);
       }.bind(this);
