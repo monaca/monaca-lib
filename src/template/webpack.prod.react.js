@@ -111,7 +111,7 @@ module.exports = {
     }),
     new ExtractTextPlugin('[name].css'),
     new HtmlWebpackPlugin({
-      template: 'src/public/index.ejs',
+      template: 'src/public/index.html.ejs',
       chunksSortMode: 'dependency',
       externalCSS: ['components/loader.css'],
       externalJS: ['components/loader.js'],
@@ -127,7 +127,7 @@ module.exports = {
     new webpack.optimize.UglifyJsPlugin(),
     new CopyWebpackPlugin([{
       from: path.join(__dirname, 'src', 'public'),
-      ignore: ['index.ejs']
+      ignore: ['index.html.ejs']
     }]),
     new ProgressBarPlugin()
   ],

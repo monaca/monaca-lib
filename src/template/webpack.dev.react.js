@@ -102,7 +102,7 @@ module.exports = {
     new webpack.HotModuleReplacementPlugin(),
     new ExtractTextPlugin('[name].css'),
     new HtmlWebpackPlugin({
-      template: 'src/public/index.ejs',
+      template: 'src/public/index.html.ejs',
       chunksSortMode: 'dependency'
     }),
     new ProgressBarPlugin()
