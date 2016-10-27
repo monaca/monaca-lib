@@ -116,6 +116,7 @@ module.exports = {
       externalCSS: ['components/loader.css'],
       externalJS: ['components/loader.js'],
       minify: {
+        caseSensitive: true,
         collapseWhitespace: true,
         conservativeCollapse: true,
         removeAttributeQuotes: true,
