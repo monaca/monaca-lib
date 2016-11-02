@@ -862,7 +862,10 @@
     })
     .then(
       function() {
-        delete this.tokens;
+        this.tokens = {
+          api: null,
+          session: null
+        };
         this._loggedIn = false;
 
         deferred.resolve();
@@ -3188,7 +3191,7 @@
     })
     return deferred.promise;
   }
-  
+
   /**
    * @method
    * @memberof Monaca
@@ -3200,7 +3203,7 @@
     if(!projectId) {
       projectId = this.getProjectId();
     }
-    
+
     var unknownErrorMsg = 'An unknown error has occurred while attempting to submit build distribution request. (alias: ' + alias + '; parameters: ' + JSON.stringify(request_parameters) + ')';
     var resource = '/project/' + projectId + '/distribute';
 
