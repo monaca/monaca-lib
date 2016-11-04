@@ -885,13 +885,15 @@
 
                 project.name = _project.name || project.name;
                 project.frameworkVersion = "";
-                try {
-                  project.frameworkVersion = require(path.join( project_path, '.monaca', 'project_info.json'))["framework_version"]
-                } catch(e) {}
                 project.cordovaVersion = "";
+
+                delete require.cache[path.join( project_path, '.monaca', 'project_info.json')];
                 try {
-                  project.cordovaVersion = require(path.join( project_path, '.monaca', 'project_info.json'))["cordova_version"]
-                } catch(e) {}
+                  project.frameworkVersion = require(path.join( project_path, '.monaca', 'project_info.json'))["framework_version"];
+                  project.cordovaVersion = require(path.join( project_path, '.monaca', 'project_info.json'))["cordova_version"];
+                } catch (e) {
+                  console.error(e.message);
+                }
 
                 deferred.resolve(project);
               },
