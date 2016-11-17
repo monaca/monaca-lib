@@ -2,6 +2,13 @@
 CHANGELOG
 ====
 
+v2.2.2
+----
+* templates: Renamed index.ejs => index.html.ejs
+* templates: HTML minifier is case sensitive now. Fixes Angular2 directive naming issues.
+* monaca: Fixed logout token minor bug.
+* monaca: Fixed cached Cordova version minor bug.
+
 v2.2.1
 ----
 * monaca: Added patched minimatch dependency.
@@ -89,7 +96,7 @@ v1.1.5-rc.1
 ----
  * monaca: Added `Monaca.getCurrentUser()` API.
  * localkit: Added `Localkit.generateOneTimePassword()`, `Localkit.validateOneTimePassword()`, `Localkit.generateLocalPairingKey()` API.
- * monaca: Fixed the POST parameter not sent to the server for some reason. 
+ * monaca: Fixed the POST parameter not sent to the server for some reason.
 
 v1.1.4
 ----
