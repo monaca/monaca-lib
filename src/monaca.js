@@ -2939,12 +2939,9 @@
    * @param {String} projectDir - Project directory.
    * @return {Promise}
    */
-  Monaca.prototype.isCordovaProject = function(projectDir) {
+  Monaca.prototype.isCordovaProject = function(projectDir, extraItems) {
     // Files and directories that are required to be a valid Cordova project.
-    var requiredItems = [
-      'www',
-      'config.xml'
-    ];
+    var requiredItems = ['www', 'config.xml'].concat(extraItems || []);
 
     return this._checkProjectStructure(projectDir, requiredItems);
   };
