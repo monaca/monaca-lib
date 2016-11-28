@@ -87,7 +87,7 @@ module.exports = {
     }, {
       test: /\.css$/,
       include: path.join(__dirname, 'src'),
-      loader: 'raw'
+      loader: 'raw!postcss'
     }, {
       test: /\.json$/,
       loader: 'json'
