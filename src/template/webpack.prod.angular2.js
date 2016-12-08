@@ -88,6 +88,14 @@ module.exports = {
     noParse: [/.+zone\.js\/dist\/.+/, /.+angular2\/bundles\/.+/, /angular2-polyfills\.js/]
   },
 
+  htmlLoader: {
+    minimize: true,
+    removeAttributeQuotes: false,
+    caseSensitive: true,
+    customAttrSurround: [[/#/, /(?:)/], [/\*/, /(?:)/], [/\[?\(?/, /(?:)/]],
+    customAttrAssign: [/\)?\]?=/]
+  },
+
   postcss: function() {
     return [precss, autoprefixer];
   },
@@ -119,7 +127,7 @@ module.exports = {
         caseSensitive: true,
         collapseWhitespace: true,
         conservativeCollapse: true,
-        removeAttributeQuotes: true,
+        removeAttributeQuotes: false,
         removeComments: true
       }
     }),
@@ -137,3 +145,4 @@ module.exports = {
     root: cordovaNodeModules
   }
 };
+
