@@ -2,6 +2,16 @@
 CHANGELOG
 ====
 
+v2.2.4
+----
+* templates: Use autoprefixer for all the CSS.
+* templates: Conservative minify for Angular 2.
+* monaca: Updated TypeScript dependencies.
+
+v2.2.3
+----
+* monaca: Improve error message.
+
 v2.2.2
 ----
 * templates: Renamed index.ejs => index.html.ejs
