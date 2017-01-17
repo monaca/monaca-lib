@@ -8,6 +8,11 @@ pushd tmp
 PREFIX=`pwd`/install/
 export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig
 
+export PATH=/usr/local/opt/openssl/bin:$PATH
+# export LD_LIBRARY_PATH=/usr/local/opt/openssl/lib:$LD_LIBRARY_PATH
+# export CPATH=/usr/local/opt/openssl/include:$LD_LIBRRAY_PATH
+
+
 mkdir -p $PREFIX
 
 if [ ! -f 1.12.tar.gz ]; then
@@ -46,21 +51,25 @@ if [ ! -f $PREFIX/lib/libusbmuxd.a ]; then
   popd
 fi
 
-if [ ! -f 1.2.0.tar.gz ]; then
-  wget https://github.com/libimobiledevice/libimobiledevice/archive/1.2.0.tar.gz
+#if [ ! -f 1.2.0.tar.gz ]; then
+#  wget https://github.com/libimobiledevice/libimobiledevice/archive/1.2.0.tar.gz
+#fi
+if [ ! -d libimobiledevice ]; then
+  git clone https://github.com/libimobiledevice/libimobiledevice.git
 fi
 
-if [ ! -d libimobiledevice-1.2.0 ]; then
-  tar xvf 1.2.0.tar.gz
-fi
+#if [ ! -d libimobiledevice-1.2.0 ]; then
+#  tar xvf 1.2.0.tar.gz
+#fi
 
 ln -s $PREFIX/lib lib
 
 if [ ! -f $PREFIX/lib/libimobiledevice.a ]; then
-  pushd libimobiledevice-1.2.0
+#  pushd libimobiledevice-1.2.0
+  pushd libimobiledevice
   NOCONFIGURE=1 ./autogen.sh
   NOCONFIGURE=1 ./autogen.sh
-  ./configure --enable-static --prefix=$PREFIX
+  CFLAGS=-I/usr/local/opt/openssl/include LDFLAGS=-L/usr/local/opt/openssl/lib  ./configure --enable-static --prefix=$PREFIX
   make
   make install
   popd
