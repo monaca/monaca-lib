@@ -1,11 +1,12 @@
 /**
- * Used to write and read values from the 
+ * Used to write and read values from the
  * project_dir/.monaca/local_properties.json
  * file.
  */
 
 var fs = require('fs'),
   path = require('path'),
+  shell = require('shelljs'),
   Q = require('q');
 
 var hasMonacaDir = function(directory) {
@@ -16,9 +17,28 @@ var hasMonacaDir = function(directory) {
       deferred.resolve();
     }
     else {
-      deferred.reject();
+      createDefaultMonacaStructure(directory)
+      .then(function() {
+        deferred.resolve();
+      }, function(e) {
+        deferred.reject(e);
+      })
     }
   });
+
+  return deferred.promise;
+};
+
+var createDefaultMonacaStructure = function(directory) {
+  var deferred = Q.defer();
+
+  try {
+    shell.mkdir('-p', path.join(directory, '.monaca'));
+    fs.writeFileSync(path.join(directory, '.monaca', "project_info.json"), "{}");
+    deferred.resolve();
+  } catch (e) {
+    deferred.reject();
+  }
 
   return deferred.promise;
 };
