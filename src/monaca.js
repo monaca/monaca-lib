@@ -1035,20 +1035,20 @@
                 if (platformContent.dev_provisioning_error) {
                   return 'Error in dev provisioning file. Please upload again from remote build settings.';
                 }
-              }
-              if (buildType === 'debugger') {
+              } else if (buildType === 'debugger') {
                 if (!platformContent.has_debug_provisioning) {
                   return 'Missing debug provisioning file. Please upload it from remote build settings.';
                 }
                 if (platformContent.debug_provisioning_error) {
                   return 'Error in debug provisioning file. Please upload again from remote build settings.';
                 }
-              }
-              if (!platformContent['has_' + buildType + '_provisioning']) {
-                return 'Missing ' + buildType + ' provisioning file. Please upload it from remote build settings.';
-              }
-              if (platformContent[buildType + '_provisioning_error']) {
-                return 'Error in' + buildType + ' provisioning file. Please upload again from remote build settings.';
+              } else {
+                if (!platformContent['has_' + buildType + '_provisioning']) {
+                  return 'Missing ' + buildType + ' provisioning file. Please upload it from remote build settings.';
+                }
+                if (platformContent[buildType + '_provisioning_error']) {
+                  return 'Error in' + buildType + ' provisioning file. Please upload again from remote build settings.';
+                }
               }
             }
 
