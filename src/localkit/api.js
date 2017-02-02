@@ -53,7 +53,7 @@
     }
 
     var msg = JSON.stringify(data);
-    
+
     if (this.monaca.debug) {
       console.debug("Local Response: " + msg);
     }
@@ -64,7 +64,7 @@
       code: code,
       message: message
     });
-    
+
     if (encrypt) {
       response.end(rc4.encrypt(msg, pairingKey));
     }
@@ -185,7 +185,7 @@
     if (this.localkit.verbose) {
       console.log('Invalid pairing key.');
     }
-    
+
     return false;
   };
 
@@ -194,7 +194,7 @@
       this.sendJsonResponse(response, 401, 'Not paired with debugger.');
       return;
     }
- 
+
     var pairingKey = this.getPairingKey(request);
 
     if (this.localkit.verbose) {
@@ -203,7 +203,7 @@
 
     this.localkit.getProjects().then(
       function(projects) {
-        this.sendJsonResponse(response, 200, 'Project list', projects, true, pairingKey); 
+        this.sendJsonResponse(response, 200, 'Project list', projects, true, pairingKey);
       }.bind(this),
       function(error) {
         this.sendJsonResponse(response, 400, 'Unable to get project list.', undefined, true, pairingKey);
@@ -302,7 +302,7 @@
       return this.sendJsonResponse(response, 400, 'Parameters missing.', undefined, true, pairingKey);
     }
 
-    var platform = data.hasOwnProperty('abstractSocketAddress') ? 'android' : 'ios';
+    var platform = data['abstractSocketAddress'] ? 'android' : 'ios';
 
     this.localkit.startInspector({
       type: platform,
