@@ -1,11 +1,13 @@
 /**
- * Used to write and read values from the 
+ * Used to write and read values from the
  * project_dir/.monaca/local_properties.json
  * file.
  */
 
 var fs = require('fs'),
   path = require('path'),
+  shell = require('shelljs'),
+  https = require('https'),
   Q = require('q');
 
 var hasMonacaDir = function(directory) {
@@ -16,9 +18,35 @@ var hasMonacaDir = function(directory) {
       deferred.resolve();
     }
     else {
-      deferred.reject();
+      createDefaultMonacaStructure(directory)
+      .then(function() {
+        deferred.resolve();
+      }, function(e) {
+        deferred.reject(e);
+      })
     }
   });
+
+  return deferred.promise;
+};
+
+var createDefaultMonacaStructure = function(directory) {
+  var deferred = Q.defer();
+
+  try {
+    shell.mkdir('-p', path.join(directory, '.monaca'));
+    var file = fs.createWriteStream(path.join(directory, '.monaca', 'project_info.json'));
+    var request = https.get("https://raw.githubusercontent.com/monaca-templates/blank/master/.monaca/project_info.json", function(response) {
+      if (response.statusCode !== 200) {
+        deferred.reject(new Error("Could not download default project_info.json file. Error code: " + response.statusCode));
+      } else {
+        response.pipe(file);
+        deferred.resolve();
+      }
+    });
+  } catch (e) {
+    deferred.reject(e);
+  }
 
   return deferred.promise;
 };
@@ -66,8 +94,8 @@ var getProperty = function(projectDir, key) {
         }
       );
     },
-    function() {
-      deferred.reject(new Error('.monaca directory missing. This is not a Monaca project.'));
+    function(e) {
+      deferred.reject(e);
     }
   );
 
@@ -116,8 +144,8 @@ var setProperty = function(projectDir, key, value) {
         }
       );
     },
-    function() {
-      deferred.reject(new Error('.monaca directory missing. This is not a Monaca project.'));
+    function(e) {
+      deferred.reject(e);
     }
   );
 
