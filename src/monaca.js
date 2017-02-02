@@ -2939,11 +2939,33 @@
    * @param {String} projectDir - Project directory.
    * @return {Promise}
    */
-  Monaca.prototype.isCordovaProject = function(projectDir, extraItems) {
-    // Files and directories that are required to be a valid Cordova project.
-    var requiredItems = ['www', 'config.xml'].concat(extraItems || []);
+  Monaca.prototype.isCordovaProject = function(projectDir) {
+    var exists = function(dir) {
+      var deferred = Q.defer();
 
-    return this._checkProjectStructure(projectDir, requiredItems);
+      fs.exists(dir, function(exists) {
+        if (exists) {
+          deferred.resolve();
+        }
+        else {
+          deferred.reject();
+        }
+      });
+
+      return deferred.promise;
+    }
+
+    return Q.all([
+      exists(path.join(projectDir, 'www')),
+      exists(path.join(projectDir, 'config.xml'))
+    ]).then(
+      function() {
+        return projectDir + ' is a Cordova project.';
+      },
+      function() {
+        return Q.reject(projectDir + ' is not a Cordova project.');
+      }
+    );
   };
 
   /**
@@ -2954,15 +2976,61 @@
    * @param {String} projectDir - Project directory.
    * @return {Promise}
    */
-   Monaca.prototype.isMonacaProject = function(projectDir) {
-    // Files and directories that are required to be a valid Monaca project.
-    var requiredItems = [
-      '.monaca',
-      path.join('.monaca', 'project_info.json')
-    ];
+  Monaca.prototype.isMonacaProject = function(projectDir) {
+    var exists = function(dir) {
+      var deferred = Q.defer();
 
-    return this._checkProjectStructure(projectDir, requiredItems);
-   };
+      fs.exists(dir, function(exists) {
+        if (exists) {
+          deferred.resolve();
+        }
+        else {
+          deferred.reject();
+        }
+      });
+
+      return deferred.promise;
+    }
+
+    var hasConfigFile = function() {
+      var configFiles = ['config.xml', 'config.ios.xml', 'config.android.xml'];
+
+      var promises = configFiles
+        .map(
+          function(fileName) {
+            return exists(path.join(projectDir, fileName));
+          }
+        );
+
+      var next = function() {
+        var promise = promises.shift();
+
+        if (!promise) {
+          return Q.reject(new Error('Config file is missing.'));
+        }
+
+        return promise.then(
+          function() {
+            return projectDir;
+          },
+          function() {
+            return next();
+          }
+        );
+      };
+
+      return next();
+    };
+
+    return exists(path.join(projectDir, 'www')).then(
+      function() {
+        return hasConfigFile();
+      },
+      function() {
+        return Q.reject(new Error('"www" directory is missing.'));
+      }
+    );
+  };
 
    /**
    * @method
