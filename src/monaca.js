@@ -408,6 +408,14 @@
     }
   };
 
+  Monaca.prototype._excludeFromCloudDelete = function(key) {
+    if (/^\/.monaca/.test(key)) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
   Monaca.prototype._filterIgnoreList = function(projectDir) {
     var ignoreList = [], allFiles=[];
     if (fs.existsSync(path.join(projectDir, ".monacaignore"))) {
@@ -1035,20 +1043,20 @@
                 if (platformContent.dev_provisioning_error) {
                   return 'Error in dev provisioning file. Please upload again from remote build settings.';
                 }
-              }
-              if (buildType === 'debugger') {
+              } else if (buildType === 'debugger') {
                 if (!platformContent.has_debug_provisioning) {
                   return 'Missing debug provisioning file. Please upload it from remote build settings.';
                 }
                 if (platformContent.debug_provisioning_error) {
                   return 'Error in debug provisioning file. Please upload again from remote build settings.';
                 }
-              }
-              if (!platformContent['has_' + buildType + '_provisioning']) {
-                return 'Missing ' + buildType + ' provisioning file. Please upload it from remote build settings.';
-              }
-              if (platformContent[buildType + '_provisioning_error']) {
-                return 'Error in' + buildType + ' provisioning file. Please upload again from remote build settings.';
+              } else {
+                if (!platformContent['has_' + buildType + '_provisioning']) {
+                  return 'Missing ' + buildType + ' provisioning file. Please upload it from remote build settings.';
+                }
+                if (platformContent[buildType + '_provisioning_error']) {
+                  return 'Error in' + buildType + ' provisioning file. Please upload again from remote build settings.';
+                }
               }
             }
 
@@ -1244,7 +1252,6 @@
    * @return {Promise}
    */
   Monaca.prototype.setProjectId = function(projectDir, projectId) {
-    shell.mkdir('-p', path.join(projectDir, '.monaca'));
     return localProperties.set(projectDir, 'project_id', projectId);
   };
 
@@ -1644,7 +1651,7 @@
 
         for (var f in remoteFiles) {
           // If file on Monaca Cloud doesn't exist locally then it should be deleted from Cloud.
-          if (!localFiles.hasOwnProperty(f)) {
+          if (!localFiles.hasOwnProperty(f) && !this._excludeFromCloudDelete(f)) {
             filesToBeDeleted[f] = remoteFiles[f];
           }
         }
@@ -2939,11 +2946,33 @@
    * @param {String} projectDir - Project directory.
    * @return {Promise}
    */
-  Monaca.prototype.isCordovaProject = function(projectDir, extraItems) {
-    // Files and directories that are required to be a valid Cordova project.
-    var requiredItems = ['www', 'config.xml'].concat(extraItems || []);
+  Monaca.prototype.isCordovaProject = function(projectDir) {
+    var exists = function(dir) {
+      var deferred = Q.defer();
 
-    return this._checkProjectStructure(projectDir, requiredItems);
+      fs.exists(dir, function(exists) {
+        if (exists) {
+          deferred.resolve();
+        }
+        else {
+          deferred.reject();
+        }
+      });
+
+      return deferred.promise;
+    }
+
+    return Q.all([
+      exists(path.join(projectDir, 'www')),
+      exists(path.join(projectDir, 'config.xml'))
+    ]).then(
+      function() {
+        return projectDir + ' is a Cordova project.';
+      },
+      function() {
+        return Q.reject(projectDir + ' is not a Cordova project.');
+      }
+    );
   };
 
   /**
@@ -2954,15 +2983,61 @@
    * @param {String} projectDir - Project directory.
    * @return {Promise}
    */
-   Monaca.prototype.isMonacaProject = function(projectDir) {
-    // Files and directories that are required to be a valid Monaca project.
-    var requiredItems = [
-      '.monaca',
-      path.join('.monaca', 'project_info.json')
-    ];
+  Monaca.prototype.isMonacaProject = function(projectDir) {
+    var exists = function(dir) {
+      var deferred = Q.defer();
 
-    return this._checkProjectStructure(projectDir, requiredItems);
-   };
+      fs.exists(dir, function(exists) {
+        if (exists) {
+          deferred.resolve();
+        }
+        else {
+          deferred.reject();
+        }
+      });
+
+      return deferred.promise;
+    }
+
+    var hasConfigFile = function() {
+      var configFiles = ['config.xml', 'config.ios.xml', 'config.android.xml'];
+
+      var promises = configFiles
+        .map(
+          function(fileName) {
+            return exists(path.join(projectDir, fileName));
+          }
+        );
+
+      var next = function() {
+        var promise = promises.shift();
+
+        if (!promise) {
+          return Q.reject(new Error('Config file is missing.'));
+        }
+
+        return promise.then(
+          function() {
+            return projectDir;
+          },
+          function() {
+            return next();
+          }
+        );
+      };
+
+      return next();
+    };
+
+    return exists(path.join(projectDir, 'www')).then(
+      function() {
+        return hasConfigFile();
+      },
+      function() {
+        return Q.reject(new Error('"www" directory is missing.'));
+      }
+    );
+  };
 
    /**
    * @method
