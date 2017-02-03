@@ -408,6 +408,14 @@
     }
   };
 
+  Monaca.prototype._excludeFromCloudDelete = function(key) {
+    if (/^\/.monaca/.test(key)) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
   Monaca.prototype._filterIgnoreList = function(projectDir) {
     var ignoreList = [], allFiles=[];
     if (fs.existsSync(path.join(projectDir, ".monacaignore"))) {
@@ -1644,7 +1652,7 @@
 
         for (var f in remoteFiles) {
           // If file on Monaca Cloud doesn't exist locally then it should be deleted from Cloud.
-          if (!localFiles.hasOwnProperty(f)) {
+          if (!localFiles.hasOwnProperty(f) && !this._excludeFromCloudDelete(f)) {
             filesToBeDeleted[f] = remoteFiles[f];
           }
         }
