@@ -1,11 +1,12 @@
 /**
- * Used to write and read values from the 
+ * Used to write and read values from the
  * project_dir/.monaca/local_properties.json
  * file.
  */
 
 var fs = require('fs'),
   path = require('path'),
+  shell = require('shelljs'),
   Q = require('q');
 
 var hasMonacaDir = function(directory) {
@@ -16,7 +17,12 @@ var hasMonacaDir = function(directory) {
       deferred.resolve();
     }
     else {
-      deferred.reject();
+      createDefaultMonacaStructure(directory)
+      .then(function() {
+        deferred.resolve();
+      }, function(e) {
+        deferred.reject(e);
+      })
     }
   });
 
@@ -38,6 +44,20 @@ var hasPropertyFile = function(directory) {
 
   return deferred.promise;
 };
+
+var createDefaultMonacaStructure = function(directory) {
+  var deferred = Q.defer();
+
+  try {
+    shell.mkdir('-p', path.join(directory, '.monaca'));
+    deferred.resolve();
+  } catch (e) {
+    deferred.reject(e);
+  }
+
+  return deferred.promise;
+};
+
 
 var getProperty = function(projectDir, key) {
   var deferred = Q.defer();
@@ -66,8 +86,8 @@ var getProperty = function(projectDir, key) {
         }
       );
     },
-    function() {
-      deferred.reject(new Error('.monaca directory missing. This is not a Monaca project.'));
+    function(e) {
+      deferred.reject(e);
     }
   );
 
@@ -76,7 +96,6 @@ var getProperty = function(projectDir, key) {
 
 var setProperty = function(projectDir, key, value) {
   var deferred = Q.defer();
-
   hasMonacaDir(projectDir).then(
     function() {
       hasPropertyFile(projectDir).then(
@@ -116,8 +135,8 @@ var setProperty = function(projectDir, key, value) {
         }
       );
     },
-    function() {
-      deferred.reject(new Error('.monaca directory missing. This is not a Monaca project.'));
+    function(e) {
+      deferred.reject(e);
     }
   );
 

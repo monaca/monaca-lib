@@ -1252,7 +1252,6 @@
    * @return {Promise}
    */
   Monaca.prototype.setProjectId = function(projectDir, projectId) {
-    shell.mkdir('-p', path.join(projectDir, '.monaca'));
     return localProperties.set(projectDir, 'project_id', projectId);
   };
 
