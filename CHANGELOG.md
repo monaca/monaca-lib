@@ -2,6 +2,12 @@
 CHANGELOG
 ====
 
+v2.2.5
+----
+* monaca: Fixed Cordova Project check.
+* monaca: Fixed iOS build availability check.
+* monaca: Fixed various iOS10 pairing issues on macOS.
+
 v2.2.4
 ----
 * templates: Use autoprefixer for all the CSS.
