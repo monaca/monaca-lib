@@ -1699,6 +1699,11 @@
         });
       }.bind(this)
     )
+    .catch(
+      function(e) {
+        return Q.reject(e);
+      }
+    );
   };
 
   /**
