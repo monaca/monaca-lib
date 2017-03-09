@@ -58,6 +58,26 @@ var createDefaultMonacaStructure = function(directory) {
   return deferred.promise;
 };
 
+var delProperty = function(directory, property) {
+  var deferred = Q.defer();
+
+  if (property === 'project_id') {
+    var propertyFile = path.join(directory, '.monaca', 'local_properties.json');
+
+     fs.unlink(propertyFile, function(err) {
+        if (err) {
+          deferred.reject(new Error("Could not delete the property: " + err));
+        } else {
+          deferred.resolve();
+        }
+      });
+  } else {
+    deferred.reject(new Error("The required property cannot be deleted because it does not exist."));
+  }
+
+  return deferred.promise;
+};
+
 
 var getProperty = function(projectDir, key) {
   var deferred = Q.defer();
@@ -145,5 +165,6 @@ var setProperty = function(projectDir, key, value) {
 
 module.exports = {
   get: getProperty,
-  set: setProperty
+  set: setProperty,
+  del: delProperty
 };

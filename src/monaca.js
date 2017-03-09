@@ -1222,6 +1222,17 @@
     return localProperties.get(projectDir, 'project_id');
   };
 
+    /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Delete project ID.
+   * @return {Promise}
+   */
+  Monaca.prototype.deleteProjectId = function(projectDir) {
+    return localProperties.del(projectDir, 'project_id');
+  };
+
   /**
    * @method
    * @memberof Monaca
@@ -1688,6 +1699,11 @@
         });
       }.bind(this)
     )
+    .catch(
+      function(e) {
+        return Q.reject(e);
+      }
+    );
   };
 
   /**
@@ -1718,7 +1734,6 @@
    */
   Monaca.prototype.uploadProject = function(projectDir, options) {
     var deferred = Q.defer();
-
     this.checkModifiedFiles(projectDir, options)
     .then(
       function(result) {
