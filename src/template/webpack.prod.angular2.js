@@ -74,11 +74,11 @@ module.exports = {
       loader: 'style!css!postcss!stylus',
     }, {
       test: /\.css$/,
-      include: [/\/onsen-css-components.css$/,path.join(__dirname, 'src')],
-      loaders: ['to-string',ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')]
+      include: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
+      loaders: ['to-string', ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')]
     }, {
       test: /\.css$/,
-      exclude: [/\/onsen-css-components.css$/,path.join(__dirname, 'src')],
+      exclude: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
       loader:  ExtractTextPlugin.extract('style', 'css?sourceMap')
     }, {
       test: /\.json$/,
