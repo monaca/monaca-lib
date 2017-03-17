@@ -2444,7 +2444,7 @@
     }
 
     var type = config['template-type'];
-    return type && ( type === 'react' || type === 'angular2' );
+    return type && ( type === 'react' || type === 'angular2' || type === 'vue' );
   }
 
   /**
