@@ -1341,7 +1341,7 @@
         var files = {},
           promises = [];
 
-        var list = shell.ls('-RA', projectDir).filter(function(name) {
+        var list = shell.ls('-RAL', projectDir).filter(function(name) {
           return name.indexOf('node_modules') !== 0;
         });
 
