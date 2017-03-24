@@ -2,6 +2,12 @@
 CHANGELOG
 ====
 
+v2.2.6
+----
+* monaca: Added deleteProjectId functionality.
+* monaca: Fixed checkModifiedFiles error handler.
+
+
 v2.2.5
 ----
 * monaca: Fixed Cordova Project check.
