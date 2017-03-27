@@ -2,11 +2,15 @@
 CHANGELOG
 ====
 
+v2.2.7
+----
+* template: Added Vue.js 2.0 templates for Onsen UI 2.2.0.
+* template: Updated ReactJS and Angular 2+ templates for Onsen UI 2.2.0.
+
 v2.2.6
 ----
 * monaca: Added deleteProjectId functionality.
 * monaca: Fixed checkModifiedFiles error handler.
-
 
 v2.2.5
 ----
