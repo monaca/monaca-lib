@@ -86,6 +86,11 @@ module.exports = {
       js: 'babel'
     }
   },
+  babel: {
+    presets: [
+      require.resolve(path.join(cordovaNodeModules, 'babel-preset-es2015'))
+    ],
+  },
 
   postcss: function() {
     return [
