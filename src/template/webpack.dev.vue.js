@@ -45,6 +45,7 @@ module.exports = {
 
     alias: {
       webpack: path.join(cordovaNodeModules, 'webpack'),
+      'vue-loader/node_modules/vue-hot-reload-api': path.join(cordovaNodeModules, 'vue-loader', 'node_modules', 'vue-hot-reload-api'),
       'webpack-dev-server/client': path.join(cordovaNodeModules, 'webpack-dev-server', 'client'),
       vue:'vue/dist/vue.js'
     }

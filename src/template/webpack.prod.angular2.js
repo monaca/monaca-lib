@@ -72,7 +72,7 @@ module.exports = {
     }, {
       test: /\.css$/,
       include: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
-      loaders: ['to-string', ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')]
+      loaders: ['css-to-string', ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')]
     }, {
       test: /\.css$/,
       exclude: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
