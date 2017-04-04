@@ -2,10 +2,14 @@
 CHANGELOG
 ====
 
+v2.2.8
+----
+* templates: Added missing additionalDependencies.
+
 v2.2.7
 ----
-* template: Added Vue.js 2.0 templates for Onsen UI 2.2.0.
-* template: Updated ReactJS and Angular 2+ templates for Onsen UI 2.2.0.
+* templates: Added Vue.js 2.0 templates for Onsen UI 2.2.0.
+* templates: Updated ReactJS and Angular 2+ templates for Onsen UI 2.2.0.
 
 v2.2.6
 ----
