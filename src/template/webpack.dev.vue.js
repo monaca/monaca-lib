@@ -52,30 +52,57 @@ module.exports = {
   },
 
   module: {
-    loaders: [{
+    rules: [{
+    {
       test: /\.vue$/,
-      loader: 'vue-loader'
+      loader: 'vue-loader',
+      options: {
+	loaders: {
+	}
+	// other vue-loader options go here
+      }
     }, {
       test: /\.js$/,
-      loader: 'babel',
+      loader: 'babel-loader',
       exclude: /node_modules/
     }, {
+      test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)$/,
+      loader: 'file-loader',
+      options: {
+	name: '[name].[ext]?[hash]'
+      }
+    }, {
       test: /\.html$/,
-      loader: 'html'
+      loader: 'html-loader'
     }, {
       test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)$/,
       loader: 'file?name=assets/[name].[hash].[ext]'
     }, {
       test: /\.css$/,
       include: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
-      loader: ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')
+      loader: ExtractTextPlugin.extract({
+	fallback: 'style-loader',
+	use: [
+	  {
+	    loader: 'css-loader',
+	    options: { importLoaders: 1 }
+	  },
+	  {
+	    loader: 'postcss-loader',
+	    options: {
+	      plugins: [
+		postcssImport, 
+		//require('postcss-url'),
+                cssnext
+	      ]
+	    }
+	  }
+	]
+      })
     }, {
       test: /\.css$/,
       exclude: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
-      loader: ExtractTextPlugin.extract('style', 'css?sourceMap')
-    }, {
-      test: /\.json$/,
-      loader: 'json'
+      loader: ExtractTextPlugin.extract('style-loader', 'css?sourceMap')
     }]
   },
 
@@ -113,6 +140,7 @@ module.exports = {
   resolveLoader: {
     root: cordovaNodeModules
   },
+  devtool: '#eval-source-map',
 
   devServer: {
     contentBase: './src/public',
