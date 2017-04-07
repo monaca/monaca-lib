@@ -8,57 +8,46 @@ try {
   var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
   var ProgressBarPlugin = require(path.join(cordovaNodeModules, 'progress-bar-webpack-plugin'));
 
-  var cssnext = require(path.join(cordovaNodeModules, 'postcss-cssnext'));
-  var postcssImport = require(path.join(cordovaNodeModules, 'postcss-import'));
-
+  var postcssCssnext = require(path.join(cordovaNodeModules, 'postcss-cssnext'));
+  var postcssUrl = require(path.join(cordovaNodeModules, 'postcss-url'));
+  var postcssImport = require(path.join(cordovaNodeModules, 'postcss-smart-import'));
+ 
 } catch (e) {
   throw new Error('Missing Webpack Build Dependencies.');
 }
 
 module.exports = {
-  devtool: 'eval-source-map',
-  context: __dirname,
-  debug: true,
-  cache: true,
 
   entry: [
-    'react-hot-loader/patch',
-    'webpack-dev-server/client?http://0.0.0.0:8000/',
-    'webpack/hot/only-dev-server',
+    //'webpack/hot/only-dev-server',
     './src/main'
   ],
 
   output: {
     path: path.join(__dirname, 'www'),
     filename: 'bundle.js',
-    publicPath: '/'
+    publicPath:'/'
   },
 
   resolve: {
-    root: [
+    modules: [
       path.join(__dirname, 'src'),
-      path.join(__dirname, 'node_modules')
+      path.join(__dirname, 'node_modules'),
+      path.resolve(cordovaNodeModules)
     ],
 
-    extensions: ['', '.js', '.jsx', '.json', '.css', '.html', '.styl'],
+    extensions: ['.js', '.jsx', '.json', '.css', '.html'],
 
-    unsafeCache: true,
-
-    alias: {
-      webpack: path.join(cordovaNodeModules, 'webpack'),
-      'react-hot-loader': path.join(cordovaNodeModules, 'react-hot-loader'),
-      'react-hot-loader/patch': path.join(cordovaNodeModules, 'react-hot-loader', 'patch'),
-      'webpack-dev-server/client': path.join(cordovaNodeModules, 'webpack-dev-server', 'client')
-    }
+    unsafeCache: true
   },
 
   module: {
-    loaders: [{
+    rules: [{
       test: /\.(js|jsx)$/,
-      loader: 'babel',
+      loader: 'babel-loader',
       include: path.join(__dirname, 'src'),
 
-      query: {
+      options: {
         presets: [
           path.join(cordovaNodeModules, 'babel-preset-es2015'),
           path.join(cordovaNodeModules, 'babel-preset-stage-2'),
@@ -73,32 +62,45 @@ module.exports = {
       }
     }, {
       test: /\.html$/,
-      loader: 'html'
+      loader: 'html-loader'
     }, {
       test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)$/,
-      loader: 'file?name=assets/[name].[hash].[ext]'
+      loader: 'file-loader?name=assets/[name].[hash].[ext]'
     }, {
-      test: /\.css$/,
-      include: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
-      loader: ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')
-    }, {
-      test: /\.css$/,
-      exclude: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
-      loader: ExtractTextPlugin.extract('style', 'css?sourceMap')
-    }, {
-      test: /\.json$/,
-      loader: 'json'
-    }]
+        test: /\.css$/,
+        include: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
+        loader: ExtractTextPlugin.extract({
+          fallback: 'style-loader',
+          use: [
+            {
+              loader: 'css-loader',
+              options: { importLoaders: 1 }
+            }, {
+              loader: 'postcss-loader'
+              //options: {
+                //plugins: () => [
+                  //postcssImport,
+                  //postcssUrl,
+                  //postcssCssnext({
+                    //browsers: ['> 1%', 'last 2 versions', 'Firefox ESR', 'Opera 12.1']
+                  //})
+                //]
+              //} 
+            }
+          ]
+        })
+      }, {
+        test: /\.css$/,
+        exclude: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
+        loader: ExtractTextPlugin.extract({
+          fallback: 'style-loader',
+          use: 'css-loader?sourceMap',
+          publicPath: "/"
+        })
+      }
+]
   },
 
-  postcss: function() {
-    return [
-      postcssImport,
-      cssnext({
-        browsers: ['> 1%', 'last 2 versions', 'Firefox ESR', 'Opera 12.1']
-      })
-    ]
-  },
 
   plugins: [
     new webpack.HotModuleReplacementPlugin(),
@@ -107,20 +109,44 @@ module.exports = {
       template: 'src/public/index.html.ejs',
       chunksSortMode: 'dependency'
     }),
-    new ProgressBarPlugin()
+    new ProgressBarPlugin(),
+    new webpack.LoaderOptionsPlugin({
+        options: {
+          context: __dirname,
+          postcss: [
+            postcssImport,
+            postcssUrl,
+            postcssCssnext
+          ]
+        }
+      })
   ],
 
-  resolveLoader: {
-    root: cordovaNodeModules
-  },
-
   devServer: {
-    contentBase: './src/public',
-    colors: true,
-    inline: false,
     historyApiFallback: true,
-    host: '0.0.0.0',
-    stats: 'minimal',
-    hot: true
+    noInfo: true,
+    inline: true,
+    port: 8080
+  },
+  resolveLoader: {
+    modules: [cordovaNodeModules]
+  },
+  performance: {
+    hints: false
+  },
+  devtool: '#eval-source-map',
+  devServer: {
+    historyApiFallback: true,
+    noInfo: true
   }
+
+  //devServer: {
+    //contentBase: './src/public',
+    //colors: true,
+    //inline: false,
+    //historyApiFallback: true,
+    //host: '0.0.0.0',
+    //stats: 'minimal',
+    //hot: true
+  //}
 };

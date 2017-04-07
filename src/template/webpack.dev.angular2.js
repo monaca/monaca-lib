@@ -8,19 +8,14 @@ try {
   var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
   var ProgressBarPlugin = require(path.join(cordovaNodeModules, 'progress-bar-webpack-plugin'));
 
-  var cssnext = require(path.join(cordovaNodeModules, 'postcss-cssnext'));
-  var postcssImport = require(path.join(cordovaNodeModules, 'postcss-import'));
+  var postcssCssnext = require(path.join(cordovaNodeModules, 'postcss-cssnext'));
+  var postcssUrl = require(path.join(cordovaNodeModules, 'postcss-url'));
+  var postcssImport = require(path.join(cordovaNodeModules, 'postcss-smart-import'));
 
 } catch (e) {
   throw new Error('Missing Webpack Build Dependencies.');
 }
-
 module.exports = {
-  devtool: 'eval-source-map',
-  context: __dirname,
-  debug: true,
-  cache: true,
-
   entry: {
     'polyfills': './src/polyfills',
     'vendor': './src/vendor',
@@ -34,23 +29,28 @@ module.exports = {
   },
 
   resolve: {
-    root: [
+    modules: [
       path.join(__dirname, 'src'),
-      path.join(__dirname, 'node_modules')
+      path.join(__dirname, 'node_modules'),
+      path.resolve(cordovaNodeModules)
     ],
 
-    extensions: ['', '.ts', '.js', '.json', '.css', '.html', '.styl'],
+    extensions: ['.ts', '.js', '.json', '.css', '.html']
 
-    unsafeCache: true,
   },
 
   module: {
     loaders: [{
       test: /\.ts$/,
-      loader: 'ts',
+      loader: 'ts-loader',
       include: path.join(__dirname, 'src'),
 
-      query: {
+      options: {
+        compilerOptions: {
+          sourceMap: false,
+          sourceRoot: './src',
+          inlineSourceMap: true
+        },
         presets: [
           path.join(cordovaNodeModules, 'babel-preset-es2015'),
           path.join(cordovaNodeModules, 'babel-preset-stage-2')
@@ -60,44 +60,55 @@ module.exports = {
       }
     }, {
       test: /\.html$/,
-      loader: 'html'
+      loader: 'html-loader'
     }, {
       test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)$/,
-      loader: 'file?name=assets/[name].[hash].[ext]'
+      loader: 'file-loader?name=assets/[name].[hash].[ext]'
+    },  {
+      test: /\.css$/,
+      include: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
+      loader: "css-to-string-loader"
     }, {
       test: /\.css$/,
       include: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
-      loaders: ['css-to-string', ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')]
+      loader: ExtractTextPlugin.extract({
+        fallback: 'style-loader',
+        use: [
+          {
+            loader: 'css-loader',
+            options: { importLoaders: 1 }
+          }, {
+            loader: 'postcss-loader'
+              //options: {
+              //plugins: () => [
+              //postcssImport,
+              //postcssUrl,
+              //postcssCssnext({
+              //browsers: ['> 1%', 'last 2 versions', 'Firefox ESR', 'Opera 12.1']
+              //})
+              //]
+              //} 
+          }
+        ]
+      })
     }, {
-      test: /\.css$/,
-      exclude: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
-      loader:  ExtractTextPlugin.extract('style', 'css?sourceMap')
-    }, {
-      test: /\.json$/,
-      loader: 'json'
-    }],
+        test: /\.css$/,
+        exclude: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
+        loader: ExtractTextPlugin.extract({
+          fallback: 'style-loader',
+          use: 'css-loader?sourceMap',
+          publicPath: "/"
+        })
+      }],
 
     noParse: [/.+zone\.js\/dist\/.+/, /.+angular2\/bundles\/.+/, /angular2-polyfills\.js/]
   },
 
-  postcss: function() {
-    return [
-      postcssImport,
-      cssnext({
-        browsers: ['> 1%', 'last 2 versions', 'Firefox ESR', 'Opera 12.1']
-      })
-    ]
-  },
-
-  ts: {
-    compilerOptions: {
-      sourceMap: false,
-      sourceRoot: './src',
-      inlineSourceMap: true
-    }
-  },
-
   plugins: [
+    new webpack.ContextReplacementPlugin(
+      /angular(\\|\/)core(\\|\/)(esm(\\|\/)src|src)(\\|\/)linker/,
+      __dirname
+    ),
     new ExtractTextPlugin('[name].css'),
     new webpack.optimize.CommonsChunkPlugin({
       name: ['app', 'vendor', 'polyfills']
@@ -106,7 +117,17 @@ module.exports = {
       template: 'src/public/index.html.ejs',
       chunksSortMode: 'dependency'
     }),
-    new ProgressBarPlugin()
+    new ProgressBarPlugin(),
+    new webpack.LoaderOptionsPlugin({
+        options: {
+          context: __dirname,
+          postcss: [
+            postcssImport,
+            postcssUrl,
+            postcssCssnext
+          ]
+        }
+      })
   ],
 
   resolveLoader: {
@@ -114,10 +135,25 @@ module.exports = {
   },
 
   devServer: {
-    contentBase: './src/public',
-    colors: true,
-    inline: true,
-    host: '0.0.0.0',
-    stats: 'minimal'
+    historyApiFallback: true,
+    noInfo: true
+  },
+  resolveLoader: {
+    modules: [cordovaNodeModules]
+  },
+  performance: {
+    hints: false
+  },
+  devtool: '#eval-source-map',
+  devServer: {
+    historyApiFallback: true,
+    noInfo: true
   }
+  //devServer: {
+    //contentBase: './src/public',
+    //colors: true,
+    //inline: true,
+    //host: '0.0.0.0',
+    //stats: 'minimal'
+  //}
 };

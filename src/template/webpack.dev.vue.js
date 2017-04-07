@@ -8,21 +8,17 @@ try {
   var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
   var ProgressBarPlugin = require(path.join(cordovaNodeModules, 'progress-bar-webpack-plugin'));
 
-  var cssnext = require(path.join(cordovaNodeModules, 'postcss-cssnext'));
-  var postcssImport = require(path.join(cordovaNodeModules, 'postcss-import'));
-
+  var postcssCssnext = require(path.join(cordovaNodeModules, 'postcss-cssnext'));
+  var postcssUrl = require(path.join(cordovaNodeModules, 'postcss-url'));
+  var postcssImport = require(path.join(cordovaNodeModules, 'postcss-smart-import'));
+ 
 } catch (e) {
   throw new Error('Missing Webpack Build Dependencies.');
 }
 
 module.exports = {
-  devtool: 'eval-source-map',
-  context: __dirname,
-  debug: true,
-  cache: true,
 
   entry: [
-    'webpack-dev-server/client?http://0.0.0.0:8000/',
     'webpack/hot/only-dev-server',
     './src/main'
   ],
@@ -34,121 +30,126 @@ module.exports = {
   },
 
   resolve: {
-    root: [
+    modules: [
       path.join(__dirname, 'src'),
-      path.join(__dirname, 'node_modules')
+      path.join(__dirname, 'node_modules'),
+      path.resolve(cordovaNodeModules)
     ],
-
-    extensions: ['', '.js', '.vue', '.json', '.css', '.html', '.styl'],
-
-    unsafeCache: true,
+    extensions: ['.js', '.vue', '.json', '.css', '.html'],
 
     alias: {
-      webpack: path.join(cordovaNodeModules, 'webpack'),
-      'vue-loader/node_modules/vue-hot-reload-api': path.join(cordovaNodeModules, 'vue-loader', 'node_modules', 'vue-hot-reload-api'),
-      'webpack-dev-server/client': path.join(cordovaNodeModules, 'webpack-dev-server', 'client'),
-      vue:'vue/dist/vue.js'
+      vue:'vue/dist/vue.esm.js',
+      'setimmediate':'/Users/adam/.cordova/node_modules/webpack/node_modules/node-libs-browser/node_modules/timers-browserify/node_modules/setimmediate/setImmediate'
     }
   },
 
   module: {
-    rules: [{
-    {
-      test: /\.vue$/,
-      loader: 'vue-loader',
-      options: {
-	loaders: {
-	}
-	// other vue-loader options go here
+    rules: [
+      {
+        test: /\.vue$/,
+        loader: 'vue-loader',
+        options: {
+          loaders: {
+          }
+          // other vue-loader options go here
+        }
+      }, {
+        test: /\.js$/,
+        loader: 'babel-loader',
+        exclude: /node_modules/
+      }, {
+        test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)$/,
+        loader: 'file-loader',
+        options: {
+          name: '[name].[ext]?[hash]'
+        }
+      }, {
+        test: /\.css$/,
+        include: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
+        loader: ExtractTextPlugin.extract({
+          fallback: 'style-loader',
+          use: [
+            {
+              loader: 'css-loader',
+              options: { importLoaders: 1 }
+            }, {
+              loader: 'postcss-loader'
+              //options: {
+                //plugins: () => [
+                  //postcssImport,
+                  //postcssUrl,
+                  //postcssCssnext({
+                    //browsers: ['> 1%', 'last 2 versions', 'Firefox ESR', 'Opera 12.1']
+                  //})
+                //]
+              //} 
+            }
+          ]
+        })
+      }, {
+        test: /\.css$/,
+        exclude: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
+        loader: ExtractTextPlugin.extract({
+          fallback: 'style-loader',
+          use: 'css-loader?sourceMap',
+          publicPath: "/"
+        })
       }
-    }, {
-      test: /\.js$/,
-      loader: 'babel-loader',
-      exclude: /node_modules/
-    }, {
-      test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)$/,
-      loader: 'file-loader',
-      options: {
-	name: '[name].[ext]?[hash]'
-      }
-    }, {
-      test: /\.html$/,
-      loader: 'html-loader'
-    }, {
-      test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)$/,
-      loader: 'file?name=assets/[name].[hash].[ext]'
-    }, {
-      test: /\.css$/,
-      include: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
-      loader: ExtractTextPlugin.extract({
-	fallback: 'style-loader',
-	use: [
-	  {
-	    loader: 'css-loader',
-	    options: { importLoaders: 1 }
-	  },
-	  {
-	    loader: 'postcss-loader',
-	    options: {
-	      plugins: [
-		postcssImport, 
-		//require('postcss-url'),
-                cssnext
-	      ]
-	    }
-	  }
-	]
-      })
-    }, {
-      test: /\.css$/,
-      exclude: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
-      loader: ExtractTextPlugin.extract('style-loader', 'css?sourceMap')
-    }]
+]
   },
-
-  vue: {
-    loaders: {
-      js: 'babel'
-    }
-  },
-
-  babel: {
-    presets: [
-      path.join(cordovaNodeModules, 'babel-preset-es2015')
-    ],
-  },
-
-  postcss: function() {
-    return [
-      postcssImport,
-      cssnext({
-        browsers: ['> 1%', 'last 2 versions', 'Firefox ESR', 'Opera 12.1']
-      })
-    ]
-  },
-
   plugins: [
-    new webpack.HotModuleReplacementPlugin(),
     new ExtractTextPlugin('[name].css'),
     new HtmlWebpackPlugin({
-      template: 'src/public/index.html.ejs',
-      chunksSortMode: 'dependency'
+      template: 'src/public/index.html.ejs'
     }),
-    new ProgressBarPlugin()
+    new webpack.LoaderOptionsPlugin({
+        options: {
+          context: __dirname,
+          postcss: [
+            postcssImport,
+            postcssUrl,
+            postcssCssnext
+          ]
+        }
+      }),
+    new webpack.HotModuleReplacementPlugin()
   ],
-
+  devServer: {
+    historyApiFallback: true,
+    noInfo: true,
+    inline: true,
+    port: 8080
+  },
   resolveLoader: {
-    root: cordovaNodeModules
+    modules: [cordovaNodeModules]
+  },
+  performance: {
+    hints: false
   },
   devtool: '#eval-source-map',
-
   devServer: {
-    contentBase: './src/public',
-    colors: true,
-    inline: false,
     historyApiFallback: true,
-    host: '0.0.0.0',
-    stats: 'minimal',
-    hot: true
+    noInfo: true
   }
 };
+
+if (process.env.NODE_ENV === 'production') {
+  module.exports.devtool = '#source-map';
+  // http://vue-loader.vuejs.org/en/workflow/production.html
+  module.exports.plugins = (module.exports.plugins || []).concat([
+    new webpack.DefinePlugin({
+      'process.env': {
+        NODE_ENV: '"production"'
+      }
+    }),
+    new webpack.optimize.UglifyJsPlugin({
+      sourceMap: true,
+      compress: {
+        warnings: false
+      }
+    }),
+    new webpack.LoaderOptionsPlugin({
+      minimize: true
+    })
+  ]);
+}
