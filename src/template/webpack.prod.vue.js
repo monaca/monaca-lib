@@ -40,7 +40,8 @@ module.exports = {
   resolve: {
     root: [
       path.join(__dirname, 'src'),
-      path.join(__dirname, 'node_modules')
+      path.join(__dirname, 'node_modules'),
+      path.resolve(cordovaNodeModules)
     ],
 
     extensions: ['', '.js', '.vue', '.json', '.css', '.html', '.styl'],
@@ -48,8 +49,7 @@ module.exports = {
     unsafeCache: useCache,
 
     alias: {
-      webpack: path.join(cordovaNodeModules, 'webpack'),
-      vue:'vue/dist/vue.js'
+      vue:'vue/dist/vue.common.js'
     }
   },
 
