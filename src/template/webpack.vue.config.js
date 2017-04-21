@@ -6,6 +6,7 @@ try {
   var webpack = require(path.join(cordovaNodeModules, 'webpack'));
   var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
   var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
+  var CopyWebpackPlugin = require(path.join(cordovaNodeModules, 'copy-webpack-plugin'));
   var ProgressBarPlugin = require(path.join(cordovaNodeModules, 'progress-bar-webpack-plugin'));
 
   var postcssCssnext = require(path.join(cordovaNodeModules, 'postcss-cssnext'));
@@ -13,16 +14,15 @@ try {
   var postcssImport = require(path.join(cordovaNodeModules, 'postcss-smart-import'));
  
 } catch (e) {
-  throw new Error('Missing Webpack Build Dependencies.');
+  throw new Error('Missing Webpack Build Dependencies: ' + e);
 }
 
 module.exports = {
-
-  entry: [
+   entry : [
+   'webpack-dev-server/client?http://0.0.0.0:8000/',
     'webpack/hot/only-dev-server',
     './src/main'
-  ],
-
+  ], 
   output: {
     path: path.join(__dirname, 'www'),
     filename: 'bundle.js',
@@ -30,16 +30,17 @@ module.exports = {
   },
 
   resolve: {
+
     modules: [
+      "node_modules",
       path.join(__dirname, 'src'),
       path.join(__dirname, 'node_modules'),
       path.resolve(cordovaNodeModules)
     ],
     extensions: ['.js', '.vue', '.json', '.css', '.html'],
-
+    //maybe distinguish between development and production version of vue
     alias: {
-      vue:'vue/dist/vue.esm.js',
-      'setimmediate':'/Users/adam/.cordova/node_modules/webpack/node_modules/node-libs-browser/node_modules/timers-browserify/node_modules/setimmediate/setImmediate'
+      vue:'vue/dist/vue.esm.js'
     }
   },
 
@@ -95,7 +96,7 @@ module.exports = {
           publicPath: "/"
         })
       }
-]
+  ]
   },
   plugins: [
     new ExtractTextPlugin('[name].css'),
@@ -114,42 +115,88 @@ module.exports = {
       }),
     new webpack.HotModuleReplacementPlugin()
   ],
+
   devServer: {
     historyApiFallback: true,
     noInfo: true,
     inline: true,
     port: 8080
   },
+
   resolveLoader: {
     modules: [cordovaNodeModules]
   },
+
   performance: {
     hints: false
   },
+
   devtool: '#eval-source-map',
+
   devServer: {
     historyApiFallback: true,
     noInfo: true
   }
 };
 
-if (process.env.NODE_ENV === 'production') {
-  module.exports.devtool = '#source-map';
-  // http://vue-loader.vuejs.org/en/workflow/production.html
-  module.exports.plugins = (module.exports.plugins || []).concat([
+if (process.env.NODE_ENV === JSON.stringify('production')){
+  console.log("This is production");
+  module.exports.devtool = "#source-map",
+  module.exports.stats= {
+    warnings: false,
+    children: false
+  },
+
+  module.exports.plugins = [
     new webpack.DefinePlugin({
       'process.env': {
-        NODE_ENV: '"production"'
+        'NODE_ENV': JSON.stringify('production')
       }
     }),
-    new webpack.optimize.UglifyJsPlugin({
-      sourceMap: true,
-      compress: {
-        warnings: false
+    new ExtractTextPlugin('[name].css'),
+    new webpack.optimize.CommonsChunkPlugin({
+      name: ['app', 'vendor', 'polyfills']
+    }),
+    new HtmlWebpackPlugin({
+      template: 'src/public/index.html.ejs',
+      chunksSortMode: 'dependency',
+      externalCSS: ['components/loader.css'],
+      externalJS: ['components/loader.js'],
+      minify: {
+        caseSensitive: true,
+        collapseWhitespace: true,
+        conservativeCollapse: true,
+        removeAttributeQuotes: false,
+        removeComments: true
       }
     }),
-    new webpack.LoaderOptionsPlugin({
-      minimize: true
-    })
-  ]);
+    new webpack.NoErrorsPlugin(),
+    new webpack.optimize.DedupePlugin(),
+    new webpack.optimize.UglifyJsPlugin(),
+    new CopyWebpackPlugin([{
+      from: path.join(__dirname, 'src', 'public'),
+      ignore: ['index.html.ejs']
+    }]),
+    new ProgressBarPlugin()
+  ],
+  module.exports.performance = {
+    hints: "error"
+  }
+
+} else {
+  console.log("This is development " + process.env.NODE_ENV);
+  module.exports.devtool = "#eval-source-map",
+
+  module.exports.devServer = {
+    historyApiFallback: true,
+    noInfo: true,
+    contentBase: './src/public',
+    inline: true,
+    host: '0.0.0.0',
+    stats: 'minimal'
+  },
+
+  module.exports.performance = {
+    hints: "warning"
+  }
 }
