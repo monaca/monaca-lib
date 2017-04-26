@@ -2306,7 +2306,7 @@
     }
 
     var framework = config['template-type'];
-    var file = 'webpack.' + environment + '.' + framework +  '.js';
+    var file = 'webpack.'+ environment + '.' + framework + '.js';
     var asset = path.resolve(path.join(__dirname, 'template', file));
 
     if (!fs.existsSync(asset)) {
@@ -2314,6 +2314,51 @@
     }
 
     return fs.readFileSync(asset, 'utf8');
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Return path to Webpack 2 configuration
+   * @return {String}
+   */
+  Monaca.prototype.getWebpackPath = function() {
+    try {
+      var config = this.fetchProjectData(process.cwd());
+    } catch(error) {
+      throw 'Failed to require package info.';
+    }
+
+    var framework = config['template-type'];
+    var file = 'webpack.' + framework +  '.config.js';
+    console.log(path.join(__dirname, 'template', file))
+    var webpackPath = path.resolve(path.join(__dirname, 'template', file));
+
+    if (!fs.existsSync(webpackPath)) {
+      throw 'Failed to locate Webpack config template for framework ' + framework;
+    }
+
+    return webpackPath
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   * Return version of webpack used in project
+   * @return {String}
+   */
+  Monaca.prototype.webpackVersion = function() {
+    try {
+      var config = this.fetchProjectData(process.cwd());
+      console.log(JSON.stringify(config))
+    } catch(error) {
+      throw 'Failed to';
+    }
+    var version = config['build']["transpile"]["webpack_version"]
+
+    return version
   }
 
   /**
@@ -2480,6 +2525,7 @@
 
     return webpackConfig;
   };
+
 
   /**
    * @method
