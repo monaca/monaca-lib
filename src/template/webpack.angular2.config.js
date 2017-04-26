@@ -12,13 +12,23 @@ try {
   var postcssCssnext = require(path.join(cordovaNodeModules, 'postcss-cssnext'));
   var postcssUrl = require(path.join(cordovaNodeModules, 'postcss-url'));
   var postcssImport = require(path.join(cordovaNodeModules, 'postcss-smart-import'));
-  var projectDirectory = process.cwd(); 
+  var projectDirectory = process.cwd();
 } catch (e) {
-  throw new Error('Missing Webpack Build Dependencies :' + e);
+  throw new Error('Missing Webpack Build Dependencies.' + e);
 }
 
 module.exports = {
+  entry: {
+    'polyfills': './src/polyfills',
+    'vendor': './src/vendor',
+    'app': './src/main'
+  },
 
+  output: {
+    path: path.join(projectDirectory, 'www'),
+    filename: '[name].js',
+    chunkFilename: '[id].chunk.js'
+  },
 
   resolve: {
     modules: [
@@ -27,18 +37,21 @@ module.exports = {
       path.join(projectDirectory, 'node_modules'),
       path.resolve(cordovaNodeModules)
     ],
-
-    extensions: ['.js', '.jsx', '.json', '.css', '.html'],
-
-    unsafeCache: true
+    extensions: ['.ts', '.js', '.json', '.css', '.html']
   },
 
   module: {
-    rules: [{
-      test: /\.(js|jsx)$/,
-      loader: 'babel-loader',
+    loaders: [{
+      test: /\.ts$/,
+      loader: 'ts-loader',
       include: path.join(projectDirectory, 'src'),
+
       options: {
+        compilerOptions: {
+          sourceMap: false,
+          sourceRoot: './src',
+          inlineSourceMap: true
+        },
         presets: [
           require.resolve(path.join(cordovaNodeModules, 'babel-preset-stage-3')),
           [
@@ -48,13 +61,9 @@ module.exports = {
                 "browsers": ["last 2 versions", "safari >= 7"]
               }
             }
-          ],
-          require.resolve(path.join(cordovaNodeModules, "babel-preset-react"))
+          ]
         ],
-        cacheDirectory: true,
-        plugins: [
-          path.join(cordovaNodeModules, 'react-hot-loader', 'babel')
-        ]
+        cacheDirectory: true
       }
     }, {
       test: /\.html$/,
@@ -62,50 +71,61 @@ module.exports = {
     }, {
       test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)$/,
       loader: 'file-loader?name=assets/[name].[hash].[ext]'
+    },  {
+      test: /\.css$/,
+      include: [/\/onsen-css-components.css$/, path.join(projectDirectory, 'src')],
+      loader: "css-to-string-loader"
     }, {
-        test: /\.css$/,
-        include: [/\/onsen-css-components.css$/, path.join(projectDirectory, 'src')],
-        loader: ExtractTextPlugin.extract({
-          fallback: 'style-loader',
-          use: [
-            {
-              loader: 'css-loader',
-              options: { importLoaders: 1 }
-            }, {
-              loader: 'postcss-loader'
-            }
-          ]
-        })
-      }, {
-        test: /\.css$/,
-        exclude: [/\/onsen-css-components.css$/, path.join(projectDirectory, 'src')],
-        loader: ExtractTextPlugin.extract({
-          fallback: 'style-loader',
-          use: 'css-loader?sourceMap',
-          publicPath: "/"
-        })
-      }
-    ]
+      test: /\.css$/,
+      include: [/\/onsen-css-components.css$/, path.join(projectDirectory, 'src')],
+      loader: ExtractTextPlugin.extract({
+        fallback: 'style-loader',
+        use: [
+          {
+            loader: 'css-loader',
+            options: { importLoaders: 1 }
+          }, {
+            loader: 'postcss-loader'
+          }
+        ]
+      })
+    }, {
+      test: /\.css$/,
+      exclude: [/\/onsen-css-components.css$/, path.join(projectDirectory, 'src')],
+      loader: ExtractTextPlugin.extract({
+        fallback: 'style-loader',
+        use: 'css-loader?sourceMap',
+        publicPath: "/"
+      })
+    }],
+
+    noParse: [/.+zone\.js\/dist\/.+/, /.+angular2\/bundles\/.+/, /angular2-polyfills\.js/]
   },
 
   plugins: [
-    new webpack.HotModuleReplacementPlugin(),
+    new webpack.ContextReplacementPlugin(
+      /angular(\\|\/)core(\\|\/)(esm(\\|\/)src|src)(\\|\/)linker/,
+      projectDirectory
+    ),
     new ExtractTextPlugin('[name].css'),
+    new webpack.optimize.CommonsChunkPlugin({
+      name: ['app', 'vendor', 'polyfills']
+    }),
     new HtmlWebpackPlugin({
       template: 'src/index.html.ejs',
       chunksSortMode: 'dependency'
     }),
     new ProgressBarPlugin(),
     new webpack.LoaderOptionsPlugin({
-        options: {
-          context: projectDirectory,
-          postcss: [
-            postcssImport,
-            postcssUrl,
-            postcssCssnext
-          ]
-        }
-      })
+      options: {
+        context: projectDirectory,
+        postcss: [
+          postcssImport,
+          postcssUrl,
+          postcssCssnext
+        ]
+      }
+    })
   ],
 
   resolveLoader: {
@@ -120,20 +140,9 @@ if (process.env.NODE_ENV === JSON.stringify('production')) {
 
   module.exports.devtool = "#source-map",
 
-  module.exports.stats= {
+  module.exports.stats = {
     warnings: false,
     children: false
-  },
-
-  module.exports.entry = {
-    app: './src/main',
-    vendor: ['react', 'react-dom', 'onsenui', 'react-onsenui']
-  },
-
-  module.exports.output = {
-    path: path.join(projectDirectory, 'www'),
-    filename: '[name].bundle.js',
-    chunkFilename: '[name].chunk.js'
   },
 
   module.exports.plugins = (module.exports.plugins || []).concat([
@@ -144,10 +153,10 @@ if (process.env.NODE_ENV === JSON.stringify('production')) {
     }),
     new ExtractTextPlugin('[name].css'),
     new webpack.optimize.CommonsChunkPlugin({
-      name: ['vendor']
+      name: ['app', 'vendor', 'polyfills']
     }),
     new HtmlWebpackPlugin({
-      template: 'src/public/index.html.ejs',
+      template: 'src/index.html.ejs',
       chunksSortMode: 'dependency',
       externalCSS: ['components/loader.css'],
       externalJS: ['components/loader.js'],
@@ -161,30 +170,12 @@ if (process.env.NODE_ENV === JSON.stringify('production')) {
     }),
     new webpack.NoEmitOnErrorsPlugin(),
     new webpack.optimize.UglifyJsPlugin(),
-    new CopyWebpackPlugin([{
-      from: path.join(projectDirectory, 'src', 'public'),
-      ignore: ['index.html.ejs']
-    }]),
     new ProgressBarPlugin()
   ])
 } else {
-
   module.exports.devtool = "#eval-source-map",
 
-  module.exports.entry = [
-    'react-hot-loader/patch',
-    'webpack-dev-server/client?http://0.0.0.0:8000/',
-    'webpack/hot/only-dev-server',
-    './src/main'
-  ],
-
-  module.exports.output = {
-    path: path.join(projectDirectory, 'www'),
-    filename: 'bundle.js'
-  },
-
-  module.exports.devServer  = {
-    hot: true,
+  module.exports.devServer = {
     historyApiFallback: true,
     noInfo: true,
     contentBase: './src/public',
