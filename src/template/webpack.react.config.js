@@ -1,7 +1,16 @@
+var getModulesPath = function() {
+  if (process.env.modulesPath == ".cordova") {
+    return path.join(os.homedir(), '.cordova', 'node_modules')
+  } else {
+    return path.join(process.cwd(), 'node_modules')
+  }
+}
+
 try {
   var path = require('path');
   var os = require('os');
-  var cordovaNodeModules = path.join(os.homedir(), '.cordova', 'node_modules');
+  var projectDirectory = process.cwd();
+  var cordovaNodeModules = getModulesPath();
 
   var webpack = require(path.join(cordovaNodeModules, 'webpack'));
   var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
@@ -12,7 +21,6 @@ try {
   var postcssCssnext = require(path.join(cordovaNodeModules, 'postcss-cssnext'));
   var postcssUrl = require(path.join(cordovaNodeModules, 'postcss-url'));
   var postcssImport = require(path.join(cordovaNodeModules, 'postcss-smart-import'));
-  var projectDirectory = process.cwd(); 
 } catch (e) {
   throw new Error('Missing Webpack Build Dependencies :' + e);
 }
@@ -112,7 +120,7 @@ module.exports = {
     modules: [cordovaNodeModules]
   },
   performance: {
-    hints: false 
+    hints: false
   }
 };
 
