@@ -1,6 +1,6 @@
 {
   "name": "monaca-lib",
-  "version": "2.2.8",
+  "version": "3.0.0",
   "description": "Monaca cloud and localkit API bindings for JavaScript",
   "main": "./src/main.js",
   "scripts": {
@@ -71,31 +71,31 @@
     "style-loader": "0.13.1"
   },
   "dependenciesAngular2": {
+    "css-to-string-loader": "0.1.0",
     "ts-loader": "2.0.3",
-    "typescript": "2.0.10",
-    "css-to-string-loader": "0.1.0"
+    "typescript": "2.0.10"
   },
   "dependenciesVue": {
     "vue-loader": "11.0.0"
   },
   "dependenciesReact": {
-    "react-hot-loader": "3.0.0-beta.6",
-    "babel-preset-react": "6.11.1"
+    "babel-preset-react": "6.11.1",
+    "react-hot-loader": "3.0.0-beta.6"
   },
-  "webpackOneDependencies": {
-    "webpack": "1.13.1",
-    "webpack-dev-server": "1.14.1",
+  "webpack1Dependencies": {
+    "babel-preset-es2015": "6.9.0",
+    "babel-preset-stage-2": "6.11.0",
     "extract-text-webpack-plugin": "1.0.1",
     "postcss-import": "9.1.0",
-    "babel-preset-es2015": "6.9.0",
-    "babel-preset-stage-2": "6.11.0"
+    "webpack": "1.13.1",
+    "webpack-dev-server": "1.14.1"
   },
-  "webpackTwoDependencies": {
+  "webpack2Dependencies": {
+    "babel-preset-env": "1.4.0",
+    "babel-preset-stage-3": "6.24.1",
+    "extract-text-webpack-plugin": "2.1.0",
     "postcss-smart-import": "0.6.10",
     "webpack": "2.2.1",
-    "babel-preset-env": "1.4.0",
-    "babel-preset-stage-2": "6.24.1",
-    "webpack-dev-server": "2.4.2",
-    "extract-text-webpack-plugin": "2.1.0"
+    "webpack-dev-server": "2.4.2"
   }
 }
