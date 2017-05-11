@@ -2510,7 +2510,7 @@
         } else {
           console.log("Global webpack")
           webpackConfigFile = this.getWebpack2ConfigFile(process.cwd());
-          process.env.modulesPath = '.cordova';
+          process.env.MODULES_PATH = '.cordova';
         }
       } else {
         if (this.isEjected(projectDir)) {
