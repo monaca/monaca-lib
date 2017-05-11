@@ -1,7 +1,12 @@
 var webpackConfigFile = process.argv[2];
 var watch = process.argv[3] === '--watch';
-
-var webpack = require(require('path').join(process.env.USER_CORDOVA, 'node_modules', 'webpack'));
+var modulesPath;
+if(process.env.MODULES_PATH === ".cordova") {
+  modulesPath = process.env.USER_CORDOVA;
+} else {
+  modulesPath = process.cwd();
+}
+var webpack = require(require('path').join(modulesPath, 'node_modules', 'webpack'));
 var webpackConfig = require(webpackConfigFile);
 
 var outputStyle = {
