@@ -1,5 +1,5 @@
 var getModulesPath = function() {
-  if (process.env.modulesPath == ".cordova") {
+  if (process.env.MODULES_PATH == ".cordova") {
     return path.join(os.homedir(), '.cordova', 'node_modules')
   } else {
     return path.join(process.cwd(), 'node_modules')
@@ -128,10 +128,7 @@ module.exports = {
         ]
       }
     }),
-    new webpack.HotModuleReplacementPlugin(),
-    new HtmlWebpackPlugin({
-      template: 'src/index.html.ejs'
-    })
+    new webpack.HotModuleReplacementPlugin()
   ],
 
   resolveLoader: {
@@ -193,7 +190,7 @@ if (process.env.NODE_ENV === JSON.stringify('production')){
       }
     }),
     new CopyWebpackPlugin([{
-      from: path.join(projectDirectory, 'src', 'public'),
+      from: path.join(projectDirectory, 'src'),
       ignore: ['index.html.ejs']
     }]),
     new ProgressBarPlugin()
@@ -203,7 +200,7 @@ if (process.env.NODE_ENV === JSON.stringify('production')){
     'webpack-dev-server/client?http://0.0.0.0:8000/',
     'webpack/hot/only-dev-server',
     './src/main'
-  ], 
+  ],
 
   module.exports.output = {
     path: path.join(projectDirectory, 'www'),
@@ -223,7 +220,7 @@ if (process.env.NODE_ENV === JSON.stringify('production')){
   module.exports.devServer = {
     historyApiFallback: true,
     noInfo: true,
-    contentBase: './src/public',
+    contentBase: './src/assets',
     inline: true,
     host: '0.0.0.0',
     stats: 'minimal'

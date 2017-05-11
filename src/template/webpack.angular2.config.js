@@ -187,7 +187,7 @@ if (process.env.NODE_ENV === JSON.stringify('production')) {
   module.exports.devServer = {
     historyApiFallback: true,
     noInfo: true,
-    contentBase: './src/public',
+    contentBase: './src',
     inline: true,
     host: '0.0.0.0',
     stats: 'minimal'
