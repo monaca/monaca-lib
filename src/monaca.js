@@ -40,7 +40,6 @@
     .file(path.join(__dirname, 'config.json'))
     .get('monaca');
 
-
   /**
    * @class Monaca
    * @description
@@ -2388,7 +2387,6 @@
    */
   Monaca.prototype.installTemplateDependencies = function(projectDir) {
     var deferred = Q.defer();
-    console.log("Template dependency install"  + projectDir)
     fs.exists(path.resolve(path.join(projectDir, 'package.json')), function(exists) {
       if (exists) {
         process.stdout.write('Installing template dependencies...\n');
@@ -2432,7 +2430,7 @@
    * @return {Boolean}
    */
   Monaca.prototype.isTranspilable = function(projectDir) {
-    var config = this.fetchProjectData(projectDir)
+    var config = this.fetchProjectData(projectDir);
 
     if (!config) {
       return false;
@@ -2475,7 +2473,6 @@
 
     return webpackConfig;
   };
-
 
   /**
    * @method
@@ -2706,7 +2703,6 @@
       }
       else {
         deferred.reject(new Error('Unable to set config file: ' + parentDir + ' does not exist.'));
-        projectDir = process.cwd();
       }
     }.bind(this));
 
