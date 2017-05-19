@@ -5,7 +5,7 @@ var fs = require('fs'),
   semver = require('semver');
 
   var projectInfo = require(path.join(__dirname, 'monaca', 'projectInfo'));
-  var localPackageJSON = require(path.join(__dirname, 'localPackageJSON'));
+  var localPackageJSON = require(path.join(__dirname,'monaca', 'localPackageJSON'));
 
   var getProjectInfoProperty = function(projectDir, property) {
     return projectInfo.get(projectDir, property);
