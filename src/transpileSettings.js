@@ -23,6 +23,13 @@ var fs = require('fs'),
     return localPackageJSON.set(projectDir, property, value);
   };
 
+  /**
+   * @method
+   * @class getMonacaPackageJSON
+   * @description
+   * Get monaca-lib package.json
+   * @return {Promise}
+   */
   var getMonacaPackageJSON = function() {
     var deferred = Q.defer();
     try {
@@ -45,14 +52,17 @@ var fs = require('fs'),
    */
   var getGlobalDependencies = function(projectDir) {
 
-    return Q.all([projectDir, Q.all([
-      getProjectInfoProperty(projectDir, "build.transpile.webpack_version"),
-      getProjectInfoProperty(projectDir, "template-type"),
-      getTemplateVersionSpecificKey(projectDir)
-    ])
-    .then(parseWebpackVersion.bind(this))
-    .then(matchDependencyObjects.bind(this))
-    .then(mergeObjectsArray.bind(this))]);
+    return Q.all([
+      projectDir,
+      Q.all([
+        getProjectInfoProperty(projectDir, "build.transpile.webpack_version"),
+        getProjectInfoProperty(projectDir, "template-type"),
+        getTemplateVersionSpecificKey(projectDir)
+      ])
+      .then(parseWebpackVersion.bind(this))
+      .then(matchDependencyObjects.bind(this))
+      .then(mergeObjectsArray.bind(this))
+    ]);
   };
 
   /**
@@ -156,7 +166,7 @@ var fs = require('fs'),
    * @method
    * @class matchDependencyObjects
    * @description
-   * takes dependency keys array and returns array of dependency objects
+   * returns array of dependency objects that matched specific dependencyKeys
    * @param {String} dependencyKeys
    * @return {Promise}
    */
