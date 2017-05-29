@@ -66,6 +66,22 @@
       options = options || {};
     }
 
+    var webApiRoot;
+
+    if (!apiRoot) {
+      try {
+        var configContent = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+        var apiEndpoint = configContent['apiEndpoint'];
+
+        if (apiEndpoint) {
+          webApiRoot = 'https://' + apiEndpoint + '/en/api';
+          apiRoot = 'https://ide.' + apiEndpoint + '/api';
+        }
+      } catch (e) {
+        console.log("Cound not find/set the custom API endpoint " + e);
+      }
+    }
+
     /**
      * @description
      *   Root of Monaca IDE API.
@@ -75,7 +91,7 @@
      */
     Object.defineProperty(this, 'apiRoot', {
       value: apiRoot ? apiRoot : config.default_api_root,
-      writable: false
+      writable: true
     });
 
     /**
@@ -86,8 +102,8 @@
      * @default https://monaca.mobi/en/api
      */
     Object.defineProperty(this, 'webApiRoot', {
-      value: apiRoot ? apiRoot : config.web_api_root,
-      writable: false
+      value: webApiRoot ? webApiRoot : config.web_api_root,
+      writable: true
     });
 
     /**
@@ -171,6 +187,56 @@
     this.emitter = new EventEmitter();
     this._monacaData = this._loadAllData();
   };
+
+  Monaca.prototype.setAPIConfig = function(apiEndpoint) {
+    var deferred = Q.defer();
+
+    try {
+      this.apiRoot = 'https://ide.' + apiEndpoint + '/api';
+      this.webApiRoot = 'https://' + apiEndpoint + '/en/api';
+
+      return this.setConfig('apiEndpoint', apiEndpoint)
+      .then(
+        function(result) {
+          deferred.resolve();
+        }
+      )
+      .catch(
+        function(e) {
+          deferred.reject(e);
+        }
+      )
+    } catch (e) {
+      deferred.reject(e);
+    }
+
+    return deferred.promise;
+  }
+
+  Monaca.prototype.resetAPIConfig = function() {
+    var deferred = Q.defer();
+
+    try {
+      this.apiRoot = config.default_api_root;
+      this.webApiRoot = config.web_api_root;
+
+      return this.removeConfig('apiEndpoint')
+      .then(
+        function(result) {
+          deferred.resolve();
+        }
+      )
+      .catch(
+        function(e) {
+          deferred.reject(e);
+        }
+      )
+    } catch (e) {
+      deferred.reject(e);
+    }
+
+    return deferred.promise;
+  }
 
 
   Monaca.prototype._generateUUIDv4 = function(a, b) {
