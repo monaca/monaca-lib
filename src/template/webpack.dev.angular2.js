@@ -70,7 +70,7 @@ module.exports = {
         path.join(__dirname, 'node_modules', 'onsenui', 'css-components-src', 'src'),
         path.join(__dirname, 'src')
       ],
-      loader: ['css-to-string', ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')]
+      loaders: ['css-to-string', ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')]
     }, {
       test: /\.css$/,
       exclude: [
