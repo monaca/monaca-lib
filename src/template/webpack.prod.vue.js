@@ -69,11 +69,17 @@ module.exports = {
       loader: 'file?name=assets/[name].[hash].[ext]'
     }, {
       test: /\.css$/,
-      include: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
+      include: [
+        path.join(__dirname, 'node_modules', 'onsenui', 'css-components-src', 'src'),
+        path.join(__dirname, 'src')
+      ],
       loader: ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')
     }, {
       test: /\.css$/,
-      exclude: [/\/onsen-css-components.css$/, path.join(__dirname, 'src')],
+      exclude: [
+        path.join(__dirname, 'node_modules', 'onsenui', 'css-components-src', 'src'),
+        path.join(__dirname, 'src')
+      ],
       loader: ExtractTextPlugin.extract('style', 'css?sourceMap')
     }, {
       test: /\.json$/,
