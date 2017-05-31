@@ -71,7 +71,7 @@
     if (!apiRoot) {
       try {
         var configContent = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-        var apiEndpoint = configContent['apiEndpoint'];
+        var apiEndpoint = configContent['api_endpoint'];
 
         if (apiEndpoint) {
           webApiRoot = 'https://' + apiEndpoint + '/en/api';
@@ -195,7 +195,7 @@
       this.apiRoot = 'https://ide.' + apiEndpoint + '/api';
       this.webApiRoot = 'https://' + apiEndpoint + '/en/api';
 
-      return this.setConfig('apiEndpoint', apiEndpoint)
+      return this.setConfig('api_endpoint', apiEndpoint)
       .then(
         function(result) {
           deferred.resolve();
@@ -220,7 +220,7 @@
       this.apiRoot = config.default_api_root;
       this.webApiRoot = config.web_api_root;
 
-      return this.removeConfig('apiEndpoint')
+      return this.removeConfig('api_endpoint')
       .then(
         function(result) {
           deferred.resolve();
