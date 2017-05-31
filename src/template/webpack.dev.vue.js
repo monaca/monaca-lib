@@ -36,7 +36,8 @@ module.exports = {
   resolve: {
     root: [
       path.join(__dirname, 'src'),
-      path.join(__dirname, 'node_modules')
+      path.join(__dirname, 'node_modules'),
+      path.resolve(cordovaNodeModules)
     ],
 
     extensions: ['', '.js', '.vue', '.json', '.css', '.html', '.styl'],
@@ -44,10 +45,7 @@ module.exports = {
     unsafeCache: true,
 
     alias: {
-      webpack: path.join(cordovaNodeModules, 'webpack'),
-      'vue-loader/node_modules/vue-hot-reload-api': path.join(cordovaNodeModules, 'vue-loader', 'node_modules', 'vue-hot-reload-api'),
-      'webpack-dev-server/client': path.join(cordovaNodeModules, 'webpack-dev-server', 'client'),
-      vue:'vue/dist/vue.js'
+      vue:'vue/dist/vue.common.js'
     }
   },
 
