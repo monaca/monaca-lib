@@ -3294,13 +3294,13 @@
         .then(
           function(projectId) {
             if (arg.showSettings) {
-              return this.getSessionUrl('https://ide.monaca.mobi/project/' + projectId + '/build?page=settings');
+              return this.getSessionUrl(this.apiRoot.match(/https(.*)\//)[0] + '/project/' + projectId + '/build?page=settings');
             }
             else if (arg.showUrl) {
               return this.getSessionUrl(arg.showUrl.replace('%%PROJECT_ID%%', projectId));
             }
             else {
-              return this.getSessionUrl('https://ide.monaca.mobi/project/' + projectId + '/build');
+              return this.getSessionUrl(this.apiRoot.match(/https(.*)\//)[0] + '/project/' + projectId + '/build');
             }
           }.bind(this)
         )
