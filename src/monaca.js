@@ -520,8 +520,11 @@
   Monaca.prototype._createRequestClient = function(data) {
     var deferred = Q.defer(), qs = {};
 
-    if (this.tokens && this.tokens.api) {
-      qs.api_token = this.tokens.api;
+    var apiToken = this.getData('x-monaca-param-api-token'),
+      session = this.getData('x-monaca-param-session');
+
+    if (apiToken) {
+      qs.api_token = apiToken;
     }
 
     if (data) {
@@ -536,7 +539,7 @@
           encoding: null,
           proxy: httpProxy,
           headers: {
-            Cookie: this.tokens.session
+            Cookie: session || null
           },
           timeout: 300 * 1000
         });
