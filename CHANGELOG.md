@@ -2,6 +2,13 @@
 CHANGELOG
 ====
 
+v2.2.9
+----
+* templates: fixed Vue Webpack configuration.
+* monaca: added API endpoint management.
+* monaca: fixed requests missing content.
+* monaca: fixed hard-coded API references.
+
 v2.2.8
 ----
 * templates: Added missing additionalDependencies.
