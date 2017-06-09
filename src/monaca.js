@@ -2526,7 +2526,7 @@
    */
   Monaca.prototype.isTranspileEnabled = function(projectDir) {
     var config = this.fetchProjectData(projectDir);
-    return config.build && config.build.transpile && config.build.transpile.enabled;
+    return config ? config.build && config.build.transpile && config.build.transpile.enabled : null;
   };
 
   /**
