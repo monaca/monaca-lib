@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v2.2.10
+----
+* monaca: fixed isTranspileEnabled check.
+
 v2.2.9
 ----
 * templates: fixed Vue Webpack configuration.
