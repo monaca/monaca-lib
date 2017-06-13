@@ -1408,13 +1408,25 @@
     fs.exists(projectDir, function(exists) {
       if (exists) {
         var files = {},
-          promises = [];
+          promises = [],
+          filteredList = [];
 
-        var list = shell.ls('-RAL', projectDir).filter(function(name) {
-          return name.indexOf('node_modules') !== 0;
-        });
+        glob.sync(projectDir.replace(/[-[\]{}()*+?.,^$|#]/g, "\\$&") + "/**",
+          {
+            dot: true,
+            allowWindowsEscape: true
+          }
+        ).forEach(
+          function(item) {
+            // Glob returns the absolute path and needs to be filtered out.
+            var relativePath = path.relative(projectDir, item);
 
-        var filteredList = list;
+            if (relativePath && relativePath.indexOf('node_modules') !== 0) {
+              filteredList.push(relativePath);
+            }
+          }
+        );
+
         if (options && options.filter && typeof options.filter === 'function') {
           filteredList = list.filter(options.filter);
         }
