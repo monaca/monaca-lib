@@ -7,7 +7,9 @@
 var fs = require('fs'),
   path = require('path'),
   shell = require('shelljs'),
-  Q = require('q');
+  Q = require('q'),
+  _ = require('lodash');
+
 
 var hasMonacaDir = function(directory) {
   var deferred = Q.defer();
@@ -45,40 +47,6 @@ var hasProjectSettingsFile = function(directory) {
   return deferred.promise;
 };
 
-var createDefaultMonacaStructure = function(directory) {
-  var deferred = Q.defer();
-
-  try {
-    shell.mkdir('-p', path.join(directory, '.monaca'));
-    deferred.resolve();
-  } catch (e) {
-    deferred.reject(e);
-  }
-
-  return deferred.promise;
-};
-
-var delProperty = function(directory, property) {
-  var deferred = Q.defer();
-
-  if (property === 'project_id') {
-    var settingsFile = path.join(directory, '.monaca', 'project_info.json');
-
-     fs.unlink(settingsFile, function(err) {
-        if (err) {
-          deferred.reject(new Error("Could not delete the property: " + err));
-        } else {
-          deferred.resolve();
-        }
-      });
-  } else {
-    deferred.reject(new Error("The required property cannot be deleted because it does not exist."));
-  }
-
-  return deferred.promise;
-};
-
-
 var getProperty = function(projectDir, key) {
   var deferred = Q.defer();
 
@@ -93,12 +61,17 @@ var getProperty = function(projectDir, key) {
             else {
               try {
                 var settings = JSON.parse(data.toString());
-                if("build.transpile.webpack_version" === key && settings[key] === undefined) {
-                  settings[key] = 1;
-                };
-                deferred.resolve(settings[key]);
-              }
-              catch (e) {
+
+                if(_.has(settings, key) && _.get(settings, key) !== undefined) {
+                  deferred.resolve(_.get(settings, key));
+                } else {
+                  if('build.transpile.webpack-version' === key) {
+                    deferred.resolve(1);
+                  } else {
+                    deferred.reject(new Error('Property ' + key + ' does not exist in project_info.json'));
+                  }
+                }
+              } catch (e) {
                 deferred.reject(e);
               }
             }
@@ -168,6 +141,5 @@ var setProperty = function(projectDir, key, value) {
 
 module.exports = {
   get: getProperty,
-  set: setProperty,
-  del: delProperty
+  set: setProperty
 };

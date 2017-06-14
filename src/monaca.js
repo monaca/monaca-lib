@@ -25,6 +25,8 @@
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
+  var projectInfo = require(path.join(__dirname, 'monaca', 'projectInfo'));
+  var transpileSettings = require(path.join(__dirname, 'transpileSettings'));
 
   var USER_CORDOVA = path.join(
       process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'],
@@ -1221,7 +1223,6 @@
   Monaca.prototype.getProjectId = function(projectDir) {
     return localProperties.get(projectDir, 'project_id');
   };
-
     /**
    * @method
    * @memberof Monaca
@@ -2229,6 +2230,8 @@
     })
   };
 
+
+
   /**
    * @method
    * @memberof Monaca
@@ -2245,8 +2248,8 @@
     }
 
     var deferred = Q.defer();
-    var packageJsonFile = path.resolve(path.join(__dirname, '..', 'package.json'));
-    var dependencies = this.buildDependencyObject(projectDir);
+    //var packageJsonFile = path.resolve(path.join(__dirname, '..', 'package.json'));
+    //var dependencies = this.getGlobalDependencies(projectDir);
     var installDependencies = [];
 
     if (!fs.existsSync(USER_CORDOVA)) {
@@ -2377,31 +2380,6 @@
     return deferred.promise;
   };
 
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Installs the template's dependencies.
-   * @param {String} Project's Directory
-   * @return {Promise}
-   */
-  Monaca.prototype.installTemplateDependencies = function(projectDir) {
-    var deferred = Q.defer();
-    fs.exists(path.resolve(path.join(projectDir, 'package.json')), function(exists) {
-      if (exists) {
-        process.stdout.write('Installing template dependencies...\n');
-        this._npmInstall(projectDir).then(
-          deferred.resolve.bind(null, projectDir),
-          deferred.reject.bind(null, 'Failed to install template dependencies.')
-        );
-      }
-      else {
-        deferred.resolve(projectDir);
-      }
-    }.bind(this));
-
-    return deferred.promise;
-  };
 
   /**
    * @method
@@ -2485,6 +2463,9 @@
    */
   Monaca.prototype.transpile = function(projectDir, options) {
     options = options || {};
+    process.NODE_PATH = path.join(USER_CORDOVA, 'node_modules');
+    var webpackConfigFile;
+    console.log(process.NODE_PATH);
 
     if (!this.isTranspilable(projectDir)) {
       return Q.resolve({
@@ -2500,25 +2481,28 @@
 
     try {
 
-      if(this.getWebpackVersion(projectDir) === 2) {
-        if(fs.existsSync(path.join(process.cwd(), 'webpack.config.js'))) {
-          console.log("Local webpack")
-          webpackConfigFile = path.join(projectDir, 'webpack.config.js');
-        } else {
-          console.log("Global webpack")
-          webpackConfigFile = this.getWebpack2ConfigFile(process.cwd());
-          process.env.MODULES_PATH = '.cordova';
-        }
-      } else {
-        if (this.isEjected(projectDir)) {
-          var webpackConfigFile = this.getWebpackConfigFile(projectDir, 'prod');
-        } else {
-          var errorMessage = 'This version of webpack can be used only with dependencies stored locally.\n' +
-            'Please use monaca eject command in order to continue.\n'+
-            'You can find more information at migration guide';
-          throw new Error(errorMessage);
-        }
-      }
+      transpileSettings.getProjectInfoProperty(projectDir, "build.transpile.webpack_version")
+        .then(function(version){
+          if(version >= 2) {
+            if(fs.existsSync(path.join(projectDir, 'webpack.config.js'))) {
+
+              webpackConfigFile = path.join(projectDir, 'webpack.config.js');
+            } else {
+              webpackConfigFile = this.getWebpack2ConfigFile(process.cwd());
+              process.env.MODULES_PATH = '.cordova';
+            }
+          }
+          else {
+            //if (this.isEjected(projectDir)) {
+            //var webpackConfigFile = this.getWebpackConfigFile(projectDir, 'prod');
+            //} else {
+            //var errorMessage = 'This version of webpack can be used only with dependencies stored locally.\n' +
+            //'Please use monaca eject command in order to continue.\n'+
+            //'You can find more information at migration guide';
+            //throw new Error(errorMessage);
+            //}
+          }
+        })
     } catch(error) {
       return Q.reject(error);
     }
@@ -2529,6 +2513,7 @@
       message: 'Running Transpiler...'
     });
     process.stdout.write('Running Transpiler...\n');
+    webpackConfigFile = path.join(__dirname, 'template', 'webpack.react.config.js');
 
     var parameters = [webpackConfigFile];
     if (options.watch) {
@@ -2539,7 +2524,8 @@
       env: extend({}, process.env, {
         USER_CORDOVA: USER_CORDOVA,
         NODE_ENV: JSON.stringify('production'),
-        WP_CACHE: options.cache || ''
+        WP_CACHE: options.cache || '',
+        NODE_PATH: path.join(USER_CORDOVA, 'node_modules')
       })
     });
 
@@ -2679,9 +2665,21 @@
       .then(fetchFile)
       .then(unzipFile)
       .then(this.initComponents.bind(this))
-      .then(this.installTemplateDependencies.bind(this))
-      .then(this.installBuildDependencies.bind(this));
+      .then(transpileSettings.installTemplateDependencies.bind(this))
+      .then(transpileSettings.getGlobalDependencies.bind(this))
+      .spread(transpileSettings.installGlobalDependencies.bind(this))
+      .spread(transpileSettings.backupGlobalConfiguration.bind(this));
   };
+
+  Monaca.prototype.getProjectInfoProperty = function(projectDir, property) {
+    return projectInfo.get(projectDir, property);
+  };
+
+  Monaca.prototype.setProjectInfoProperty = function(projectDir, property, value) {
+    return projectInfo.set(projectDir, property, value);
+  };
+
+
 
   /**
    * @method
@@ -3372,23 +3370,6 @@
    * @method
    * @memberof Monaca
    * @description
-   * Return version of webpack used in project
-   * @return {String}
-   */
-  Monaca.prototype.getWebpackVersion = function(projectDir) {
-    try {
-      var config = this.fetchProjectData(projectDir);
-    } catch(error) {
-      throw 'Failed to require package info.';
-    }
-
-    return config.build.transpile['webpack-version'];
-  };
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
    * Write information about project ejection in project_info.json
    * @return {String}
    */
@@ -3416,7 +3397,7 @@
    * Move .cordova dependencies to local package.json
    * @return {String}
    */
-  Monaca.prototype.ejectPackageJson = function(projectDir) {
+  Monaca.prototype.extractProjectDependencies = function(projectDir) {
     try {
       var config = this.fetchProjectData(projectDir);
     } catch(error) {
@@ -3426,9 +3407,9 @@
     var deferred = Q.defer();
     try {
       var sortedDependencies = {};
-      var projectPackage = path.resolve(path.join(projectDir ,'package.json'));
-      var projectDependencies = require(projectPackage);
-      var buildDependencies = this.buildDependencyObject(projectDir);
+      var projectPackagePath = path.resolve(path.join(projectDir ,'package.json'));
+      var projectDependencies = require(projectPackagePath);
+      var buildDependencies = this.getGlobalDependencies(projectDir, config);
 
       var ejectedDependencies = Object.assign({}, buildDependencies, projectDependencies.dependencies);
 
@@ -3444,6 +3425,32 @@
     }
   };
 
+Monaca.prototype.getTranspileConfiguration = function(projectDir, config) {
+  var transpileConfiguration = {};
+  var webpackVersion = config.build.transpile['webpack-version'];
+
+  //versioning started from webpack 2 first webpack is not definied in project_info.jsons
+
+  transpileConfiguration.additionalDependencies = "additionalDependencies";
+  transpileConfiguration.webpackVersion = webpackVersion;
+  transpileConfiguration.framework = config["template-type"];
+  transpileConfiguration.transpile = config.build.transpile.enabled;
+  transpileConfiguration.ejected = config.build.transpile.ejected;
+
+  return transpileConfiguration;
+}
+
+Monaca.prototype.matchDependencyObject = function(objectJSON, value) {
+
+  var regex = new RegExp(value, "i");
+  for(var key in objectJSON) {
+    if(regex.test(key)) {
+      return objectJSON[key];
+    }
+  }
+  return {};
+};
+
   /**
    * @method
    * @memberof Monaca
@@ -3451,45 +3458,35 @@
    * return JSON object with global dependencies for specific framework
    * @return {Object}
    */
-  Monaca.prototype.buildDependencyObject = function(projectDir) {
-    var mergeObjects = function(total, obj) {
-      return Object.assign(total, obj);
-    };
-
-    try {
-      var config = this.fetchProjectData(projectDir);
-    } catch(error) {
-      throw 'Failed to require package info.';
-    }
-
-    var frameworkDic = {'vue':'dependenciesVue', 'react': 'dependenciesReact', 'angular2':'dependenciesAngular2'};
-    //versioning started from webpack 2 first webpack is not definied in project_info.jsons
-    var webpackDic = {'1': 'webpack1Dependencies', '2': 'webpack2Dependencies'};
+  Monaca.prototype.getGlobalDependencies = function(projectDir) {
 
     var deferred = Q.defer();
     try {
-    var webpackVersion = config.build.transpile['webpack-version'],
-      templateFramework = config['template-type'],
-      monacaJsonFile = path.resolve(path.join(__dirname, '..', 'package.json')),
-      monacaDependencies = require(monacaJsonFile);
+      var monacaJsonFile = path.resolve(path.join(__dirname, '..', 'package.json')),
+        monacaDependencies = require(monacaJsonFile);
 
-    if(webpackVersion  === undefined) {
-      webpackVersion = 1;
-    }
+      var webpackVersion = this.getProjectInfoProperty(projectDir, 'build.transpile.webpack_version');
+      var framework = this.getProjectInfoProperty(projectDir, 'template-type');
 
-    var arr = [
-      monacaDependencies['additionalDependencies'],
-      monacaDependencies[webpackDic[webpackVersion]],
-      monacaDependencies[frameworkDic[templateFramework]]
-    ];
+      if(webpackVersion === undefined) {
+        webpackVersion = "webpack1";
+      } else {
+        webpackVersion = "weback" + webpackVersion;
+      }
 
+        var webpackDependencies = this.matchDependencyObject(monacaDependencies, webpackVersion);
+        var frameworkDependencies = this.matchDependencyObject(monacaDependencies, framework);
+        dependencyObj = Object.assign(dependencyObj, obj);
 
-    return arr.reduce(mergeObjects);
+      return dependencyObj;
 
     } catch(error) {
       throw error;
     }
   };
+  Monaca.prototype.eject = function(projectDir) {
+    transpileSettings.eject(projectDir);
+  }
 
   module.exports = Monaca;
 })();

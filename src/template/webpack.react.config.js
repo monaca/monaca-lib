@@ -1,26 +1,17 @@
-var getModulesPath = function() {
-  if (process.env.MODULES_PATH == ".cordova") {
-    return path.join(os.homedir(), '.cordova', 'node_modules')
-  } else {
-    return path.join(process.cwd(), 'node_modules')
-  }
-}
-
 try {
   var path = require('path');
   var os = require('os');
   var projectDirectory = process.cwd();
-  var cordovaNodeModules = getModulesPath();
 
-  var webpack = require(path.join(cordovaNodeModules, 'webpack'));
-  var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
-  var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
-  var CopyWebpackPlugin = require(path.join(cordovaNodeModules, 'copy-webpack-plugin'));
-  var ProgressBarPlugin = require(path.join(cordovaNodeModules, 'progress-bar-webpack-plugin'));
+  var webpack = require('webpack');
+  var HtmlWebpackPlugin = require('html-webpack-plugin');
+  var ExtractTextPlugin = require('extract-text-webpack-plugin');
+  var CopyWebpackPlugin = require('copy-webpack-plugin');
+  var ProgressBarPlugin = require('progress-bar-webpack-plugin');
 
-  var postcssCssnext = require(path.join(cordovaNodeModules, 'postcss-cssnext'));
-  var postcssUrl = require(path.join(cordovaNodeModules, 'postcss-url'));
-  var postcssImport = require(path.join(cordovaNodeModules, 'postcss-smart-import'));
+  var postcssCssnext = require('postcss-cssnext');
+  var postcssUrl = require('postcss-url');
+  var postcssImport = require('postcss-smart-import');
 } catch (e) {
   throw new Error('Missing Webpack Build Dependencies :' + e);
 }
@@ -32,8 +23,7 @@ module.exports = {
     modules: [
       "node_modules",
       path.join(projectDirectory, 'src'),
-      path.join(projectDirectory, 'node_modules'),
-      path.resolve(cordovaNodeModules)
+      path.join(projectDirectory, 'node_modules')
     ],
 
     extensions: ['.js', '.jsx', '.json', '.css', '.html'],
@@ -48,20 +38,20 @@ module.exports = {
       include: path.join(projectDirectory, 'src'),
       options: {
         presets: [
-          require.resolve(path.join(cordovaNodeModules, 'babel-preset-stage-3')),
+          require.resolve('babel-preset-stage-3'),
           [
-            require.resolve(path.join(cordovaNodeModules, 'babel-preset-env')),
+            require.resolve('babel-preset-env'),
             {
               "targets": {
                 "browsers": ["last 2 versions", "safari >= 7"]
               }
             }
           ],
-          require.resolve(path.join(cordovaNodeModules, "babel-preset-react"))
+          require.resolve( "babel-preset-react")
         ],
         cacheDirectory: true,
         plugins: [
-          path.join(cordovaNodeModules, 'react-hot-loader', 'babel')
+          path.join('react-hot-loader', 'babel')
         ]
       }
     }, {
@@ -116,9 +106,9 @@ module.exports = {
       })
   ],
 
-  resolveLoader: {
-    modules: [cordovaNodeModules]
-  },
+  //resolveLoader: {
+    //modules: [cordovaNodeModules]
+  //},
   performance: {
     hints: false
   }

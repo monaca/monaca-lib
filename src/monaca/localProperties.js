@@ -9,6 +9,7 @@ var fs = require('fs'),
   shell = require('shelljs'),
   Q = require('q');
 
+
 var hasMonacaDir = function(directory) {
   var deferred = Q.defer();
 

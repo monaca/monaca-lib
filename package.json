@@ -61,8 +61,6 @@
     "html-webpack-plugin": "2.28.0",
     "null-loader": "0.1.1",
     "postcss-loader": "0.9.1",
-    "postcss-cssnext": "2.9.0",
-    "postcss-url": "5.1.2",
     "progress-bar-webpack-plugin": "1.8.0",
     "raw-loader": "0.5.1",
     "read-cache": "1.0.0",
@@ -88,7 +86,8 @@
     "extract-text-webpack-plugin": "1.0.1",
     "postcss-import": "9.1.0",
     "webpack": "1.13.1",
-    "webpack-dev-server": "1.14.1"
+    "webpack-dev-server": "1.14.1",
+    "webpack-dev-middleware": "^1.4.0"
   },
   "webpack2Dependencies": {
     "babel-preset-env": "1.4.0",
@@ -97,5 +96,13 @@
     "postcss-smart-import": "0.6.10",
     "webpack": "2.2.1",
     "webpack-dev-server": "2.4.2"
+  },
+  "precssDependencies": {
+    "autoprefixer": "6.3.7",
+    "precss": "1.4.0"
+  },
+  "cssnextDependencies": {
+    "postcss-cssnext": "2.9.0",
+    "postcss-url": "5.1.2"
   }
 }
