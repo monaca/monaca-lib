@@ -1411,18 +1411,15 @@
           promises = [],
           filteredList = [];
 
-        glob.sync(projectDir.replace(/[-[\]{}()*+?.,^$|#]/g, "\\$&") + "/**",
+        glob.sync("**/*",
           {
-            dot: true,
-            allowWindowsEscape: true
+            root: projectDir,
+            dot: true
           }
         ).forEach(
           function(item) {
-            // Glob returns the absolute path and needs to be filtered out.
-            var relativePath = path.relative(projectDir, item);
-
-            if (relativePath && relativePath.indexOf('node_modules') !== 0) {
-              filteredList.push(relativePath);
+            if (item.indexOf('node_modules') !== 0) {
+              filteredList.push(item);
             }
           }
         );
