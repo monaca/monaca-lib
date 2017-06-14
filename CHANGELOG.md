@@ -2,16 +2,20 @@
 CHANGELOG
 ====
 
+v2.2.11
+----
+* monaca: Fixed critical sync bug when the project path contains special characters.
+
 v2.2.10
 ----
-* monaca: fixed isTranspileEnabled check.
+* monaca: Fixed isTranspileEnabled check.
 
 v2.2.9
 ----
 * templates: fixed Vue Webpack configuration.
-* monaca: added API endpoint management.
-* monaca: fixed requests missing content.
-* monaca: fixed hard-coded API references.
+* monaca: Added API endpoint management.
+* monaca: Fixed requests missing content.
+* monaca: Fixed hard-coded API references.
 
 v2.2.8
 ----
