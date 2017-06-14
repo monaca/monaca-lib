@@ -1413,7 +1413,7 @@
 
         glob.sync("**/*",
           {
-            root: projectDir,
+            cwd: projectDir,
             dot: true
           }
         ).forEach(
