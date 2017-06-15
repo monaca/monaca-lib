@@ -1425,7 +1425,7 @@
         );
 
         if (options && options.filter && typeof options.filter === 'function') {
-          filteredList = list.filter(options.filter);
+          filteredList = filteredList.filter(options.filter);
         }
         filteredList.forEach(function(file) {
           var obj = {},
