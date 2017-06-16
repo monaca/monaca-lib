@@ -631,6 +631,36 @@
    * @method
    * @memberof Monaca
    * @description
+   *  Returns information about server availability and time of response
+   * @return {Promise}
+   */
+  Monaca.prototype.getConnectionInfo = function() {
+    var url = this.apiRoot.match(/https(.*)\//)[0] + 'server_check';
+
+    return this._post(url, {})
+    .then(
+      function(res) {
+        var result = {};
+        var currentTime = new Date().getTime();
+
+        var serverTime = new Date(res.response.headers.date).getTime();
+        var responseTime = currentTime - serverTime;
+
+        result.status = 'available';
+        result.time = responseTime;
+
+        return Q.resolve(result);
+      },
+      function(err) {
+        return Q.reject();
+      }
+    );
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *  Download project file and save to disk. Must be loggeed in to
    *  use.
    * @param {string} projectId - Monaca project id.
