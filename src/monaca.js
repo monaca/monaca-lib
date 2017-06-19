@@ -635,16 +635,17 @@
    * @return {Promise}
    */
   Monaca.prototype.getConnectionInfo = function() {
+    var time = new Date();
     var url = this.apiRoot.match(/https(.*)\//)[0] + 'server_check';
+    var sendDate = time.getTime();
 
     return this._post(url, {})
     .then(
       function(res) {
+        var receiveDate = time.getTime();
         var result = {};
-        var currentTime = new Date().getTime();
 
-        var serverTime = new Date(res.response.headers.date).getTime();
-        var responseTime = currentTime - serverTime;
+        var responseTime = receiveDate - sendDate;
 
         result.status = 'available';
         result.time = responseTime;
