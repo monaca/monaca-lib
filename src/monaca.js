@@ -3046,14 +3046,19 @@
       fs.exists(dir, function(exists) {
         if (exists) {
           deferred.resolve();
-        }
-        else {
-          deferred.reject();
+        } else {
+          if (path.parse(dir).base === 'www') {
+            deferred.reject('"www" directory is missing');
+          } else if(path.parse(dir).base === 'config.xml') {
+            deferred.reject('config.xml file is missing');
+          } else {
+            deferred.reject('');
+          }
         }
       });
 
       return deferred.promise;
-    }
+    };
 
     return Q.all([
       exists(path.join(projectDir, 'www')),
@@ -3062,8 +3067,8 @@
       function() {
         return projectDir + ' is a Cordova project.';
       },
-      function() {
-        return Q.reject(projectDir + ' is not a Cordova project.');
+      function(err) {
+        return Q.reject(err + '\nPlease check (website) for more information');
       }
     );
   };
@@ -3090,7 +3095,7 @@
       });
 
       return deferred.promise;
-    }
+    };
 
     var hasConfigFile = function() {
       var configFiles = ['config.xml', 'config.ios.xml', 'config.android.xml'];
@@ -3249,8 +3254,8 @@
 
       this.isMonacaProject(arg.path)
         .catch(
-          function() {
-            return Q.reject(new Error('Could not build since project is not a Monaca project or does not exist on disk.'));
+          function(error) {
+            return Q.reject(new Error('Could not perform operation:\n' + error.message));
           }
         )
         .then(relogin)
