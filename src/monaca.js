@@ -634,23 +634,14 @@
    *  Returns information about server availability and time of response
    * @return {Promise}
    */
-  Monaca.prototype.getConnectionInfo = function() {
+  Monaca.prototype.getConnectionStatus = function() {
     var time = new Date();
     var url = this.apiRoot.match(/https(.*)\//)[0] + 'server_check';
-    var sendDate = time.getTime();
 
     return this._post(url, {})
     .then(
       function(res) {
-        var receiveDate = time.getTime();
-        var result = {};
-
-        var responseTime = receiveDate - sendDate;
-
-        result.status = 'available';
-        result.time = responseTime;
-
-        return Q.resolve(result);
+        return Q.resolve('available');
       },
       function(err) {
         return Q.reject();
