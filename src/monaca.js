@@ -635,13 +635,16 @@
    * @return {Promise}
    */
   Monaca.prototype.getConnectionStatus = function() {
-    var time = new Date();
     var url = this.apiRoot.match(/https(.*)\//)[0] + 'server_check';
 
     return this._post(url, {})
     .then(
       function(res) {
-        return Q.resolve('available');
+        if ((/^2/).test(res.response.statusCode)) {
+          return Q.resolve('available');
+        } else {
+          return Q.resolve('not available');
+        }
       },
       function(err) {
         return Q.reject();
