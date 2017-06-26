@@ -631,6 +631,31 @@
    * @method
    * @memberof Monaca
    * @description
+   *  Returns information about server availability
+   * @return {Promise}
+   */
+  Monaca.prototype.getConnectionStatus = function() {
+    var url = this.apiRoot.match(/https(.*)\//)[0] + 'server_check';
+
+    return this._post(url, {})
+    .then(
+      function(res) {
+        if ((/^2/).test(res.response.statusCode)) {
+          return Q.resolve('available');
+        } else {
+          return Q.resolve('not available');
+        }
+      },
+      function() {
+        return Q.resolve('not available');
+      }
+    );
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *  Download project file and save to disk. Must be loggeed in to
    *  use.
    * @param {string} projectId - Monaca project id.
