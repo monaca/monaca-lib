@@ -1,6 +1,6 @@
 {
   "name": "monaca-lib",
-  "version": "3.0.0",
+  "version": "2.2.7",
   "description": "Monaca cloud and localkit API bindings for JavaScript",
   "main": "./src/main.js",
   "scripts": {
@@ -94,8 +94,8 @@
     "babel-preset-stage-3": "6.24.1",
     "extract-text-webpack-plugin": "2.1.0",
     "postcss-smart-import": "0.6.10",
-    "webpack": "2.2.1",
-    "webpack-dev-server": "2.4.2"
+    "webpack": "3.0.0",
+    "webpack-dev-server": "2.5.0"
   },
   "precssDependencies": {
     "autoprefixer": "6.3.7",
