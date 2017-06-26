@@ -631,7 +631,7 @@
    * @method
    * @memberof Monaca
    * @description
-   *  Returns information about server availability and time of response
+   *  Returns information about server availability
    * @return {Promise}
    */
   Monaca.prototype.getConnectionStatus = function() {
