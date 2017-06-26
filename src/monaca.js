@@ -646,8 +646,8 @@
           return Q.resolve('not available');
         }
       },
-      function(err) {
-        return Q.reject();
+      function() {
+        return Q.resolve('not available');
       }
     );
   };
