@@ -1123,33 +1123,33 @@
                 return 'Version name is invalid.';
               }
               if (buildType === 'release' && !platformContent.has_keysetting) {
-                return 'Missing KeyStore configuration. Configure remote build and try again.';
+                return 'Missing KeyStore configuration. Configure remote build by executing `monaca remote build --browser`.';
               }
             }
             if (platform === 'ios') {
               if (!platformContent.has_splash_and_icons) {
-                return 'Your project is missing splash screens and/or icons. Please open remote build settings to configure.';
+                return 'Your project is missing splash screens and/or icons. Please add the missing files from remote build settings by executing `monaca remote build --browser`.';
               }
               if (buildType === 'debug') {
                 if (!platformContent.has_dev_provisioning) {
-                  return 'Missing dev provisioning file. Please upload it from remote build settings.';
+                  return 'Missing dev provisioning file. Please upload it from remote build settings by executing `monaca remote build --browser`.';
                 }
                 if (platformContent.dev_provisioning_error) {
-                  return 'Error in dev provisioning file. Please upload again from remote build settings.';
+                  return 'Error in dev provisioning file. Please upload again from remote build settings by executing `monaca remote build --browser`.';
                 }
               } else if (buildType === 'debugger') {
                 if (!platformContent.has_debug_provisioning) {
-                  return 'Missing debug provisioning file. Please upload it from remote build settings.';
+                  return 'Missing debug provisioning file. Please upload it from remote build settings by executing `monaca remote build --browser`.';
                 }
                 if (platformContent.debug_provisioning_error) {
-                  return 'Error in debug provisioning file. Please upload again from remote build settings.';
+                  return 'Error in debug provisioning file. Please upload again from remote build settings by executing `monaca remote build --browser`.';
                 }
               } else {
                 if (!platformContent['has_' + buildType + '_provisioning']) {
-                  return 'Missing ' + buildType + ' provisioning file. Please upload it from remote build settings.';
+                  return 'Missing ' + buildType + ' provisioning file. Please upload it from remote build settings by executing `monaca remote build --browser`.';
                 }
                 if (platformContent[buildType + '_provisioning_error']) {
-                  return 'Error in' + buildType + ' provisioning file. Please upload again from remote build settings.';
+                  return 'Error in' + buildType + ' provisioning file. Please upload again from remote build settings by executing `monaca remote build --browser`.';
                 }
               }
             }
