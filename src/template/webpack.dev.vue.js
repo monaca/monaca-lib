@@ -23,7 +23,6 @@ module.exports = {
   cache: true,
 
   entry: [
-    'webpack-dev-server/client?http://0.0.0.0:8000/',
     'webpack/hot/only-dev-server',
     './src/main'
   ],
@@ -123,7 +122,7 @@ module.exports = {
   devServer: {
     contentBase: './src/public',
     colors: true,
-    inline: false,
+    inline: true,
     historyApiFallback: true,
     host: '0.0.0.0',
     stats: 'minimal',
