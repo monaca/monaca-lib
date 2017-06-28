@@ -16,7 +16,7 @@ try {
 }
 
 module.exports = {
-  devtool: 'eval-source-map',
+  devtool: 'inline-source-map',
   context: __dirname,
   debug: true,
   cache: true,
