@@ -17,14 +17,13 @@ try {
 }
 
 module.exports = {
-  devtool: 'eval-source-map',
+  devtool: 'inline-source-map',
   context: __dirname,
   debug: true,
   cache: true,
 
   entry: [
     'react-hot-loader/patch',
-    'webpack-dev-server/client?http://0.0.0.0:8000/',
     'webpack/hot/only-dev-server',
     './src/main'
   ],
@@ -125,7 +124,7 @@ module.exports = {
   devServer: {
     contentBase: './src/public',
     colors: true,
-    inline: false,
+    inline: true,
     historyApiFallback: true,
     host: '0.0.0.0',
     stats: 'minimal',
