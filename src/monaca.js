@@ -3048,11 +3048,11 @@
           deferred.resolve();
         } else {
           if (path.parse(dir).base === 'www') {
-            deferred.reject('"www" directory is missing');
-          } else if(path.parse(dir).base === 'config.xml') {
-            deferred.reject('config.xml file is missing');
+            deferred.reject(new Error("'www' directory is missing."));
+          } else if (path.parse(dir).base === 'config.xml') {
+            deferred.reject(new Error("'config.xml' file is missing."));
           } else {
-            deferred.reject('');
+            deferred.reject(new Error('this is not a Cordova project.'));
           }
         }
       });
@@ -3067,9 +3067,15 @@
       function() {
         return projectDir + ' is a Cordova project.';
       },
-      function(err) {
-        return Q.reject(err + '\nPlease check (website) for more information');
-      }
+      function(error) {
+        var docsUrl;
+        if (this.clientType === 'cli') {
+          docsUrl = 'http://docs.monaca.io/en/monaca_cli/manual/troubleshooting/#incomplete-files-and-folder-structure';
+        } else {
+          docsUrl = 'http://docs.monaca.io/en/monaca_localkit/manual/troubleshooting/#incomplete-files-and-folder-structure';
+        }
+        return Q.reject(error + '\nPlease visit ' + docsUrl);
+      }.bind(this)
     );
   };
 
@@ -3255,8 +3261,14 @@
       this.isMonacaProject(arg.path)
         .catch(
           function(error) {
-            return Q.reject(new Error('Could not perform operation:\n' + error.message));
-          }
+            var docsUrl;
+            if (this.clientType === 'cli') {
+              docsUrl = 'http://docs.monaca.io/en/monaca_cli/manual/troubleshooting/#incomplete-files-and-folder-structure';
+            } else {
+              docsUrl = 'http://docs.monaca.io/en/monaca_localkit/manual/troubleshooting/#incomplete-files-and-folder-structure';
+            }
+            return Q.reject(new Error('Could not perform the operation: ' + error.message + '\nPlease visit ' + docsUrl));
+          }.bind(this)
         )
         .then(relogin)
         .then(
