@@ -3071,14 +3071,19 @@
       fs.exists(dir, function(exists) {
         if (exists) {
           deferred.resolve();
-        }
-        else {
-          deferred.reject();
+        } else {
+          if (path.parse(dir).base === 'www') {
+            deferred.reject(new Error("'www' directory is missing."));
+          } else if (path.parse(dir).base === 'config.xml') {
+            deferred.reject(new Error("'config.xml' file is missing."));
+          } else {
+            deferred.reject(new Error('this is not a Cordova project.'));
+          }
         }
       });
 
       return deferred.promise;
-    }
+    };
 
     return Q.all([
       exists(path.join(projectDir, 'www')),
@@ -3087,9 +3092,15 @@
       function() {
         return projectDir + ' is a Cordova project.';
       },
-      function() {
-        return Q.reject(projectDir + ' is not a Cordova project.');
-      }
+      function(error) {
+        var docsUrl;
+        if (this.clientType === 'cli') {
+          docsUrl = 'http://docs.monaca.io/en/monaca_cli/manual/troubleshooting/#incomplete-files-and-folder-structure';
+        } else {
+          docsUrl = 'http://docs.monaca.io/en/monaca_localkit/manual/troubleshooting/#incomplete-files-and-folder-structure';
+        }
+        return Q.reject(error + '\nPlease visit ' + docsUrl);
+      }.bind(this)
     );
   };
 
@@ -3115,7 +3126,7 @@
       });
 
       return deferred.promise;
-    }
+    };
 
     var hasConfigFile = function() {
       var configFiles = ['config.xml', 'config.ios.xml', 'config.android.xml'];
@@ -3274,9 +3285,15 @@
 
       this.isMonacaProject(arg.path)
         .catch(
-          function() {
-            return Q.reject(new Error('Could not build since project is not a Monaca project or does not exist on disk.'));
-          }
+          function(error) {
+            var docsUrl;
+            if (this.clientType === 'cli') {
+              docsUrl = 'http://docs.monaca.io/en/monaca_cli/manual/troubleshooting/#incomplete-files-and-folder-structure';
+            } else {
+              docsUrl = 'http://docs.monaca.io/en/monaca_localkit/manual/troubleshooting/#incomplete-files-and-folder-structure';
+            }
+            return Q.reject(new Error('Could not perform the operation: ' + error.message + '\nPlease visit ' + docsUrl));
+          }.bind(this)
         )
         .then(relogin)
         .then(
