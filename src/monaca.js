@@ -3286,13 +3286,12 @@
       this.isMonacaProject(arg.path)
         .catch(
           function(error) {
-            var docsUrl;
             if (this.clientType === 'cli') {
-              docsUrl = 'http://docs.monaca.io/en/monaca_cli/manual/troubleshooting/#incomplete-files-and-folder-structure';
+              var errorMsg = 'Could not perform the operation: ' + error.message + '\nPlease visit http://docs.monaca.io/en/monaca_cli/manual/troubleshooting/#incomplete-files-and-folder-structure';
             } else {
-              docsUrl = 'http://docs.monaca.io/en/monaca_localkit/manual/troubleshooting/#incomplete-files-and-folder-structure';
+              var errorMsg = error.message + '\nPlease visit http://docs.monaca.io/en/monaca_localkit/manual/troubleshooting/#incomplete-files-and-folder-structure';
             }
-            return Q.reject(new Error('Could not perform the operation: ' + error.message + '\nPlease visit ' + docsUrl));
+            return Q.reject(new Error(errorMsg));
           }.bind(this)
         )
         .then(relogin)
