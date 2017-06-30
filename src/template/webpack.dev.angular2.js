@@ -24,7 +24,7 @@ module.exports = {
   entry: {
     'polyfills': './src/polyfills',
     'vendor': './src/vendor',
-    'app': './src/main'
+    'app': ['./src/main']
   },
 
   output: {
@@ -36,7 +36,8 @@ module.exports = {
   resolve: {
     root: [
       path.join(__dirname, 'src'),
-      path.join(__dirname, 'node_modules')
+      path.join(__dirname, 'node_modules'),
+      path.resolve(cordovaNodeModules)
     ],
 
     extensions: ['', '.ts', '.js', '.json', '.css', '.html', '.styl'],
