@@ -3095,9 +3095,9 @@
       function(error) {
         var docsUrl;
         if (this.clientType === 'cli') {
-          docsUrl = 'http://docs.monaca.io/en/monaca_cli/manual/troubleshooting/#incomplete-files-and-folder-structure';
+          docsUrl = 'https://docs.monaca.io/en/monaca_cli/manual/troubleshooting/#incomplete-files-and-folder-structure';
         } else {
-          docsUrl = 'http://docs.monaca.io/en/monaca_localkit/manual/troubleshooting/#incomplete-files-and-folder-structure';
+          docsUrl = 'https://docs.monaca.io/' + (global.locale === 'ja' ? 'ja' : 'en') + '/monaca_localkit/manual/troubleshooting/';
         }
         return Q.reject(error + '\nPlease visit ' + docsUrl);
       }.bind(this)
@@ -3287,9 +3287,9 @@
         .catch(
           function(error) {
             if (this.clientType === 'cli') {
-              var errorMsg = 'Could not perform the operation: ' + error.message + '\nPlease visit http://docs.monaca.io/en/monaca_cli/manual/troubleshooting/#incomplete-files-and-folder-structure';
+              var errorMsg = 'Could not perform the operation: ' + error.message + '\nPlease visit https://docs.monaca.io/en/monaca_cli/manual/troubleshooting/#incomplete-files-and-folder-structure';
             } else {
-              var errorMsg = error.message + '\nPlease visit http://docs.monaca.io/en/monaca_localkit/manual/troubleshooting/#incomplete-files-and-folder-structure';
+              var errorMsg = error.message + '\nPlease visit http://docs.monaca.io/'+ (global.locale === 'ja' ? 'ja' : 'en') + '/monaca_localkit/manual/troubleshooting/';
             }
             return Q.reject(new Error(errorMsg));
           }.bind(this)
