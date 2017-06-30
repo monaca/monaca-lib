@@ -2,6 +2,12 @@
 CHANGELOG
 ====
 
+v2.3.0
+----
+* monaca: Added support to the latest Vue and React templates with Onsen 2.4.0.
+* templates: Fixed dependencies and debugging avilability.
+* monaca: Improved some error messages with resolution references.
+
 v2.2.12
 ----
 * monaca: Fixed local debugging issue.
