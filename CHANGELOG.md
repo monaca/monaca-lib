@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v2.3.1
+----
+* monaca: Updated `vue-template-compile` to fix issue with Vue templates.
+
 v2.3.0
 ----
 * monaca: Added support to the latest Vue and React templates with Onsen 2.4.0.
