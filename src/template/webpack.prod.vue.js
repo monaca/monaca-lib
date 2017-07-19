@@ -74,7 +74,7 @@ module.exports = {
         path.join(__dirname, 'node_modules', 'onsenui', 'css-components-src', 'src'),
         path.join(__dirname, 'src')
       ],
-      loader: ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')
+      loader: ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss-loader')
     }, {
       test: /\.css$/,
       exclude: [
@@ -143,6 +143,9 @@ module.exports = {
   ],
 
   resolveLoader: {
-    root: cordovaNodeModules
+    root: [
+      path.join(__dirname, 'node_modules'),
+      cordovaNodeModules
+    ]
   }
 };
