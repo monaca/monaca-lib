@@ -118,7 +118,10 @@ module.exports = {
   ],
 
   resolveLoader: {
-    root: cordovaNodeModules
+    root: [
+      path.join(__dirname, 'node_modules'),
+      cordovaNodeModules
+    ]
   },
 
   devServer: {
