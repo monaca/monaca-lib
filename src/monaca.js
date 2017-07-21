@@ -405,7 +405,7 @@
     }
 
     // Exclude other hidden files and folders from being uploaded.
-    if (f.indexOf('/.') >= 0 && source === "uploadProject") {
+    if (f.indexOf('/.') >= 0 && f.indexOf('/.bower.json') < 0 && source === "uploadProject") {
       return false;
     }
 
