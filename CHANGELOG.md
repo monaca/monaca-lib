@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v2.3.2
+----
+* monaca: Updated Webpack resolvers for transpilable templates.
+
 v2.3.1
 ----
 * monaca: Updated `vue-template-compile` to fix issue with Vue templates.
