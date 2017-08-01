@@ -825,7 +825,7 @@
                 this.loginBody = body.result;
                 this._loggedIn = true;
 
-                return Q.resolve();
+                return Q.resolve(this.loginBody);
               }.bind(this),
               Q.reject
             );
