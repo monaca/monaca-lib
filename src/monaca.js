@@ -953,29 +953,27 @@
    *   );
    */
   Monaca.prototype.logout = function() {
-    var deferred = Q.defer();
-
-    this.setData({
-      'reloginToken': '',
-      'clientId': '',
-      'x-monaca-param-api-token': '',
-      'x-monaca-param-session': '',
-      'trackId': ''
-    })
-    .then(
+    return this._get(this.apiRoot + '/user/logout')
+    .finally(
       function() {
-        this.tokens = {
-          api: null,
-          session: null
-        };
-        this._loggedIn = false;
-
-        deferred.resolve();
-      }.bind(this),
-      deferred.reject
-    );
-
-    return deferred.promise;
+        this.setData({
+          'reloginToken': '',
+          'clientId': '',
+          'x-monaca-param-api-token': '',
+          'x-monaca-param-session': '',
+          'trackId': ''
+        })
+        .then(
+          function() {
+            this.tokens = {
+              api: null,
+              session: null
+            };
+            this._loggedIn = false;
+          }.bind(this)
+        );
+      }.bind(this)
+    )
   };
 
   /**
