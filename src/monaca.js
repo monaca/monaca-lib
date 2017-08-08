@@ -3211,6 +3211,20 @@
     }
   };
 
+   /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Get info about the latest performed remote builds.
+   * @return {Promise}
+   */
+  Monaca.prototype.getRemoteBuildList = function(projectId) {
+    return this._get(this.apiRoot + '/project/' + projectId + '/build/history', {
+      count: 1,
+      maxNum: 20
+    })
+  }
+
   /**
    * @method
    * @memberof Monaca
