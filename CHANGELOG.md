@@ -4,6 +4,11 @@ CHANGELOG
 
 v2.4.0
 ----
+* monaca: Added remote build history API.
+* monaca: Improved logout method.
+
+v2.4.0
+----
 * templates: Added support to Cordova 6.5 templates.
 * monaca: Allowed `.bower.json` sync to Cloud.
 * monaca: Minor improvement on login method.
