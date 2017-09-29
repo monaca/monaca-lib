@@ -2,7 +2,11 @@
 CHANGELOG
 ====
 
-v2.4.0
+v2.4.2
+----
+* monaca: Improved `startRemoteBuild` method logic.
+
+v2.4.1
 ----
 * monaca: Added remote build history API.
 * monaca: Improved logout method.
