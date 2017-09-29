@@ -3360,16 +3360,12 @@
             var url;
             if (arg.showSettings) {
               url = this.apiRoot.match(/https(.*)\//)[0] + '/project/' + projectId + '/build?page=settings';
-              // return this.getSessionUrl(this.apiRoot.match(/https(.*)\//)[0] + '/project/' + projectId + '/build?page=settings');
-            }
-            else if (arg.showUrl) {
+            } else if (arg.showUrl) {
               url = arg.showUrl.replace('%%PROJECT_ID%%', projectId);
-              // return this.getSessionUrl(arg.showUrl.replace('%%PROJECT_ID%%', projectId));
-            }
-            else {
+            } else {
               url = this.apiRoot.match(/https(.*)\//)[0] + '/project/' + projectId + '/build';
-              // return this.getSessionUrl(this.apiRoot.match(/https(.*)\//)[0] + '/project/' + projectId + '/build');
             }
+
             if (openRemoteBuildWindow.getLibSessionCookie && openRemoteBuildWindow.getLibSessionCookie()) {
               return url;
             } else {
