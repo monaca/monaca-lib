@@ -1185,7 +1185,6 @@
    */
   Monaca.prototype.getSessionUrl = function(url) {
     var deferred = Q.defer();
-
     this._get('/user/getSessionUrl', { url: url }).then(
       function(data) {
         deferred.resolve(this._safeParse(data.body).result.url);
@@ -3358,14 +3357,19 @@
         )
         .then(
           function(projectId) {
+            var url;
             if (arg.showSettings) {
-              return this.getSessionUrl(this.apiRoot.match(/https(.*)\//)[0] + '/project/' + projectId + '/build?page=settings');
+              url = this.apiRoot.match(/https(.*)\//)[0] + '/project/' + projectId + '/build?page=settings';
+            } else if (arg.showUrl) {
+              url = arg.showUrl.replace('%%PROJECT_ID%%', projectId);
+            } else {
+              url = this.apiRoot.match(/https(.*)\//)[0] + '/project/' + projectId + '/build';
             }
-            else if (arg.showUrl) {
-              return this.getSessionUrl(arg.showUrl.replace('%%PROJECT_ID%%', projectId));
-            }
-            else {
-              return this.getSessionUrl(this.apiRoot.match(/https(.*)\//)[0] + '/project/' + projectId + '/build');
+
+            if (openRemoteBuildWindow.getLibSessionCookie && openRemoteBuildWindow.getLibSessionCookie()) {
+              return url;
+            } else {
+              return this.getSessionUrl(url);
             }
           }.bind(this)
         )
