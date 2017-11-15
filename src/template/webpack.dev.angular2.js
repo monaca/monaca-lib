@@ -10,6 +10,7 @@ try {
 
   var cssnext = require(path.join(cordovaNodeModules, 'postcss-cssnext'));
   var postcssImport = require(path.join(cordovaNodeModules, 'postcss-import'));
+  var postcssUrl = require(path.join(cordovaNodeModules, 'postcss-url'));
 
 } catch (e) {
   throw new Error('Missing Webpack Build Dependencies.');
@@ -63,7 +64,7 @@ module.exports = {
       test: /\.html$/,
       loader: 'html'
     }, {
-      test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)$/,
+      test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)(\?\S*)?$/,
       loader: 'file?name=assets/[name].[hash].[ext]'
     }, {
       test: /\.css$/,
@@ -90,6 +91,7 @@ module.exports = {
   postcss: function() {
     return [
       postcssImport,
+      postcssUrl,
       cssnext({
         browsers: ['> 1%', 'last 2 versions', 'Firefox ESR', 'Opera 12.1']
       })

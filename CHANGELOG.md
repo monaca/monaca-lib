@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+dev
+----
+* templates: Fixed default webpack configurations for Angular 2+ in order to support PostCSS correctly.
+
 v2.4.2
 ----
 * monaca: Improved `startRemoteBuild` method logic.
