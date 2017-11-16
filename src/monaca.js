@@ -785,7 +785,7 @@
 
     var form = {
       language: options.language || 'en',
-      clientType: options.clientType || 'local',
+      clientType: options.clientType || this.clientType || 'local',
       version: options.version || this.packageName + ' ' + this.version,
       os: os.platform()
     };
@@ -1002,7 +1002,7 @@
 
     var form = {
       language: options.language || 'en',
-      clientType: options.clientType || 'local',
+      clientType: options.clientType || this.clientType || 'local',
       version: options.version || this.packageName + ' ' + this.version,
       os: os.platform(),
       register: {
@@ -1054,7 +1054,7 @@
 
     return this._post(this.webApiRoot + '/check_activate', {
       language: options.language || 'en',
-      clientType: options.clientType || 'local',
+      clientType: options.clientType || this.clientType || 'local',
       version: options.version || this.packageName + ' ' + this.version,
       os: os.platform(),
       param: token
