@@ -3,13 +3,26 @@ Monaca Cloud API
 
 This is a library used to communicate with the Monaca Cloud REST API.
 
+Initialization
+-------------
+
+From version 2.5.0, `clientType: 'lib'` needs to be specified when `monaca-lib` is initialized for standalone use.
+
+**Example:**
+
+```javascript
+var Monaca = require('monaca-lib').Monaca;
+
+var monaca = new Monaca({clientType: 'lib'});
+```
+
 Example usage
 -------------
 
 ```javascript
 var Monaca = require('monaca-lib').Monaca;
 
-var monaca = new Monaca();
+var monaca = new Monaca({clientType: 'lib'});
 
 monaca.login('some@email.com', 'password').then(
   function() {
@@ -40,7 +53,7 @@ var monacaLib = require('monaca-lib'),
   Monaca = monacaLib.Monaca,
   Localkit = monacaLib.Localkit;
 
-var monaca = new Monaca();
+var monaca = new Monaca({clientType: 'lib'});
 
 var localkit = new Localkit(monaca, '/path/to/project');
 
