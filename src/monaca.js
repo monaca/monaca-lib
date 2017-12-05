@@ -1740,9 +1740,16 @@
    *   );
    */
   Monaca.prototype.checkModifiedFiles = function(projectDir, options) {
-    var projectId;
+    var projectId,
+      framework;
 
-    return ((options && options.skipTranspile) ? this.getProjectId(projectDir) : this.transpile(projectDir))
+    return this.isMonacaProject(projectDir)
+    .then(
+      function(projectFramework) {
+        framework = projectFramework;
+        return ((options && options.skipTranspile) ? this.getProjectId(projectDir) : this.transpile(projectDir))
+      }.bind(this)
+    )
     .then(
       localProperties.get.bind(this, projectDir, 'project_id')
     )
@@ -1774,7 +1781,7 @@
 
         // Checks if the file/dir are included in a directory that can be uploaded.
         for (var file in localFiles) {
-          if (this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
+          if (framework !== 'cordova' || this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
             keys.push(file);
           }
         }
@@ -3122,7 +3129,7 @@
       }
 
       if (projectConfig && projectConfig.dependencies && projectConfig.dependencies['react-native']) {
-        deferred.resolve('reactNative');
+        deferred.resolve('react-native');
       } else {
         deferred.reject();
       }
