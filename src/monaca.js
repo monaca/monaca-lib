@@ -3105,64 +3105,53 @@
    * @method
    * @memberof Monaca
    * @description
+   *   Utility method to check if a folder is a React Native project.
+   * @param {String} projectDir - Project directory.
+   * @return {Promise}
+   */
+  Monaca.prototype.isReactNativeProject = function(projectDir) {
+    var deferred = Q.defer();
+
+    if (fs.existsSync(projectDir)) {
+      var projectConfig;
+
+      try {
+        projectConfig = require(path.join(projectDir, 'package.json'));
+      } catch (err) {
+        return Q.reject(err);
+      }
+
+      if (projectConfig && projectConfig.dependencies && projectConfig.dependencies['react-native']) {
+        deferred.resolve('reactNative');
+      } else {
+        deferred.reject();
+      }
+    } else {
+      deferred.reject(new Error('The directory does not exist.'))
+    }
+
+    return deferred.promise;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *   Utility method to check if a folder is a Monaca project.
    * @param {String} projectDir - Project directory.
    * @return {Promise}
    */
   Monaca.prototype.isMonacaProject = function(projectDir) {
-    var exists = function(dir) {
-      var deferred = Q.defer();
 
-      fs.exists(dir, function(exists) {
-        if (exists) {
-          deferred.resolve();
-        }
-        else {
-          deferred.reject();
-        }
-      });
-
-      return deferred.promise;
-    };
-
-    var hasConfigFile = function() {
-      var configFiles = ['config.xml', 'config.ios.xml', 'config.android.xml'];
-
-      var promises = configFiles
-        .map(
-          function(fileName) {
-            return exists(path.join(projectDir, fileName));
-          }
-        );
-
-      var next = function() {
-        var promise = promises.shift();
-
-        if (!promise) {
-          return Q.reject(new Error('Config file is missing.'));
-        }
-
-        return promise.then(
-          function() {
-            return projectDir;
-          },
-          function() {
-            return next();
-          }
-        );
-      };
-
-      return next();
-    };
-
-    return exists(path.join(projectDir, 'www')).then(
+    return this.isCordovaProject(projectDir)
+    .then(
       function() {
-        return hasConfigFile();
+        return Q.resolve('cordova');
       },
       function() {
-        return Q.reject(new Error('"www" directory is missing.'));
-      }
-    );
+        return this.isReactNativeProject(projectDir);
+      }.bind(this)
+    )
   };
 
    /**
