@@ -1662,63 +1662,103 @@
     return deferred.promise;
   };
 
-  Monaca.prototype.getProjectInfo = function(projectPath) {
+  Monaca.prototype.getProjectInfo = function(projectDir, framework) {
     var deferred = Q.defer();
 
-    var guessConfigFile = function(projectPath) {
-      var possibleFiles = ['config.xml', 'config.ios.xml', 'config.android.xml'];
-
-      for (var i = 0, l = possibleFiles.length; i < l; i ++) {
-        var configFile = path.join(projectPath, possibleFiles[i]);
-
-        if (fs.existsSync(configFile)) {
-          return configFile;
-        }
-      }
-
-      return null;
+    var getDefaultProjectInfo = function(projectId) {
+      return Q.resolve({
+        name: 'Undefined Project Name',
+        directory: projectDir,
+        description: 'No description',
+        projectId: projectId
+      });
     };
 
-    this.getLocalProjectId(projectPath).then(
-      function(projectId) {
-        var configFile = guessConfigFile(projectPath);
-        if (configFile) {
-          fs.readFile(configFile, function(error, data) {
-            if (error) {
-              deferred.reject(error);
-            } else {
-              xml2js.parseString(data, function(error, result) {
-                if (error) {
-                  deferred.reject(error);
-                } else {
-                  var project = {
-                    name: result.widget.name[0],
-                    directory: projectPath,
-                    description: result.widget.description[0],
-                    projectId: projectId
-                  };
+    var getReactNativeProjectInfo = function(projectId) {
+      var projectConfig = require(path.join(projectDir, 'package.json'));
 
-                  deferred.resolve(project);
-                }
-              });
-            }
-          });
+      // extract the name from the project path
+      var projectName = projectDir.match(/([^\/]*)\/*$/)[1],
+        projectDescription;
+
+      if (projectConfig && projectConfig.description) {
+        projectDescription = projectConfig.description;
+      }
+
+      return Q.resolve({
+        name: projectName,
+        directory: projectDir,
+        description: projectDescription ? projectDescription : '',
+        projectId: projectId
+      });
+    };
+
+    var getCordovaProjectInfo = function(projectId) {
+
+      var getValidConfigFile = function() {
+        var possibleFiles = ['config.xml', 'config.ios.xml', 'config.android.xml'];
+
+        for (var i = 0, l = possibleFiles.length; i < l; i ++) {
+          var configFile = path.join(projectDir, possibleFiles[i]);
+
+          if (fs.existsSync(configFile)) {
+            return configFile;
+          }
         }
-        else {
-          deferred.resolve({
-            name: 'Undefined Project Name',
-            directory: projectPath,
-            description: 'No description',
-            projectId: projectId
-          });
+
+        return null;
+      };
+
+      this.getLocalProjectId(projectDir)
+      .then(
+        function(projectId) {
+          var configFile = getValidConfigFile();
+          if (configFile) {
+            fs.readFile(configFile, function(error, data) {
+              if (error) {
+                deferred.reject(error);
+              } else {
+                xml2js.parseString(data, function(error, result) {
+                  if (error) {
+                    deferred.reject(error);
+                  } else {
+                    var projectConfig = {
+                      name: result.widget.name[0],
+                      directory: projectDir,
+                      description: result.widget.description[0],
+                      projectId: projectId
+                    };
+
+                    deferred.resolve(projectConfig);
+                  }
+                });
+              }
+            });
+          } else {
+            return getDefaultProjectInfo(projectId);
+          }
+        },
+        function(error) {
+          deferred.reject(error);
+        }
+      );
+
+      return deferred.promise;
+    }.bind(this);
+
+    return this.getLocalProjectId(projectDir)
+    .then(
+      function(projectId) {
+        if (!framework || framework === 'cordova') {
+          return getCordovaProjectInfo(projectId);
+        } else {
+          return getReactNativeProjectInfo(projectId);
         }
       },
       function(error) {
-        deferred.reject(error);
+        return Q.reject(error);
       }
     );
-
-    return deferred.promise;
   };
 
   /**
