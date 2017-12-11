@@ -1088,11 +1088,18 @@
    *     }
    *   );
    */
-  Monaca.prototype.checkBuildAvailability = function(projectId, platform, buildType) {
+  Monaca.prototype.checkBuildAvailability = function(projectInfo, buildParams) {
 
-    if (!projectId || !platform || !buildType) {
-      return Q.reject(new Error("Missing parameters."));
+    if (!projectInfo || !projectInfo.projectId) {
+      return Q.reject(new Error("Missing project info data."));
+    } else if(!buildParams || !buildParams.platform || !buildParams.purpose) {
+      return Q.reject(new Error("Missing build parameters."));
     }
+
+    var projectId = projectInfo.projectId,
+      framework = projectInfo.framework ? projectInfo.framework : '',
+      platform = buildParams.platform,
+      buildType = buildParams.purpose;
 
     return this._get('/project/' + projectId + '/can_build_app')
     .then(
@@ -1155,8 +1162,10 @@
             return '';
           };
 
+
           var errorMessage = checkError();
-          if (errorMessage) {
+
+          if ((!framework || framework === 'cordova') && errorMessage) {
             return Q.reject(new Error(errorMessage));
           } else {
             return Q.resolve(body);
@@ -1821,8 +1830,14 @@
 
         // Checks if the file/dir are included in a directory that can be uploaded.
         for (var file in localFiles) {
-          if (framework !== 'cordova' || this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
-            keys.push(file);
+          if (!framework || framework === 'cordova') {
+            if (this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
+              keys.push(file);
+            }
+          } else {
+            if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + file) >= 0) {
+              keys.push(file);
+            }
           }
         }
 
