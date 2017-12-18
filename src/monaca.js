@@ -482,19 +482,49 @@
     }
   };
 
-  Monaca.prototype._filterIgnoreList = function(projectDir) {
-    var ignoreList = [], allFiles=[];
-    if (fs.existsSync(path.join(projectDir, ".monacaignore"))) {
-      ignoreList = fs.readFileSync(path.join(projectDir, ".monacaignore"), {
-          "encoding": "utf8"
-        })
-        .split("\r\n") // Split by \r\n.
-        .map(function(ele) { return ele.split("\n")}) // Split each array element from previous step by \n again.
-        .reduce(function(a,b) { return a.concat(b)}) // Now concat them into one array.
-        .filter(function(n) {
-          return n.trim() !== "" && n.indexOf("#") !== 0;
-        });
+
+  Monaca.prototype._filterMonacaIgnore = function(projectDir, framework) {
+    return this._getMonacaIgnore(projectDir, framework)
+      .split("\r\n") // Split by \r\n.
+      .map(function(ele) { return ele.split("\n")}) // Split each array element from previous step by \n again.
+      .reduce(function(a,b) { return a.concat(b)}) // Now concat them into one array.
+      .filter(function(n) {
+        return n.trim() !== "" && n.indexOf("#") !== 0;
+      });
+  };
+
+  Monaca.prototype._getMonacaIgnore = function(projectDir, framework) {
+    var monacaIgnore = path.resolve(projectDir, '.monacaignore');
+
+    if (fs.existsSync(monacaIgnore)) {
+      return fs.readFileSync(monacaIgnore, 'utf8');
+    } else if (framework && framework !== 'cordova') {
+      var result = this._generateMonacaIgnore(projectDir, framework);
+
+      if (result instanceof Error) {
+        throw result;
+      } else {
+        return this._getMonacaIgnore(projectDir);
+      }
+    } else {
+      return '';
     }
+  };
+
+  Monaca.prototype._generateMonacaIgnore = function(projectDir, framework) {
+    var defaultConfig = path.resolve(__dirname, 'default-config', framework, '.monacaignore');
+
+    if (fs.existsSync(defaultConfig)) {
+      console.log("Generating default .monacaignore file.");
+      return fs.copyFileSync(defaultConfig, path.resolve(projectDir, '.monacaignore'));
+    } else {
+      return (new Error('No default .monacaignore file found.'));
+    }
+  };
+
+  Monaca.prototype._filterIgnoreList = function(projectDir, framework) {
+    var allFiles = [],
+      ignoreList = this._filterMonacaIgnore(projectDir, framework);
 
     if (os.platform() === 'win32') {
       projectDir = projectDir.replace(/\\/g,"/");
@@ -1813,7 +1843,7 @@
         var localFiles = files[0],
           remoteFiles = files[1];
 
-        var allowFiles = this._filterIgnoreList(projectDir);
+        var allowFiles = this._filterIgnoreList(projectDir, framework);
         var filesToBeDeleted = {};
 
         for (var f in remoteFiles) {
