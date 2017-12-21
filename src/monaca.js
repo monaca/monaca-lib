@@ -1195,11 +1195,12 @@
 
           var errorMessage = checkError();
 
-          if ((!framework || framework === 'cordova') && errorMessage) {
-            return Q.reject(new Error(errorMessage));
-          } else {
-            return Q.resolve(body);
+          if (!framework || framework === 'cordova') {
+            if (errorMessage) {
+              return Q.reject(new Error(errorMessage));
+            }
           }
+          return Q.resolve(body);
         } else {
           return Q.reject(new Error(body.status + " - " + body.message));
         }
@@ -3179,7 +3180,7 @@
       exists(path.join(projectDir, 'config.xml'))
     ]).then(
       function() {
-        return projectDir + ' is a Cordova project.';
+        return Q.resolve('cordova');
       },
       function(error) {
         var docsUrl;
@@ -3235,13 +3236,13 @@
    */
   Monaca.prototype.isMonacaProject = function(projectDir) {
 
-    return this.isCordovaProject(projectDir)
+    return this.isReactNativeProject(projectDir)
     .then(
-      function() {
-        return Q.resolve('cordova');
+      function(value) {
+        return Q.resolve(value);
       },
       function() {
-        return this.isReactNativeProject(projectDir);
+        return this.isCordovaProject(projectDir);
       }.bind(this)
     )
   };
