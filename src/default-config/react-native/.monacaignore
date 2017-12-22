@@ -1,5 +1,4 @@
 /node_modules/**
-/bla/**
 /android/build/**
 /ios/build/**
 /.DS_Store
