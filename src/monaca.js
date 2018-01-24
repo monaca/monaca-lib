@@ -1473,18 +1473,9 @@
           promises = [],
           filteredList = [];
 
-        glob.sync("**/*",
-          {
-            cwd: projectDir,
-            dot: true
-          }
-        ).forEach(
-          function(item) {
-            if (item.indexOf('node_modules') !== 0) {
-              filteredList.push(item);
-            }
-          }
-        );
+        filteredList = shell.ls('-RAL', projectDir).filter(function(name) {
+          return (name.indexOf('node_modules') !== 0 && fs.existsSync(name));
+        });
 
         if (options && options.filter && typeof options.filter === 'function') {
           filteredList = filteredList.filter(options.filter);
@@ -1501,6 +1492,7 @@
 
           if (fs.lstatSync(absolutePath).isDirectory()) {
             obj.type = 'dir';
+
           }
           else {
             obj.type = 'file';
