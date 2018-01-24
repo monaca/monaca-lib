@@ -1710,7 +1710,7 @@
       var projectConfig = require(path.join(projectDir, 'package.json'));
 
       // extract the name from the project path
-      var projectName = projectDir.match(/([^\/]*)\/*$/)[1],
+      var projectName = path.basename(projectDir),
         projectDescription;
 
       if (projectConfig && projectConfig.description) {
