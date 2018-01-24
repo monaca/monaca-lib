@@ -516,7 +516,7 @@
 
     if (fs.existsSync(defaultConfig)) {
       console.log("Generating default .monacaignore file.");
-      return fs.copyFileSync(defaultConfig, path.resolve(projectDir, '.monacaignore'));
+      return fs.copySync(defaultConfig, path.resolve(projectDir, '.monacaignore'));
     } else {
       return (new Error('No default .monacaignore file found.'));
     }
