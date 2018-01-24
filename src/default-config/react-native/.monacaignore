@@ -3,4 +3,4 @@
 /ios/build/**
 /build/**
 */.DS_Store
-*/.git
+*/.git/**

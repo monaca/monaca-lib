@@ -1480,7 +1480,7 @@
           }
         ).forEach(
           function(item) {
-            if (item.indexOf('node_modules') !== 0 && fs.existsSync(item)) {
+            if (item.indexOf('node_modules') !== 0 && fs.existsSync(path.resolve(projectDir, item))) {
               filteredList.push(item);
             }
           }
