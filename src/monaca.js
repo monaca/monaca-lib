@@ -1473,9 +1473,18 @@
           promises = [],
           filteredList = [];
 
-        filteredList = shell.ls('-RAL', projectDir).filter(function(name) {
-          return (name.indexOf('node_modules') !== 0 && fs.existsSync(name));
-        });
+        glob.sync("**/*",
+          {
+            cwd: path.resolve(projectDir),
+            dot: true
+          }
+        ).forEach(
+          function(item) {
+            if (item.indexOf('node_modules') !== 0 && fs.existsSync(item)) {
+              filteredList.push(item);
+            }
+          }
+        )
 
         if (options && options.filter && typeof options.filter === 'function') {
           filteredList = filteredList.filter(options.filter);
