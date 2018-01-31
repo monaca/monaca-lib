@@ -2248,7 +2248,7 @@
       return Q.resolve(npm);
     }
 
-    var npmModules = ['npm', 'global-npm'];
+    var npmModules = (this.clientType === 'cli') ? ['global-npm', 'npm'] : ['npm', 'global-npm'];
 
     for (var i in npmModules) {
       try {
