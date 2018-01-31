@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v2.5.1
+----
+* monaca: fixed npm issue for CLI.
+* monaca: improved error message when a remote build fails.
+
 v2.5.0
 ----
 * monaca: internal logic fix.
