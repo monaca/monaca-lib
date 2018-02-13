@@ -6,7 +6,7 @@ mkdir -p tmp
 pushd tmp
 
 PREFIX=`pwd`/install/
-export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig
+export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:/usr/local/opt/openssl/lib/pkgconfig
 
 export PATH=/usr/local/opt/openssl/bin:$PATH
 # export LD_LIBRARY_PATH=/usr/local/opt/openssl/lib:$LD_LIBRARY_PATH
@@ -15,16 +15,18 @@ export PATH=/usr/local/opt/openssl/bin:$PATH
 
 mkdir -p $PREFIX
 
-if [ ! -f 1.12.tar.gz ]; then
-  wget https://github.com/libimobiledevice/libplist/archive/1.12.tar.gz
+echo "********** libplist **********"
+
+if [ ! -f 2.0.0.tar.gz ]; then
+  wget https://github.com/libimobiledevice/libplist/archive/2.0.0.tar.gz
 fi
 
-if [ ! -d libplist-1.12 ]; then
-  tar xvf 1.12.tar.gz
+if [ ! -d libplist-2.0.0 ]; then
+  tar xvf 2.0.0.tar.gz
 fi
 
 if [ ! -f $PREFIX/lib/libplist.a ]; then
-  pushd libplist-1.12
+  pushd libplist-2.0.0
   NOCONFIGURE=1 ./autogen.sh
   NOCONFIGURE=1 ./autogen.sh
   ./configure --enable-static --prefix=$PREFIX
@@ -32,6 +34,8 @@ if [ ! -f $PREFIX/lib/libplist.a ]; then
   make install
   popd
 fi
+
+echo "********** libusbmuxd **********"
 
 if [ ! -f 1.0.10.tar.gz ]; then
   wget https://github.com/libimobiledevice/libusbmuxd/archive/1.0.10.tar.gz
@@ -50,6 +54,8 @@ if [ ! -f $PREFIX/lib/libusbmuxd.a ]; then
   make install
   popd
 fi
+
+echo "********** libimobiledevice **********"
 
 #if [ ! -f 1.2.0.tar.gz ]; then
 #  wget https://github.com/libimobiledevice/libimobiledevice/archive/1.2.0.tar.gz
