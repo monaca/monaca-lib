@@ -1206,10 +1206,12 @@
         }
       }.bind(this),
       function(err) {
+        var errMessage = err.message ? err.message : '';
+
         if (err.code === 404) {
-          return Q.reject(new Error("Cannot reach the server, contact Monaca Support. Error code: " + err.code));
+          return Q.reject(new Error("Error 404. Cannot reach the server, contact Monaca Support."));
         } else {
-          return Q.reject(new Error("Internal server error, contact Monaca Support. Error code: " + err.code));
+          return Q.reject(new Error("Internal server error, contact Monaca Support. " + errMessage));
         }
       }
     );
@@ -2342,7 +2344,7 @@
       return Q.resolve(npm);
     }
 
-    var npmModules = ['npm', 'global-npm'];
+    var npmModules = (this.clientType === 'cli') ? ['global-npm', 'npm'] : ['npm', 'global-npm'];
 
     for (var i in npmModules) {
       try {
