@@ -286,6 +286,10 @@ WebInspector.Main.prototype = {
     _connectionEstablished: function(connection)
     {
         console.timeStamp("Main._connectionEstablished");
+        connection._socket.send(JSON.stringify({
+          method: "Debugger.setBreakpointsActive",
+          params: { active: true } , id: 9999
+        }));
         connection.addEventListener(InspectorBackendClass.Connection.Events.Disconnected, onDisconnected);
 
         /**
