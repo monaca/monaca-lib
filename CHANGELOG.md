@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v2.6.0
+----
+* monaca: Added React-Native Project Support
+* monaca: Updated iOS Webkit Debug Proxy
+
 v2.5.1
 ----
 * monaca: fixed npm issue for CLI.
