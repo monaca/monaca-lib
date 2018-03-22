@@ -15,6 +15,15 @@ var outputStyle = {
 
 var compiler = webpack(webpackConfig);
 
+compiler.plugin("compile", function(params) {
+  process.send( { monacaTranspileLifecycle: true, action: 'start-compile' } ); // start compile
+});
+
+compiler.plugin("after-emit", function(compilation, cb) {
+  process.send( { monacaTranspileLifecycle: true, action: 'end-compile' } );  // finish compile
+  cb();
+});
+
 if (watch) {
   compiler.watch({
     poll: false,

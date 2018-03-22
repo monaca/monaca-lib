@@ -32,14 +32,24 @@
         changeType = 'update';
       }
 
-      for (var i = 0; i < this.callbacks.length; i++) {
-        var cb = this.callbacks[i];
-        cb(changeType, f);
-      }
+      this.doCallbacks();
+
+      // for (var i = 0; i < this.callbacks.length; i++) {
+      //   var cb = this.callbacks[i];
+      //   cb(changeType, f);
+      // }
+      
     }.bind(this));
 
     this._isRunning = true;
   };
+
+  FileWatcher.prototype.doCallbacks = function() {
+    for (var i = 0; i < this.callbacks.length; i++) {
+      var cb = this.callbacks[i];
+      cb(changeType, f);
+    }
+  }
 
   FileWatcher.prototype.stop = function() {
     if (this.filePath) {
