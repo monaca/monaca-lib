@@ -2749,6 +2749,11 @@
           type: 'progress',
           message: data
         });
+
+        if((/error/i).test(data)) {
+          var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
+          deferred.reject(error);
+        }
       }
     }.bind(this));
 
