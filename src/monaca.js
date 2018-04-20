@@ -3595,7 +3595,7 @@
 
     return this._post(resource, {}).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
-      (response) => { return Q.reject(unknownErrorMsg); }
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     );
   }
 
@@ -3636,7 +3636,7 @@
 
     return this._post(resource, {}).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
-      (response) => { return Q.reject(unknownErrorMsg); }
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     ).then((body) => {
       var collection = [];
     
@@ -3679,7 +3679,7 @@
       password : keystore_password
     }).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
-      (response) => { return Q.reject(unknownErrorMsg); }
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     );
   }
 
@@ -3703,7 +3703,7 @@
     filePath = path.resolve(filePath);
 
     if(!fs.existsSync(filePath)) {
-      return Q.reject('The provided KeyStore path does not exist.');
+      return Q.reject('The provided KeyStore file path does not exist.');
     }
 
     var unknownErrorMsg = 'An unknown error has occurred while attempting to upload Android KeyStore to Monaca.';
@@ -3711,7 +3711,7 @@
 
     return this._post_file(resource, {
       password: password,
-      isOverwrite: true,
+      isOverwrite: 'true',
       file: fs.createReadStream(filePath)
     }).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
@@ -3743,7 +3743,7 @@
       password : alias_password
     }).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
-      (response) => { return Q.reject(unknownErrorMsg); }
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     );
   }
 
@@ -3765,7 +3765,7 @@
       alias : alias_name
     }).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
-      (response) => { return Q.reject(unknownErrorMsg); }
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     );
   }
 
@@ -3853,7 +3853,7 @@
 
     return this._post(resource, {}).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
-      (response) => { return Q.reject(unknownErrorMsg); }
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     ).then((body) => {
       var collection = [];
     
@@ -3883,7 +3883,7 @@
 
     return this._post(resource, {}).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
-      (response) => { return Q.reject(unknownErrorMsg); }
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     ).then((body) => {
       var collection = [];
     
@@ -3923,7 +3923,7 @@
       country: country
     }).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
-      (response) => { return Q.reject(unknownErrorMsg); }
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     );
   }
 
@@ -3985,11 +3985,17 @@
     var unknownErrorMsg = 'An unknown error has occurred while attempting to upload iOS signing certificate to Monaca.';
     var resource = '/user/ios/importcrt';
 
+    filePath = path.resolve(filePath);
+
+    if(!fs.existsSync(filePath)) {
+      return Q.reject('The provided certificate file path does not exist.');
+    }
+
     return this._post_file(resource, {
       file: fs.createReadStream(filePath)
     }).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
-      (response) => { return Q.reject(unknownErrorMsg); }
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     );
   }
 
@@ -4006,11 +4012,17 @@
     var unknownErrorMsg = 'An unknown error has occurred while attempting to upload iOS provisioning profile to Monaca.';
     var resource = '/user/ios/importprov';
 
+    filePath = path.resolve(filePath);
+
+    if(!fs.existsSync(filePath)) {
+      return Q.reject('The provided provisioning profile file path does not exist.');
+    }
+
     return this._post_file(resource, {
       file: fs.createReadStream(filePath)
     }).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
-      (response) => { return Q.reject(unknownErrorMsg); }
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     );
   }
 
@@ -4028,12 +4040,18 @@
     var unknownErrorMsg = 'An unknown error has occurred while attempting to upload iOS PKCS12 to Monaca.';
     var resource = '/user/ios/importpkcs';
 
+    filePath = path.resolve(filePath);
+
+    if(!fs.existsSync(filePath)) {
+      return Q.reject('The provided p12 file path does not exist.');
+    }
+
     return this._post_file(resource, {
       password: password,
       file: fs.createReadStream(filePath)
     }).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
-      (response) => { return Q.reject(unknownErrorMsg); }
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     );
   }
 
@@ -4054,7 +4072,7 @@
       id: id
     }).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
-      (response) => { return Q.reject(unknownErrorMsg); }
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     );
   }
 
@@ -4075,7 +4093,7 @@
       id: id
     }).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
-      (response) => { return Q.reject(unknownErrorMsg); }
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     );
   }
 
@@ -4096,7 +4114,7 @@
       id: id
     }).then(
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
-      (response) => { return Q.reject(unknownErrorMsg); }
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     );
   }
 
