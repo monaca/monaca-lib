@@ -184,6 +184,8 @@
       request.debug = true;
     }
 
+    this.projectSettings = null;
+
     this.emitter = new EventEmitter();
     this._monacaData = this._loadAllData();
   };
@@ -603,7 +605,8 @@
     var deferred = Q.defer();
 
     var createRequestClient = function() {
-      return (requestClient ? Q.resolve(requestClient) : this._createRequestClient(method === 'GET' ? data : undefined));
+      var data = method === 'GET' ? data : undefined;
+      return (requestClient ? Q.resolve(requestClient) : this._createRequestClient(data));
     }.bind(this);
 
     createRequestClient().then(
@@ -3547,6 +3550,571 @@
       function() {
         return Q.reject(unknownErrorMsg);
       }
+    );
+  }
+
+  /**
+   * 
+   * @param {*} response 
+   * @param {*} customUnknownErrorMsg 
+   * @param {*} deferred 
+   * 
+   * @returns {Promise}
+   */
+  Monaca.prototype._prepareResponse = function(response, customUnknownErrorMsg, deferred) {
+    if(!response || !response.body) throw new Error('Invalid API Response Detected');
+    
+    var body = this._safeParse(response.body);
+    deferred = deferred || Q;
+
+    if(body.status === 'error' || body.status === 'fail') {
+      return deferred.reject(body.message || customUnknownErrorMsg);
+    } else {
+      return deferred.resolve(body);
+    }
+  }
+
+  /**
+   * Get Project Settings
+   * 
+   * @param {String} project_id 
+   * 
+   * @returns {Promise}
+   */
+  Monaca.prototype.fetchProjectSettings = function(project_id) {
+    if(!project_id) {
+      project_id = this.getProjectId();
+    }
+
+    if(this.projectSettings) {
+      return Q.resolve(this.projectSettings);
+    }
+
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to fetch project settings.';
+    var resource = '/project/' + project_id + '/setting/read';
+
+    return this._post(resource, {}).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    );
+  }
+
+  /* Methods for Setting Android Related Signing Materials  */
+
+  /**
+   * Fetches a collection of known KeyStore aliases.
+   * 
+   * @todo monaca signing list alias
+   * 
+   * @param {String} project_id
+   * 
+   * @return {Promise}
+   */
+  Monaca.prototype.fetchSigningAliasCollection = function(project_id) {
+    if(!project_id) {
+      project_id = this.getProjectId();
+    }
+
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to fetch the collection of your KeyStore alias configurations.';
+
+    return this.fetchProjectSettings(project_id).then(
+      (body) => {
+        return Q.resolve(
+          body.result 
+          && body.result.project 
+          && body.result.project.android 
+          && body.result.project.android.alias_android_list 
+          ? body.result.project.android.alias_android_list.map(x => x.alias)
+          : []
+        );
+      },
+      (error) => {
+        // Replace error with specific error message.
+        return Q.reject(unknownErrorMsg);
+      }
+    );
+
+    return this._post(resource, {}).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    ).then((body) => {
+      var collection = [];
+    
+      // Populate Collection
+      (body.result || []).forEach(function(profile) {
+        collection.push({
+          label: profile.prov_name + '  ( ' + profile.crt.cn + ' ) ',
+          crt_id: profile.crt.crt_id,
+          prov_id: profile.prov_id
+        });
+      });
+
+      return Q.resolve(collection);
+    });
+  }
+
+  /**
+   * Generate new KeyStore and alias. Exisiting KeyStore and aliases will be removed.
+   * 
+   * @todo monaca signing generate keystore
+   * 
+   * @param {String} project_id 
+   * @param {String} alias_name 
+   * @param {String} alias_password 
+   * @param {String} keystore_password 
+   * 
+   * @returns {Promise}
+   */
+  Monaca.prototype.generateSigningKeyStore = function (project_id, alias_name, alias_password, keystore_password) {
+    if(!project_id) {
+      project_id = this.getProjectId();
+    }
+
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to generate an Android KeyStore.';
+    var resource = '/project/' + project_id + '/setting/make/keystore';
+
+    return this._post(resource, {
+      alias : alias_name,
+      alias_password : alias_password,
+      password : keystore_password
+    }).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    );
+  }
+
+  /**
+   * Upload exisiting KeyStore & Alias file.
+   * Exisiting KeyStore & Alias will be removed.
+   * 
+   * @todo monaca signing upload keystore
+   * 
+   * @param {String} project_id 
+   * @param {String} filePath 
+   * @param {String} password 
+   * 
+   * @returns {Promise}
+   */
+  Monaca.prototype.uploadSigningKeyStore = function (project_id, filePath, password) {
+    if(!project_id) {
+      project_id = this.getProjectId();
+    }
+
+    filePath = path.resolve(filePath);
+
+    if(!fs.existsSync(filePath)) {
+      return Q.reject('The provided KeyStore file path does not exist.');
+    }
+
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to upload Android KeyStore to Monaca.';
+    var resource = '/project/' + project_id + '/setting/keystore/save';
+
+    return this._post_file(resource, {
+      password: password,
+      isOverwrite: 'true',
+      file: fs.createReadStream(filePath)
+    }).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    );
+  }
+
+  /**
+   * Add an Android KeyStore Alias
+   * 
+   * @todo monaca signing add alias
+   * 
+   * @param {String} project_id 
+   * @param {String} alias_name 
+   * @param {String} alias_password 
+   * 
+   * @returns {Promise}
+   */
+  Monaca.prototype.addSigningAlias = function (project_id, alias_name, alias_password) {
+    if(!project_id) {
+      project_id = this.getProjectId();
+    }
+
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to add an alias to the existing Android KeyStore.';
+    var resource = '/project/' + project_id + '/setting/make/alias';
+
+    return this._post(resource, {
+      alias : alias_name,
+      password : alias_password
+    }).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    );
+  }
+
+  /**
+   * Removes Android KeyStore Aliase
+   * 
+   * @todo monaca signing remove alias
+   * 
+   * @param {String} project_id 
+   * @param {String} alias_name 
+   * 
+   * @returns {Promise}
+   */
+  Monaca.prototype.removeSigningAlias = function(project_id, alias_name) {
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to remove your signing KeyStore alias.';
+    var resource = '/project/' + project_id + '/setting/delete/alias';
+
+    return this._post(resource, {
+      alias : alias_name
+    }).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    );
+  }
+
+  /**
+   * Downloads Android KeyStore
+   * 
+   * @todo monaca signing export keystore
+   * 
+   * @param {String} project_id 
+   * @param {String} downloadToDir 
+   * 
+   * @returns {Promise}
+   */
+  Monaca.prototype.exportSigningKeyStore = function(project_id, downloadToDir) {
+    var downloadTokenResource = '/project/' + project_id + '/export/keystore_android';
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to export the Android KeyStore.';
+    var prepareDownloadErrorMsg = 'Failed to prepare to download the requested Android KeyStore.';
+    
+    if(!downloadToDir) {
+      return Q.reject('Missing path to the download directory. Please provide a path to a directory to save to.');
+    }
+    
+    return this._post(downloadTokenResource, {mode: 'start'})
+      .then(
+        (response) => { return this._prepareResponse(response, prepareDownloadErrorMsg); },
+        (response) => { return Q.reject(response || unknownErrorMsg); }
+      ).then(
+        body => {
+          if(body && body.result && body.result.dlToken) {
+            return Q.resolve(body.result.dlToken);
+          }
+
+          return Q.reject(prepareDownloadErrorMsg);
+        },
+
+        (error) => { return Q.reject(error ||  unknownErrorMsg); }
+      ).then(
+        (token) => {
+          var downloadResource = '/project/' + project_id + '/export/keystore_android?mode=download&dlToken=' + token;
+          return this._post(downloadResource, {});
+        },
+
+        (error) => { return Q.reject(error ||  unknownErrorMsg); }
+      ).then(
+        (fileContent) => {
+          // Resolve the download directory.
+          downloadToDir = path.resolve(downloadToDir);
+
+          // If the folder does not exist, create the folder.
+          if(!fs.existsSync(downloadToDir)) {
+            shell.mkdir('-p', downloadToDir);
+          }
+
+          // KeyStore file name
+          var file = path.join(downloadToDir, 'android.keystore');
+          var deferred = Q.defer();
+
+          fs.writeFile(file, fileContent.body, (error) => {
+            if (error) {
+              return deferred.reject(error);
+            }
+  
+            return deferred.resolve(file);
+          });
+
+          return deferred.promise;
+        },
+
+        (error) => { return Q.reject(error ||  unknownErrorMsg); }
+      );
+  }
+  
+  /* Methods for Setting iOS Related Signing Materials  */
+
+  /**
+   * Fetches a collection of Provisioning Profile and Certificate IDs.
+   * 
+   * @todo monaca signing list provisioning
+   * 
+   * @return {Promise}
+   */
+  Monaca.prototype.fetchSigningProvisioningProfileCollection = function() {
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to fetch the collection of your provisioning profile configurations.';
+    var resource = '/user/ios/provlist';
+
+    return this._post(resource, {}).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    ).then((body) => {
+      var collection = [];
+    
+      // Populate Collection
+      (body.result || []).forEach(function(profile) {
+        collection.push({
+          label: profile.prov_name + '  ( ' + profile.crt.cn + ' ) ',
+          crt_id: profile.crt.crt_id,
+          prov_id: profile.prov_id
+        });
+      });
+
+      return Q.resolve(collection);
+    });
+  }
+
+  /**
+   * Fetches a collection of Private Key Related Data
+   * 
+   * @todo monaca signing list privatekeys
+   * 
+   * @return {Promise}
+   */
+  Monaca.prototype.fetchSigningPrivateKeyCollection = function() {
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to fetch the collection of your private keys.';
+    var resource = '/user/ios/keylist';
+
+    return this._post(resource, {}).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    ).then((body) => {
+      var collection = [];
+    
+      // Populate Collection
+      (body.result || []).forEach(function(pk) {
+        collection.push({
+          key_id: pk.key_id,
+          email: pk.email,
+          hash: pk.hash,
+          has_csr: pk.has_csr,
+          has_certs: pk.crts.length > 0
+        });
+      });
+
+      return Q.resolve(collection);
+    });
+  }
+
+  /**
+   * Generates a Signing Private Key Certificate Signing Request
+   * 
+   * @todo monaca signing generate pkcsr
+   * 
+   * @param {String} email 
+   * @param {String} name 
+   * @param {String} country 
+   * 
+   * @return {Promise}
+   */
+  Monaca.prototype.generateSigningPKCSR = function(email, name, country) {
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to generate a Private Key and CSR for iOS signing.';
+    var resource = '/user/ios/makecsr';
+
+    return this._post(resource, {
+      name: name,
+      email: email,
+      country: country
+    }).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    );
+  }
+
+  /**
+   * Downloads Private Key Certificate Signing Request
+   * 
+   * @todo monaca signing export pkcsr
+   * 
+   * @param {String} csr_id 
+   * @param {String} downloadToDir 
+   * 
+   * @returns {Promise}
+   */
+  Monaca.prototype.exportSigningPKCSR = function(csr_id, downloadToDir) {
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to export iOS Certificate Signing Request.';
+    var resource = '/user/ios/downloadcsr?id=' + encodeURIComponent(csr_id);
+
+    if(!downloadToDir) {
+      return Q.reject('Missing path to the download directory. Please provide a path to a directory to save to.');
+    }
+
+    downloadToDir = path.resolve(downloadToDir);
+
+    if(!fs.existsSync(downloadToDir)) {
+      shell.mkdir('-p', downloadToDir);
+    }
+
+    return this._post(resource, {}).then(
+      (fileContent) => {
+        // Signing Request File Name
+        var file = path.join(downloadToDir, 'ios.certSigningRequest');
+        var deferred = Q.defer();
+
+        fs.writeFile(file, fileContent.body, (error) => {
+          if (error) {
+            return deferred.reject(error);
+          }
+
+          return deferred.resolve(file);
+        });
+
+        return deferred.promise;
+      },
+
+      (error) => { return Q.reject(error && error.message || unknownErrorMsg); }
+    );
+  }
+
+  /**
+   * Upload iOS Signing Certificate
+   * 
+   * @todo monaca signing upload certificate
+   * 
+   * @param {String} filePath
+   * 
+   * @returns {Promise}
+   */
+  Monaca.prototype.uploadSigningCertificate = function(filePath) {
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to upload iOS signing certificate to Monaca.';
+    var resource = '/user/ios/importcrt';
+
+    filePath = path.resolve(filePath);
+
+    if(!fs.existsSync(filePath)) {
+      return Q.reject('The provided certificate file path does not exist.');
+    }
+
+    return this._post_file(resource, {
+      file: fs.createReadStream(filePath)
+    }).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    );
+  }
+
+  /**
+   * Upload iOS Signing Provisioning Profile
+   * 
+   * @todo monaca signing upload provisining
+   * 
+   * @param {String} filePath 
+   * 
+   * @returns {Promise}
+   */
+  Monaca.prototype.uploadSigningProvisioningProfile = function(filePath) {
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to upload iOS provisioning profile to Monaca.';
+    var resource = '/user/ios/importprov';
+
+    filePath = path.resolve(filePath);
+
+    if(!fs.existsSync(filePath)) {
+      return Q.reject('The provided provisioning profile file path does not exist.');
+    }
+
+    return this._post_file(resource, {
+      file: fs.createReadStream(filePath)
+    }).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    );
+  }
+
+  /**
+   * Upload iOS Signing p12 file
+   * 
+   * @todo monaca signing upload pkcs12
+   * 
+   * @param {String} filePath 
+   * @param {String} password 
+   * 
+   * @returns {Promise}
+   */
+  Monaca.prototype.uploadSigningPKCS12 = function(filePath, password) {
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to upload iOS PKCS12 to Monaca.';
+    var resource = '/user/ios/importpkcs';
+
+    filePath = path.resolve(filePath);
+
+    if(!fs.existsSync(filePath)) {
+      return Q.reject('The provided p12 file path does not exist.');
+    }
+
+    return this._post_file(resource, {
+      password: password,
+      file: fs.createReadStream(filePath)
+    }).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    );
+  }
+
+  /**
+   * Remove iOS Signing Certificate
+   * 
+   * @todo monaca signing remove certificate
+   * 
+   * @param {String} id 
+   * 
+   * @returns {Promise}
+   */
+  Monaca.prototype.removeSigningCertificate = function(id) {
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to remove your signing certificate.';
+    var resource = '/user/ios/deletecrt';
+
+    return this._post(resource, {
+      id: id
+    }).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    );
+  }
+
+  /**
+   * Remove iOS Signing Provisioning Profile
+   * 
+   * @todo monaca signing remove provisioning
+   * 
+   * @param {String} id 
+   * 
+   * @returns {Promise}
+   */
+  Monaca.prototype.removeSigningProvisioningProfile = function(id) {
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to remove your signing provisioning profile.';
+    var resource = '/user/ios/deleteprov';
+
+    return this._post(resource, {
+      id: id
+    }).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    );
+  }
+
+  /**
+   * Remove iOS Signing Private Key
+   * 
+   * @todo monaca signing remove pkcs12
+   * 
+   * @param {String} id 
+   * 
+   * @returns {Promise}
+   */
+  Monaca.prototype.removeSigningPrivateKey = function(id) {
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to remove your signing private key and CSR.';
+    var resource = '/user/ios/deletekey';
+
+    return this._post(resource, {
+      id: id
+    }).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
     );
   }
 
