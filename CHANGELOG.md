@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v2.6.2
+----
+* Added Android and iOS Signing APIs
+
 v2.6.0
 ----
 * monaca: Added React-Native Project Support
