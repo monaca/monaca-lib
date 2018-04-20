@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v2.6.3
+----
+* Reverted changes to the client request creation for CLI.
+
 v2.6.2
 ----
 * Added Android and iOS Signing APIs
