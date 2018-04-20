@@ -605,8 +605,7 @@
     var deferred = Q.defer();
 
     var createRequestClient = function() {
-      var data = method === 'GET' ? data : undefined;
-      return (requestClient ? Q.resolve(requestClient) : this._createRequestClient(data));
+      return (requestClient ? Q.resolve(requestClient) : this._createRequestClient(method === 'GET' ? data : undefined));
     }.bind(this);
 
     createRequestClient().then(
