@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v2.7.0
+----
+* monaca: Stop live relaod in case of transpile project.
+
 v2.6.3
 ----
 * Reverted changes to the client request creation for CLI.
