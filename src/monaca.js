@@ -2702,7 +2702,7 @@
    * @param {Object} Options
    * @return {Promise}
    */
-  Monaca.prototype.transpile = function(projectDir, options) {
+  Monaca.prototype.transpile = function(projectDir, options, cb) {
     options = options || {};
 
     if (!this.isTranspilable(projectDir)) {
@@ -2744,17 +2744,27 @@
     });
 
     webpackProcess.on('message', function(data) {
-      if (this.clientType === 'cli') {
-        process.stdout.write(data + '\n');
+      if (data.monacaTranspileLifecycle) {
+        if (cb != null) {
+          cb( { type: 'lifecycle', action : data.action } );
+        }
+        // deferred.notify( data.text);
       } else {
-        this.emitter.emit('output', {
-          type: 'progress',
-          message: data
-        });
+        if (this.clientType === 'cli') {
+          process.stdout.write(data + '\n');
+        } else {
+          this.emitter.emit('output', {
+            type: 'progress',
+            message: data
+          });
+        }
       }
     }.bind(this));
 
     webpackProcess.on('exit', function(code) {
+      if (cb != null) {
+        cb( { type: 'lifecycle', action : 'process-exit'} );
+      }
       if (code === 1) {
         var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
         deferred.reject(error);
