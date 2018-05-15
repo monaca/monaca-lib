@@ -2282,12 +2282,50 @@
     if (!params.purpose) {
       params.purpose = 'debug';
     }
-
+    
     if (!params.platform) {
       deferred.reject(new Error('Must specify build platform.'));
     }
 
-    this._post(buildRoot, params).then(
+    var post = this._post;
+
+    if(params.signing) {
+      if(params.signing.keystore && !fs.existsSync(params.signing.keystore)) {
+        return Q.reject('The provided KeyStore file path does not exist.');
+      }
+  
+      if(params.signing.certificate && !fs.existsSync(params.signing.certificate)) {
+        return Q.reject('The provided certificate file path does not exist.');
+      }
+  
+      if(params.signing.private_key && !fs.existsSync(params.signing.private_key)) {
+        return Q.reject('The provided private key file path does not exist.');
+      }
+  
+      if(params.signing.provisioning_profile && !fs.existsSync(params.signing.provisioning_profile)) {
+        return Q.reject('The provided provisioning profile file path does not exist.');
+      }
+
+      if(params.signing.keystore) {
+        params.signing.keystore = fs.createReadStream(params.signing.keystore);
+      }
+
+      if(params.signing.certificate) {
+        params.signing.certificate = fs.createReadStream(params.signing.certificate);
+      }
+
+      if(params.signing.private_key) {
+        params.signing.private_key = fs.createReadStream(params.signing.private_key);
+      }
+
+      if(params.signing.provisioning_profile) {
+        params.signing.provisioning_profile = fs.createReadStream(params.signing.provisioning_profile);
+      }
+
+      post = this._post_file;
+    }
+
+    post(buildRoot, params).then(
       function(data) {
         var queueId = this._safeParse(data.body).result.queue_id;
 
