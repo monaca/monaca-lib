@@ -446,6 +446,20 @@
     return deferred.promise;
   };
 
+  Localkit.prototype.liveReload = function (projectId, projectPath, changeType, filePath) {
+    console.log("liveReload is called");
+    console.log(this.projectEvents);
+    this.projectEvents.sendFileEvent(projectId, changeType, filePath);
+    console.log("liveReload is called 2");
+    this.emit('live-reload', {
+      projectId: projectId,
+      changeType: changeType,
+      filePath: filePath,
+      projectPath: projectPath
+    });
+    console.log("liveReload is called");
+  };
+
   /**
    * @method
    * @memberof Localkit
@@ -475,13 +489,15 @@
 
           try {
             fileWatcher.onchange(function(changeType, filePath) {
-              this.projectEvents.sendFileEvent(projectId, changeType, filePath);
-              this.emit('live-reload', {
-                projectId: projectId,
-                changeType: changeType,
-                filePath: filePath,
-                projectPath: projectPath
-              });
+              console.log("=== liveReload ===");
+              this.liveReload(projectId, projectPath, changeType, filePath);
+              // this.projectEvents.sendFileEvent(projectId, changeType, filePath);
+              // this.emit('live-reload', {
+              //   projectId: projectId,
+              //   changeType: changeType,
+              //   filePath: filePath,
+              //   projectPath: projectPath
+              // });
             }.bind(this));
 
             if (this.isWatching()) {
@@ -600,6 +616,8 @@
       .filter(function(projectId) {
         return this.projects.getProjectById(projectId).path === projectDir;
       }.bind(this))[0];
+
+    this.liveReload(projectId, projectDir, "resync", null);
 
     if (!projectId) {
       return Q.reject(new Error('No such project.'));

@@ -160,8 +160,15 @@
   };
 
   ProjectEvents.prototype.sendFileEvent = function(projectId, changeType, filePath) {
-    var isDir;
 
+    if (changeType === 'resync') {
+      return this.sendMessage({
+        projectId: projectId,
+        action: 'resync'
+      });
+    }
+
+    var isDir;
     try {
       isDir = fs.lstatSync(filePath).isDirectory();
     }
