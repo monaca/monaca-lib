@@ -447,17 +447,13 @@
   };
 
   Localkit.prototype.liveReload = function (projectId, projectPath, changeType, filePath) {
-    console.log("liveReload is called");
-    console.log(this.projectEvents);
     this.projectEvents.sendFileEvent(projectId, changeType, filePath);
-    console.log("liveReload is called 2");
     this.emit('live-reload', {
       projectId: projectId,
       changeType: changeType,
       filePath: filePath,
       projectPath: projectPath
     });
-    console.log("liveReload is called");
   };
 
   /**
@@ -489,7 +485,6 @@
 
           try {
             fileWatcher.onchange(function(changeType, filePath) {
-              console.log("=== liveReload ===");
               this.liveReload(projectId, projectPath, changeType, filePath);
               // this.projectEvents.sendFileEvent(projectId, changeType, filePath);
               // this.emit('live-reload', {
