@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v2.7.4
+----
+* Added directory path validation check for signing APIs.
+* Added fetching signing certificate collection API.
+
 v2.7.0
 ----
 * monaca: Stop live relaod in case of transpile project.
