@@ -35,6 +35,15 @@
   var USER_DATA_FILE = path.join(USER_CORDOVA, 'monaca.json');
   var CONFIG_FILE = path.join(USER_CORDOVA, 'monaca_config.json');
 
+  // util functions
+  var _isDirectory = (path) => {
+    if(fs.lstatSync(path).isDirectory()) return true;
+    return false;
+  };
+
+  // error message
+  const ERROR_DIRECTORY_PATH_MESSAGE = 'This is directory. Please provide the file path.';
+
   // config
   var config = nconf.env()
     .file(path.join(__dirname, 'config.json'))
@@ -3715,6 +3724,10 @@
       return Q.reject('The provided KeyStore file path does not exist.');
     }
 
+    if (_isDirectory(filePath)) {
+      return Q.reject(ERROR_DIRECTORY_PATH_MESSAGE);
+    }
+
     var unknownErrorMsg = 'An unknown error has occurred while attempting to upload Android KeyStore to Monaca.';
     var resource = '/project/' + project_id + '/setting/keystore/save';
 
@@ -3879,6 +3892,45 @@
     });
   }
 
+  /* Methods for Setting iOS Related Signing Materials  */
+
+  /**
+   * Fetches a collection of Certificate IDs.
+   * 
+   * @todo monaca signing list certificate
+   * 
+   * @return {Promise}
+   */
+  Monaca.prototype.fetchSigningCertificateCollection = function() {
+    var unknownErrorMsg = 'An unknown error has occurred while attempting to fetch the collection of your certificate configurations.';
+    var resource = '/user/ios/provlist';
+
+    return this._post(resource, {}).then(
+      (response) => { return this._prepareResponse(response, unknownErrorMsg); },
+      (error) => { return Q.reject(error || unknownErrorMsg); }
+    ).then((body) => {
+      let collection = new Map();
+      let key = '';
+      let value = '';
+      // Populate Collection
+      (body.result || []).forEach(function(profile) {
+        key = profile.crt.crt_id;
+        collection.set(key, {
+          label: profile.crt.cn,
+          crt_id: key,
+          expiration: profile.crt.expiration
+        });
+      });
+
+      // convert to array
+      let result = [];
+      if (collection && (collection.size >= 1)) result = Array.from(collection.values());
+
+      return Q.resolve(result);
+    });
+  }
+
+
   /**
    * Fetches a collection of Private Key Related Data
    * 
@@ -4000,6 +4052,10 @@
       return Q.reject('The provided certificate file path does not exist.');
     }
 
+    if (_isDirectory(filePath)) {
+      return Q.reject(ERROR_DIRECTORY_PATH_MESSAGE);
+    }
+
     return this._post_file(resource, {
       file: fs.createReadStream(filePath)
     }).then(
@@ -4025,6 +4081,10 @@
 
     if(!fs.existsSync(filePath)) {
       return Q.reject('The provided provisioning profile file path does not exist.');
+    }
+
+    if (_isDirectory(filePath)) {
+      return Q.reject(ERROR_DIRECTORY_PATH_MESSAGE);
     }
 
     return this._post_file(resource, {
@@ -4053,6 +4113,10 @@
 
     if(!fs.existsSync(filePath)) {
       return Q.reject('The provided p12 file path does not exist.');
+    }
+
+    if (_isDirectory(filePath)) {
+      return Q.reject(ERROR_DIRECTORY_PATH_MESSAGE);
     }
 
     return this._post_file(resource, {
