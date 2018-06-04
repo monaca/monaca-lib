@@ -403,7 +403,7 @@
   //Used to filter the uploaded/downloaded files/dirs based on patterns
   Monaca.prototype._fileFilter = function(f, allowFiles, projectDir, source) {
 
-    if (f.indexOf('/.monaca') >= 0 && f.indexOf('/node_modules') >= 0 ) {
+    if (f.indexOf('/.monaca') >= 0 || f.indexOf('/node_modules') >= 0 ) {
       return false;
     }
 
@@ -500,7 +500,7 @@
   };
 
   Monaca.prototype._excludeFromCloudDelete = function(key) {
-    if (/^\/.monaca/.test(key)) {
+    if (/^\/.monaca|\/node_modules\/?/.test(key)) {
       return true;
     } else {
       return false;
@@ -550,7 +550,7 @@
   Monaca.prototype._filterIgnoreList = function(projectDir, framework) {
     var allFiles = [],
       ignoreList = this._filterMonacaIgnore(projectDir, framework);
-
+    
     if (os.platform() === 'win32') {
       projectDir = projectDir.replace(/\\/g,"/");
     }
@@ -568,7 +568,6 @@
         })
       }
     )
-
     return allFiles;
   };
 
@@ -1873,6 +1872,7 @@
           remoteFiles = files[1];
 
         var allowFiles = this._filterIgnoreList(projectDir, framework);
+
         var filesToBeDeleted = {};
 
         for (var f in remoteFiles) {
