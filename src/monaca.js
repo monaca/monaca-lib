@@ -1833,6 +1833,7 @@
    * @memberof Monaca
    * @description
    *  Checks file difference between local and remote projects.
+   *  Pass in the options.Type = 'downloadProject' if you want to get changes between remote and local projects (download action).
    *  If it succeeds, an object containing the modified/deleted files will be returned.
    * @param {string} projectDir - Project directory.
    * @return {Promise}
@@ -1868,8 +1869,17 @@
     )
     .then(
       function(files) {
-        var localFiles = files[0],
-          remoteFiles = files[1];
+        var localFiles, remoteFiles, actionType;
+
+        if (options && options.actionType === 'downloadProject') {
+          localFiles = files[1]; //remote files
+          remoteFiles = files[0]; //local files
+          actionType = 'downloadProject';
+        } else {
+          localFiles = files[0]; //local files
+          remoteFiles = files[1]; //remote files
+          actionType = 'uploadProject';
+        }
 
         var allowFiles = this._filterIgnoreList(projectDir, framework);
 
@@ -1887,15 +1897,35 @@
 
         var keys = [];
 
-        // Checks if the file/dir are included in a directory that can be uploaded.
-        for (var file in localFiles) {
-          if (!framework || framework === 'cordova') {
-            if (this._fileFilter(file, allowFiles, projectDir, "uploadProject")) {
-              keys.push(file);
+        if (actionType === 'downloadProject') {
+          // Copy the logic from downloadProject function
+          if (allowFiles.length > 0) {
+            for (var file in localFiles) {
+              if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + file) >= 0) {
+                // Allow this file since it exists in the allowed list of files.
+                keys.push(file);
+              } else {
+                // Check if this file already exists locally.
+                // If yes then don't donwload it. If no, then download it.
+                if (fs.existsSync(path.join(projectDir,file))) {
+                  // DO NOTHING
+                } else {
+                  keys.push(file);
+                }
+              }
             }
-          } else {
-            if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + file) >= 0) {
-              keys.push(file);
+          }
+        } else {
+          // Checks if the file/dir are included in a directory that can be uploaded.
+          for (var file in localFiles) {
+            if (!framework || framework === 'cordova') {
+              if (this._fileFilter(file, allowFiles, projectDir, actionType)) {
+                keys.push(file);
+              }
+            } else {
+              if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + file) >= 0) {
+                keys.push(file);
+              }
             }
           }
         }
