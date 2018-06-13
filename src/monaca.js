@@ -867,7 +867,8 @@
               'reloginToken': body.result.token,
               'clientId': body.result.clientId,
               'x-monaca-param-api-token': headers['x-monaca-param-api-token'],
-              'x-monaca-param-session': headers['x-monaca-param-session']
+              'x-monaca-param-session': headers['x-monaca-param-session'],
+              'subscriberUrl': body.result.subscriberUrl,
             })
             .then(
               function() {
@@ -3379,6 +3380,7 @@
    * @memberof Monaca
    * @description
    *   Starts remote build process in browser
+   *   Set arg.skipDownload to true if you want to skip download the changes after closing the windows.
    * @param {Object} arg - Information about project which is to be built remotely.
    * @param {Function} openRemoteBuildWindow - Specifies how browser will be opened with remote build url, returns promise.
    * @return {Promise}
@@ -3507,6 +3509,10 @@
         )
         .then(
           function(projectId) {
+            // notify client the projectId -- the project is available at the cloud now.
+            outerDeferred.notify({
+              projectId: projectId
+            });
             var url;
             if (arg.showSettings) {
               url = this.apiRoot.match(/https(.*)\//)[0] + '/project/' + projectId + '/build?page=settings';
@@ -3527,7 +3533,13 @@
           outerDeferred.notify('Waiting for the remote build window to close...');
           return openRemoteBuildWindow(url);
         })
-        .then(downloadProject)
+        .then(function(){
+          if (arg.skipDownload) {
+            return true;
+          } else {
+            return downloadProject();
+          }
+        })
         .then(
           function() {
             outerDeferred.resolve();
