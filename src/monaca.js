@@ -611,6 +611,7 @@
     method = method.toUpperCase();
     resource = resource.match(/^https?\:\/\//) ? resource : (this.apiRoot + resource);
     var deferred = Q.defer();
+
     var createRequestClient = function() {
       return (requestClient ? Q.resolve(requestClient) : this._createRequestClient(method === 'GET' ? data : undefined));
     }.bind(this);
@@ -1454,39 +1455,6 @@
 
     return deferred.promise;
   };
-
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Fetch project information
-   * @param {string} projectId
-   * @return {Promise}
-   * @example
-   *   monaca.fetchProjectInfo('SOME_PROJECT_ID').then(
-   *     function(info) {
-   *       // Fetched project info
-   *     },
-   *     function(error) {
-   *       // Failed fetching project info
-   *     }
-   *   );
-   */
-  Monaca.prototype.fetchProjectInfo = function(projectId) {
-    var deferred = Q.defer();
-    this._post('/project/' + projectId + '/getProjectInfo').then(
-      function(data) {
-        deferred.resolve(JSON.parse(data.body).result);
-      },
-      function(error) {
-        deferred.reject(error);
-      }
-    );
-
-    return deferred.promise;
-  };
-
 
   /**
    * @method
@@ -3411,7 +3379,6 @@
    * @memberof Monaca
    * @description
    *   Starts remote build process in browser
-   *   Pass in arg.watchUpdate will return the websocket endpoint to listen for file change event and manually implement it on your local. Otherwise, it will override all the changes to your local files.
    * @param {Object} arg - Information about project which is to be built remotely.
    * @param {Function} openRemoteBuildWindow - Specifies how browser will be opened with remote build url, returns promise.
    * @return {Promise}
@@ -3419,8 +3386,6 @@
   Monaca.prototype.startRemoteBuild = function(arg, openRemoteBuildWindow) {
     try {
       var outerDeferred = Q.defer();
-      var _projectId = '';
-      var _browserUrl;
       var getProjectId = function() {
         return this.getProjectId(arg.path)
           .then(
@@ -3469,23 +3434,6 @@
             }.bind(this)
           );
       }.bind(this);
-
-      var getWebsocket = function(projectId) {
-        return this.fetchProjectInfo(projectId)
-        .then(
-          function(info) {
-            if (info && info.subscriberUrl) {
-              return info.subscriberUrl;
-            } else {
-              return '';
-            }
-          },
-          function(err) {
-            console.log(err);
-            return '';
-          }
-        );
-      }.bind(this)
 
       var downloadProject = function() {
         outerDeferred.notify('Downloading changes from the cloud...');
@@ -3560,7 +3508,6 @@
         .then(
           function(projectId) {
             var url;
-            _projectId = projectId;
             if (arg.showSettings) {
               url = this.apiRoot.match(/https(.*)\//)[0] + '/project/' + projectId + '/build?page=settings';
             } else if (arg.showUrl) {
@@ -3576,34 +3523,11 @@
             }
           }.bind(this)
         )
-        .then(
-          function(url) {
-            _browserUrl = url;
-            if (arg.watchUpdate) {
-              return getWebsocket(_projectId);
-            } else {
-              return '';
-            }
-          }
-        )
-        .then(
-          function(websocketEndpoint) {
-            if (arg.watchUpdate && websocketEndpoint) {
-              outerDeferred.notify({
-                'websocketEndpoint': websocketEndpoint
-              });
-            }
-            outerDeferred.notify('Waiting for the remote build window to close...');
-            return openRemoteBuildWindow(_browserUrl);
-          }
-        )
-        .then(function() {
-          if (arg.watchUpdate) {
-            return true; //no need to download the changes
-          } else {
-            return downloadProject();
-          }
+        .then(function(url) {
+          outerDeferred.notify('Waiting for the remote build window to close...');
+          return openRemoteBuildWindow(url);
         })
+        .then(downloadProject)
         .then(
           function() {
             outerDeferred.resolve();
