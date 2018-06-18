@@ -36,8 +36,32 @@
   var CONFIG_FILE = path.join(USER_CORDOVA, 'monaca_config.json');
 
   // util functions
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Checks whether it is directory.
+   * @param {string} file or directory path.
+   * @return Boolean
+   */
   var _isDirectory = (path) => {
     if(fs.lstatSync(path).isDirectory()) return true;
+    return false;
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *  Checks whether the file is included in the filter list.
+   * @param {string} file or directory path.
+   * @return Boolean
+   */
+  var _includeInExplicitFilterList = function(f) {
+    if ( f.indexOf('/.monaca') >= 0 || f.indexOf('/node_modules') >= 0 || f.indexOf('/.git') >= 0 ) {
+      return true;
+    }
     return false;
   };
 
@@ -403,7 +427,7 @@
   //Used to filter the uploaded/downloaded files/dirs based on patterns
   Monaca.prototype._fileFilter = function(f, allowFiles, projectDir, source) {
 
-    if (f.indexOf('/.monaca') >= 0 || f.indexOf('/node_modules') >= 0 ) {
+    if ( _includeInExplicitFilterList(f) ) {
       return false;
     }
 
@@ -500,7 +524,7 @@
   };
 
   Monaca.prototype._excludeFromCloudDelete = function(key) {
-    if (/^\/.monaca|\/node_modules\/?/.test(key)) {
+    if (/^\/.monaca|\/node_modules\/?|\/.git\/?/.test(key)) {
       return true;
     } else {
       return false;
@@ -520,10 +544,12 @@
 
   Monaca.prototype._getMonacaIgnore = function(projectDir, framework) {
     var monacaIgnore = path.resolve(projectDir, '.monacaignore');
+    let allowFrameworks = ['cordova', 'react-native'];
 
     if (fs.existsSync(monacaIgnore)) {
       return fs.readFileSync(monacaIgnore, 'utf8');
-    } else if (framework && framework !== 'cordova') {
+    } else if (framework && (allowFrameworks.indexOf(framework) >= 0)) {
+      // generate .monacaignore for all frameworks - cordova & react-native
       var result = this._generateMonacaIgnore(projectDir, framework);
 
       if (result instanceof Error) {
@@ -1902,7 +1928,9 @@
           // Copy the logic from downloadProject function
           if (allowFiles.length > 0) {
             for (var file in localFiles) {
-              if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + file) >= 0) {
+              if (_includeInExplicitFilterList(file)) {
+                // DO NOTHING
+              } else if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + file) >= 0) {
                 // Allow this file since it exists in the allowed list of files.
                 keys.push(file);
               } else {
@@ -2144,12 +2172,12 @@
             // Filter out directories and unchanged files.
             this._filterFiles(remoteFiles, localFiles);
 
-
-
             var filterFiles = function() {
               if (allowFiles.length > 0) {
                 for (var file in remoteFiles) {
-                  if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + file) >= 0) {
+                  if (_includeInExplicitFilterList(file)) {
+                    delete remoteFiles[file];
+                  } else if (allowFiles.indexOf((os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + file) >= 0) {
                     // Allow this file since it exists in the allowed list of files.
                   } else {
                     // Check if this file already exists locally.
