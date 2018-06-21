@@ -127,6 +127,7 @@ module.exports = {
 
   devServer: {
     contentBase: './src/public',
+    historyApiFallback: true,
     colors: true,
     inline: true,
     host: '0.0.0.0',
