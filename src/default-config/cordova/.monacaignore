@@ -1,6 +1,8 @@
-/node_modules/**
-/android/build/**
-/ios/build/**
-/build/**
-*/.DS_Store
-*/.git/**
+node_modules
+.git
+.monaca/*
+!.monaca/project_info.json
+android/build
+ios/build
+build
+.DS_Store

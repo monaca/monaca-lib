@@ -36,6 +36,7 @@
     "fs-extra": "0.30.0",
     "glob": "^5.0.14",
     "global-npm": "^0.3.0",
+    "ignore": "^3.3.8",
     "lockfile": "^1.0.0",
     "minimatch": "https://github.com/frandiox/minimatch/archive/escape-fix.tar.gz",
     "nconf": "^0.7.1",
