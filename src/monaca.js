@@ -1796,6 +1796,11 @@
   Monaca.prototype.checkModifiedFiles = function(projectDir, options) {
     let projectId, framework;
 
+    if (options && options.result) {
+      // return the result if it is supplied
+      return Q.resolve(options.result);
+    }
+
     return this.isMonacaProject(projectDir)
     .then(
       function(projectFramework) {
@@ -1912,6 +1917,13 @@
    */
   Monaca.prototype.uploadProject = function(projectDir, options) {
     let deferred = Q.defer();
+
+    if (options && (options.userDefinedSelectedFileFlag === true) && (!options.userDefinedSelectedFiles || !options.userDefinedSelectedFiles.length)) {
+      utils.info('You have chosen not to upload anything.', deferred);
+      deferred.resolve([]);
+      return deferred.promise;
+    }
+
     this.checkModifiedFiles(projectDir, options)
     .then(
       function(result) {
@@ -1920,7 +1932,13 @@
           keys = result.keys,
           projectId = result.projectId;
 
-        if (options && !options.dryrun && options.delete) {
+        if (options && !options.dryrun && options.delete && filesToBeDeleted && Object.keys(filesToBeDeleted)) {
+
+          if (options && options.userDefinedSelectedFileFlag === true) {
+            filesToBeDeleted = utils.filterObjectByKeys(filesToBeDeleted, options.userDefinedSelectedFiles);
+            modifiedFiles.deleted = filesToBeDeleted;
+          }
+
           this._deleteFileFromCloud(projectId, Object.keys(filesToBeDeleted))
           .then(
             function() {
@@ -1937,12 +1955,19 @@
           )
         }
 
+        let uploaded = modifiedFiles.uploaded;
+
+        if (options && options.userDefinedSelectedFileFlag === true && uploaded && Object.keys(uploaded)) {
+          uploaded = utils.filterObjectByKeys(uploaded, options.userDefinedSelectedFiles);
+          modifiedFiles.uploaded = uploaded;
+        }
+
         // If dryrun option is set, just return the files to be uploaded.
         if (options && options.dryrun) {
           return deferred.resolve(modifiedFiles);
         }
 
-        let totalLength = Object.keys(modifiedFiles.uploaded).length,
+        let totalLength = Object.keys(uploaded).length,
           currentIndex = 0,
           qLimit = qlimit(4);
 
@@ -1973,7 +1998,7 @@
           return d.promise;
         }.bind(this);
 
-        Q.all(Object.keys(modifiedFiles.uploaded).map(qLimit(function(key) {
+        Q.all(Object.keys(uploaded).map(qLimit(function(key) {
           return uploadFile(key);
         }.bind(this))))
         .then(
@@ -2022,6 +2047,13 @@
    */
   Monaca.prototype.downloadProject = function(projectDir, options) {
     let deferred = Q.defer();
+
+    if (options && (options.userDefinedSelectedFileFlag === true) && (!options.userDefinedSelectedFiles || !options.userDefinedSelectedFiles.length)) {
+      util.info('You have chosen not to download anything.', deferred);
+      deferred.resolve([]);
+      return deferred.promise;
+    }
+
     if (!options) options = {};
     options.skipTranspile = true;
     options.actionType = 'downloadProject';
@@ -2033,7 +2065,13 @@
             keys = result.keys,
             projectId = result.projectId;
 
-        if (options && !options.dryrun && options.delete) {
+        if (options && !options.dryrun && options.delete && filesToBeDeleted) {
+
+          if (options && options.userDefinedSelectedFileFlag === true) {
+            filesToBeDeleted = utils.filterObjectByKeys(filesToBeDeleted, options.userDefinedSelectedFiles);
+            modifiedFiles.deleted = filesToBeDeleted;
+          }
+
           for (let f in filesToBeDeleted) {
             try {
               if (filesToBeDeleted[f].type === 'file') {
@@ -2048,6 +2086,13 @@
               console.log("Error deleting " + filesToBeDeleted[f].type + ": " + f);
             }
           }
+        }
+
+        let downloaded = modifiedFiles.downloaded;
+
+        if (options && options.userDefinedSelectedFileFlag === true) {
+          downloaded = utils.filterObjectByKeys(downloaded, options.userDefinedSelectedFiles);
+          modifiedFiles.downloaded = downloaded;
         }
 
         // Modified files.
@@ -3302,6 +3347,10 @@
         if (arg.skipTranspile) {
           options.skipTranspile = true;
         }
+        if (arg.userDefinedSelectedFileFlag === true) {
+          options.userDefinedSelectedFileFlag = true;
+          options.userDefinedSelectedFiles = arg.userDefinedSelectedFiles;
+        }
         return this.uploadProject(arg.path, options);
       }.bind(this);
 
@@ -3541,8 +3590,6 @@
   /**
    * Fetches a collection of known KeyStore aliases.
    * 
-   * @todo monaca signing list alias
-   * 
    * @param {String} project_id
    * 
    * @return {Promise}
@@ -3593,8 +3640,6 @@
   /**
    * Generate new KeyStore and alias. Exisiting KeyStore and aliases will be removed.
    * 
-   * @todo monaca signing generate keystore
-   * 
    * @param {String} project_id 
    * @param {String} alias_name 
    * @param {String} alias_password 
@@ -3623,8 +3668,6 @@
   /**
    * Upload exisiting KeyStore & Alias file.
    * Exisiting KeyStore & Alias will be removed.
-   * 
-   * @todo monaca signing upload keystore
    * 
    * @param {String} project_id 
    * @param {String} filePath 

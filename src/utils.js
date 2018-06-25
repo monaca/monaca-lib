@@ -38,9 +38,25 @@ let info = function(msg, deferred) {
   console.log(msg);
 }
 
+let filterObjectByKeys = function(files, selectedKeys) {
+  if (!files || !Object.keys(files)) return {};
+  if (!selectedKeys || !selectedKeys.length) return {};
+
+  let keys = Object.keys(files);
+  let filtered = keys
+  .filter(key => selectedKeys.includes(key))
+  .reduce((obj, key) => {
+   obj[key] = files[key];
+   return obj;
+  }, {});
+  
+  return filtered;
+};
+
 module.exports = {
   filterIgnoreFiles: filterIgnoreFiles,
   isDirectory: isDirectory,
   includeInExplicitFilterList: includeInExplicitFilterList,
   info: info,
+  filterObjectByKeys: filterObjectByKeys,
 };
