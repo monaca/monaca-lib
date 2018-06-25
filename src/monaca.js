@@ -75,6 +75,14 @@
     var webApiRoot;
 
     if (!apiRoot) {
+
+      try {
+        if (!fs.existsSync(USER_CORDOVA)) fs.mkdirsSync(USER_CORDOVA);
+        if (!fs.existsSync(CONFIG_FILE)) fs.writeFileSync(CONFIG_FILE, '{}');
+      } catch (err) {
+        console.log('Could not write config file ' + err);
+      }
+
       try {
         var configContent = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
         var apiEndpoint = configContent['api_endpoint'];
