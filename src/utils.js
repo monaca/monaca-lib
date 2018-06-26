@@ -1,6 +1,7 @@
 
 let path = require('path');
 let fs = require('fs-extra');
+let crc32 = require('buffer-crc32');
 
 let filterIgnoreFiles = function(files, ignoreListInstance, removeBasePath = false) {
   let keys = Object.keys(files);
@@ -53,10 +54,21 @@ let filterObjectByKeys = function(files, selectedKeys) {
   return filtered;
 };
 
+let addFileToLocalFile = function(files, filename, content) {
+  if (filename && content) {
+    files[filename] = {
+      type: 'file',
+      hash: crc32(content).toString('hex')
+    }
+  }
+  return files;
+};
+
 module.exports = {
   filterIgnoreFiles: filterIgnoreFiles,
   isDirectory: isDirectory,
   includeInExplicitFilterList: includeInExplicitFilterList,
   info: info,
   filterObjectByKeys: filterObjectByKeys,
+  addFileToLocalFile: addFileToLocalFile,
 };

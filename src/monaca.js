@@ -1828,17 +1828,24 @@
     .then(
       function(files) {
         let localFiles, remoteFiles, actionType, temp;
+        let monacaignore = path.resolve(projectDir, '.monacaignore');
+        let monacaignoreContent = '';
 
         utils.info('Comparing Files...');
+
+        // create .monacaignore and append to local files if there isn't
+        if (!fs.existsSync(monacaignore)) monacaignoreContent = this._getMonacaIgnore(projectDir, framework);
 
         if (options && options.actionType === 'downloadProject') {
           localFiles = files[1]; //remote file
           remoteFiles = files[0]; //local files
           actionType = 'downloadProject';
+          utils.addFileToLocalFile(remoteFiles, '/.monacaignore', monacaignoreContent);
         } else {
           localFiles = files[0];
           remoteFiles = files[1];
           actionType = 'uploadProject';
+          utils.addFileToLocalFile(localFiles, '/.monacaignore', monacaignoreContent);
         }
 
         // initialize ignore list and instance
