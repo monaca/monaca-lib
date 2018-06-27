@@ -2,6 +2,15 @@
 CHANGELOG
 ====
 
+v2.7.5
+----
+* Added `historyApiFallback` to angular template
+* Modified `checkModifiedFiles` functions to return file differences if `options.actionType` is passed as `downloadProject`
+* Modified `Upload/Download` functions to include custom files if `options.userDefinedSelectedFiles` and `options.userDefinedSelectFileFlag` is passed as `true`
+* Generate `.monacaignore` for both `cordova` and `react-native` templates before `Upload/Download` operation
+* Update `.monacaignore` pattern to follow `.gitignore` pattern
+* Misc fix
+
 v2.7.4
 ----
 * Added directory path validation check for signing APIs.
