@@ -23,7 +23,6 @@
     EventEmitter = require('events'),
     npm;
 
-  const ignore = require('ignore');
   const utils = require(path.join(__dirname, 'utils'));
 
   // local imports
@@ -458,8 +457,8 @@
   };
 
 
-  Monaca.prototype._filterMonacaIgnore = function(projectDir, framework) {
-    return this._getMonacaIgnore(projectDir, framework)
+  Monaca.prototype._filterMonacaIgnore = function(projectDir) {
+    return this._getMonacaIgnore(projectDir)
       .split("\r\n") // Split by \r\n.
       .map(function(ele) { return ele.split("\n")}) // Split each array element from previous step by \n again.
       .reduce(function(a,b) { return a.concat(b)}) // Now concat them into one array.
@@ -468,28 +467,25 @@
       });
   };
 
-  Monaca.prototype._getMonacaIgnore = function(projectDir, framework) {
+  Monaca.prototype._getMonacaIgnore = function(projectDir) {
     var monacaIgnore = path.resolve(projectDir, '.monacaignore');
-    let allowFrameworks = ['cordova', 'react-native'];
 
     if (fs.existsSync(monacaIgnore)) {
       return fs.readFileSync(monacaIgnore, 'utf8');
-    } else if (framework && (allowFrameworks.indexOf(framework) >= 0)) {
-      // generate .monacaignore for all frameworks - cordova & react-native
-      var result = this._generateMonacaIgnore(projectDir, framework);
+    } else {
+      // generate .monacaignore for all frameworks
+      var result = this._generateMonacaIgnore(projectDir);
 
       if (result instanceof Error) {
         throw result;
       } else {
         return this._getMonacaIgnore(projectDir);
       }
-    } else {
-      return '';
     }
   };
 
-  Monaca.prototype._generateMonacaIgnore = function(projectDir, framework) {
-    var defaultConfig = path.resolve(__dirname, 'default-config', framework, '.monacaignore');
+  Monaca.prototype._generateMonacaIgnore = function(projectDir) {
+    var defaultConfig = path.resolve(__dirname, 'default-config', '.monacaignore');
 
     if (fs.existsSync(defaultConfig)) {
       console.log("Generating default .monacaignore file.");
@@ -1401,9 +1397,11 @@
 
     this._post('/project/' + projectId + '/file/tree').then(
       function(data) {
+        utils.info('Reading Remote Files [FINISHED]', deferred);
         deferred.resolve(JSON.parse(data.body).result.items);
       },
       function(error) {
+        utils.info('Reading Remote Files [ERROR]', deferred);
         deferred.reject(error);
       }
     );
@@ -1430,10 +1428,10 @@
    *   );
    */
   Monaca.prototype.getLocalProjectFiles = function(projectDir, options) {
-    var deferred = Q.defer();
-    var qLimit = qlimit(100);
-    var getFileChecksum = qLimit(function(file) {
-      var deferred = Q.defer();
+    let deferred = Q.defer();
+    let qLimit = qlimit(100);
+    let getFileChecksum = qLimit(function(file) {
+      let deferred = Q.defer();
 
       fs.readFile(file, function(error, data) {
         if (error) {
@@ -1451,51 +1449,60 @@
 
     fs.exists(projectDir, function(exists) {
       if (exists) {
-        var files = {},
+        let files = {},
           promises = [],
           filteredList = [];
 
-        glob.sync("**/*",
-          {
-            cwd: path.resolve(projectDir),
-            dot: true
-          }
-        ).forEach(
-          function(item) {
-            if (fs.existsSync(path.resolve(projectDir, item))) {
-              filteredList.push(item);
-            }
-          }
-        )
+        try {
+          // create .monacaignore if there isn't
+          let ignoreList = this._filterMonacaIgnore(projectDir);
 
-        if (options && options.filter && typeof options.filter === 'function') {
-          filteredList = filteredList.filter(options.filter);
+          // Read all files from project directory
+          filteredList = glob.sync("**/*",
+            {
+              cwd: path.resolve(projectDir),
+              dot: true,
+            }
+          );
+
+          // filter list from .monacaignore
+          filteredList = utils.filter(filteredList, ignoreList);
+          // user-defined filter functions
+          if (options && options.filter && typeof options.filter === 'function') {
+            filteredList = filteredList.filter(options.filter);
+          }
+
+        } catch(error) {
+          return deferred.reject(error);
         }
+
+        utils.info('Reading Local Files [Calculating File Checksum]');
+
         filteredList.forEach(function(file) {
-          var obj = {},
+          let obj = {},
             key = path.join('/', file);
 
           // Converting Windows path delimiter to slash
           key = key.split(path.sep).join('/');
           files[key] = obj;
 
-          var absolutePath = path.join(projectDir, file);
+          let absolutePath = path.join(projectDir, file);
 
-          if (fs.lstatSync(absolutePath).isDirectory()) {
+          let fileStat = fs.lstatSync(absolutePath);
+          if (fileStat.isDirectory()) {
             obj.type = 'dir';
-
           }
           else {
             obj.type = 'file';
-
-            var deferred = Q.defer();
-
+            let deferred = Q.defer();
             getFileChecksum(absolutePath).then(
               function(checksum) {
                 deferred.resolve([key, checksum]);
               },
               function(error) {
-                deferred.reject(error);
+                // throw warning and continue with empty checksum
+                console.log('[ERROR]', key, error);
+                deferred.resolve([key, '']);
               }
             );
 
@@ -1506,15 +1513,17 @@
         Q.all(promises).then(
           function(results) {
             results.forEach(function(result) {
-              var key = result[0],
+              let key = result[0],
                 checksum = result[1];
 
               files[key].hash = checksum;
             });
 
+            utils.info('Reading Local Files [FINISHED]', deferred);
             deferred.resolve(files);
           },
           function(error) {
+            utils.info('Reading Local Files [ERROR]', deferred);
             deferred.reject(error);
           }
         );
@@ -1522,7 +1531,7 @@
       else {
         deferred.reject(projectDir + ' does not exist');
       }
-    });
+    }.bind(this));
 
     return deferred.promise;
   };
@@ -1828,33 +1837,22 @@
     .then(
       function(files) {
         let localFiles, remoteFiles, actionType, temp;
-        let monacaignore = path.resolve(projectDir, '.monacaignore');
-        let monacaignoreContent = '';
 
         utils.info('Comparing Files...');
 
-        // create .monacaignore and append to local files if there isn't
-        if (!fs.existsSync(monacaignore)) monacaignoreContent = this._getMonacaIgnore(projectDir, framework);
+        let ignoreList = this._filterMonacaIgnore(projectDir);
 
         if (options && options.actionType === 'downloadProject') {
           localFiles = files[1]; //remote file
           remoteFiles = files[0]; //local files
           actionType = 'downloadProject';
-          utils.addFileToLocalFile(remoteFiles, '/.monacaignore', monacaignoreContent);
+          localFiles = utils.filterIgnoreFiles(localFiles, ignoreList, true);
         } else {
           localFiles = files[0];
           remoteFiles = files[1];
           actionType = 'uploadProject';
-          utils.addFileToLocalFile(localFiles, '/.monacaignore', monacaignoreContent);
+          remoteFiles = utils.filterIgnoreFiles(remoteFiles, ignoreList, true);
         }
-
-        // initialize ignore list and instance
-        let ignoreList = this._filterMonacaIgnore(projectDir, framework);
-        let ig = ignore().add(ignoreList);
-
-        // filter local files and remote files
-        localFiles = utils.filterIgnoreFiles(localFiles, ig, true);
-        remoteFiles = utils.filterIgnoreFiles(remoteFiles, ig, true);
 
         let filesToBeDeleted = {};
 
@@ -1894,6 +1892,7 @@
           projectId: projectId
         };
 
+        utils.info('Comparing Files [FINISHED]');
         return Q.resolve(result);
       }.bind(this)
     )
