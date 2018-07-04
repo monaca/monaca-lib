@@ -2,6 +2,12 @@
 CHANGELOG
 ====
 
+v2.7.6
+----
+* Improved `getLocalProjectFiles` functions by filtering files before further processing
+* Generated only one `.monacaignore` file for all project templates
+* Fixed Typo
+
 v2.7.5
 ----
 * Added `historyApiFallback` to angular template
