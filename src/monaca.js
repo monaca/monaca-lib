@@ -1438,7 +1438,7 @@
 
       fs.readFile(file, function(error, data) {
         if (error) {
-          deferred.reject(error);q
+          deferred.reject(error);
         }
         else {
           deferred.resolve(crc32(data).toString('hex'));
