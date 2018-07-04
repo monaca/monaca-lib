@@ -856,7 +856,7 @@
    * @param {string} [options.language] - Can be either "en" or "ja". Defaults to "en".
    * @return {Promise}
    * @example
-   *   monaca.relogin().then(
+   *   monaca.prepareSession().then(
    *     function() {
    *       // Login successful!
    *     },
