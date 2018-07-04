@@ -457,8 +457,8 @@
   };
 
 
-  Monaca.prototype._filterMonacaIgnore = function(projectDir, framework) {
-    return this._getMonacaIgnore(projectDir, framework)
+  Monaca.prototype._filterMonacaIgnore = function(projectDir) {
+    return this._getMonacaIgnore(projectDir)
       .split("\r\n") // Split by \r\n.
       .map(function(ele) { return ele.split("\n")}) // Split each array element from previous step by \n again.
       .reduce(function(a,b) { return a.concat(b)}) // Now concat them into one array.
@@ -467,28 +467,25 @@
       });
   };
 
-  Monaca.prototype._getMonacaIgnore = function(projectDir, framework) {
+  Monaca.prototype._getMonacaIgnore = function(projectDir) {
     var monacaIgnore = path.resolve(projectDir, '.monacaignore');
-    let allowFrameworks = ['cordova', 'react-native'];
 
     if (fs.existsSync(monacaIgnore)) {
       return fs.readFileSync(monacaIgnore, 'utf8');
-    } else if (framework && (allowFrameworks.indexOf(framework) >= 0)) {
-      // generate .monacaignore for all frameworks - cordova & react-native
-      var result = this._generateMonacaIgnore(projectDir, framework);
+    } else {
+      // generate .monacaignore for all frameworks
+      var result = this._generateMonacaIgnore(projectDir);
 
       if (result instanceof Error) {
         throw result;
       } else {
         return this._getMonacaIgnore(projectDir);
       }
-    } else {
-      return '';
     }
   };
 
-  Monaca.prototype._generateMonacaIgnore = function(projectDir, framework) {
-    var defaultConfig = path.resolve(__dirname, 'default-config', framework, '.monacaignore');
+  Monaca.prototype._generateMonacaIgnore = function(projectDir) {
+    var defaultConfig = path.resolve(__dirname, 'default-config', '.monacaignore');
 
     if (fs.existsSync(defaultConfig)) {
       console.log("Generating default .monacaignore file.");
@@ -1456,18 +1453,9 @@
           promises = [],
           filteredList = [];
 
-        let framework = '';
-
         try {
           // create .monacaignore if there isn't
-          if (!options || !options.framework) {
-            framework = 'cordova';
-          } else {
-            framework = options.framework;
-          }
-          let monacaignore = path.resolve(projectDir, '.monacaignore');
-          if (!fs.existsSync(monacaignore)) this._getMonacaIgnore(projectDir, framework);
-          let ignoreList = this._filterMonacaIgnore(projectDir, framework);
+          let ignoreList = this._filterMonacaIgnore(projectDir);
 
           // Read all files from project directory
           filteredList = glob.sync("**/*",
@@ -1843,8 +1831,7 @@
     .then(
       function(value) {
         projectId = value;
-        options.framework = framework;
-        return Q.all([this.getLocalProjectFiles(projectDir, options), this.getProjectFiles(projectId)]);
+        return Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)]);
       }.bind(this)
     )
     .then(
@@ -1853,7 +1840,7 @@
 
         utils.info('Comparing Files...');
 
-        let ignoreList = this._filterMonacaIgnore(projectDir, framework);
+        let ignoreList = this._filterMonacaIgnore(projectDir);
 
         if (options && options.actionType === 'downloadProject') {
           localFiles = files[1]; //remote file
