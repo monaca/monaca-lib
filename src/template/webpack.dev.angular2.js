@@ -28,8 +28,7 @@ module.exports = {
   entry: {
     'polyfills': './src/polyfills',
     'vendor': './src/vendor',
-    'app': ['./src/main'],
-    'watch': ['']
+    'app': ['./src/main']
   },
 
   output: {
