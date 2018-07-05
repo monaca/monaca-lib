@@ -12,6 +12,9 @@ try {
   var postcssImport = require(path.join(cordovaNodeModules, 'postcss-import'));
   var postcssUrl = require(path.join(cordovaNodeModules, 'postcss-url'));
 
+  // Writing files to the output directory (www) during development
+  var CopyWebpackPlugin = require(path.join(cordovaNodeModules, 'copy-webpack-plugin'));
+  var WriteFileWebpackPlugin = require(path.join(cordovaNodeModules, 'write-file-webpack-plugin'));
 } catch (e) {
   throw new Error('Missing Webpack Build Dependencies.');
 }
@@ -22,16 +25,17 @@ module.exports = {
   debug: true,
   cache: true,
 
-  entry: [
-    'react-hot-loader/patch',
-    'webpack/hot/only-dev-server',
-    './src/main'
-  ],
+  entry: {
+    watch: ['react-hot-loader/patch', 'webpack/hot/only-dev-server'],
+    vendor: ['react', 'react-dom', 'onsenui', 'react-onsenui'],
+    app: ['./src/main']
+  },
 
   output: {
     path: path.join(__dirname, 'www'),
-    filename: 'bundle.js',
-    publicPath: '/'
+    filename: '[name].bundle.js',
+    chunkFilename: '[name].chunk.js',
+    publicPath: './'
   },
 
   resolve: {
@@ -109,12 +113,29 @@ module.exports = {
 
   plugins: [
     new webpack.HotModuleReplacementPlugin(),
+    new webpack.optimize.CommonsChunkPlugin({
+      name: ['vendor']
+    }),
     new ExtractTextPlugin('[name].css'),
     new HtmlWebpackPlugin({
       template: 'src/public/index.html.ejs',
-      chunksSortMode: 'dependency'
+      chunksSortMode: 'dependency',
+      minify: {
+        caseSensitive: true,
+        collapseWhitespace: true,
+        conservativeCollapse: true,
+        removeAttributeQuotes: true,
+        removeComments: true
+      }
     }),
-    new ProgressBarPlugin()
+    new ProgressBarPlugin(),
+    new WriteFileWebpackPlugin({
+      test: /^(?!.*(watch\.bundle\.js|hot)).*/,
+    }),
+      new CopyWebpackPlugin([{
+      from: path.join(__dirname, 'src', 'public'),
+      ignore: ['index.html.ejs']
+    }])
   ],
 
   resolveLoader: {
