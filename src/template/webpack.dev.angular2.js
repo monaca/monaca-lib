@@ -28,7 +28,8 @@ module.exports = {
   entry: {
     'polyfills': './src/polyfills',
     'vendor': './src/vendor',
-    'app': ['./src/main']
+    'app': ['./src/main'],
+    'watch': [] // the webpack-dev-server/client will be injected
   },
 
   output: {
