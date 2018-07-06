@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v2.7.8
+----
+* Modified `webpack` development configuration of `Angular` to fix `live reloading`
+
 v2.7.7
 ----
 * Modified `webpack` development configuration to generate files to `www` directory
