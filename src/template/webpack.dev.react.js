@@ -15,6 +15,8 @@ try {
   // Writing files to the output directory (www) during development
   var CopyWebpackPlugin = require(path.join(cordovaNodeModules, 'copy-webpack-plugin'));
   var WriteFileWebpackPlugin = require(path.join(cordovaNodeModules, 'write-file-webpack-plugin'));
+
+  var ScriptExtHtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'script-ext-html-webpack-plugin'));
 } catch (e) {
   throw new Error('Missing Webpack Build Dependencies.');
 }
@@ -34,8 +36,7 @@ module.exports = {
   output: {
     path: path.join(__dirname, 'www'),
     filename: '[name].bundle.js',
-    chunkFilename: '[name].chunk.js',
-    publicPath: './'
+    chunkFilename: '[name].chunk.js'
   },
 
   resolve: {
@@ -128,11 +129,20 @@ module.exports = {
         removeComments: true
       }
     }),
+    new ScriptExtHtmlWebpackPlugin({
+      custom: [
+        {
+          test: 'watch.bundle.js',
+          attribute: 'src',
+          value: '/watch.bundle.js' //append the /watch.bundle.js for webpack-dev-server
+        },
+      ]
+    }),
     new ProgressBarPlugin(),
     new WriteFileWebpackPlugin({
       test: /^(?!.*(watch\.bundle\.js|hot)).*/,
     }),
-      new CopyWebpackPlugin([{
+    new CopyWebpackPlugin([{
       from: path.join(__dirname, 'src', 'public'),
       ignore: ['index.html.ejs']
     }])
