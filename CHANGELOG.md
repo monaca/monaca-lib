@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v2.7.7
+----
+* Modified `webpack` development configuration to generate files to `www` directory
+
 v2.7.6
 ----
 * Improved `getLocalProjectFiles` functions by filtering files before further processing
