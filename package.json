@@ -1,6 +1,6 @@
 {
   "name": "monaca-lib",
-  "version": "2.7.6",
+  "version": "2.7.7",
   "description": "Monaca cloud and localkit API bindings for JavaScript",
   "main": "./src/main.js",
   "scripts": {
@@ -82,6 +82,8 @@
     "vue-loader": "11.0.0",
     "vue-template-compiler": "2.3.4",
     "webpack": "1.13.1",
-    "webpack-dev-server": "1.14.1"
+    "webpack-dev-server": "1.14.1",
+    "write-file-webpack-plugin": "4.3.2",
+    "script-ext-html-webpack-plugin": "2.0.1"
   }
 }
