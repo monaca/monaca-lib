@@ -23,6 +23,7 @@
     EventEmitter = require('events'),
     npm;
 
+  const { spawn } = require('child_process');
   const utils = require(path.join(__dirname, 'utils'));
 
   // local imports
@@ -2655,8 +2656,8 @@
    *   Returns path to the webpack config file.
    * @return {String}
    */
-  Monaca.prototype.getWebpackConfigFile = function(projectDir, environment) {
-    var webpackConfig = path.resolve(projectDir, 'webpack.' + environment + '.config.js');
+  Monaca.prototype.getWebpackConfigFile = function(projectDir) {
+    var webpackConfig = path.resolve(projectDir, 'webpack.config.js');
     if (!fs.existsSync(webpackConfig)) {
       var error = new Error();
       error.link = 'https://github.com/monaca/monaca-lib/blob/master/updateProject.md';
@@ -2676,6 +2677,7 @@
    *   Transpiles projects that need to be transpiled and are enabled.
    * @param {String} Project Directory
    * @param {Object} Options
+   * @param {Function} cb Callback
    * @return {Promise}
    */
   Monaca.prototype.transpile = function(projectDir, options, cb) {
@@ -2693,72 +2695,87 @@
       });
     }
 
-    try {
-      var webpackConfigFile = this.getWebpackConfigFile(projectDir, 'prod');
-    } catch(error) {
-      return Q.reject(error);
-    }
+    return new Promise((resolve, reject) => {
+      /**
+       * Exit Callback function
+       */
+      let exitCb = (err, stats) => {
+        const response = {message: '\n\nTranspiling finished for ' + projectDir};
 
-    var deferred = Q.defer();
-    this.emitter.emit('output', {
-      type: 'success',
-      message: 'Running Transpiler...'
-    });
-    process.stdout.write('Running Transpiler...\n');
-
-    var parameters = [webpackConfigFile];
-    if (options.watch) {
-      parameters.push('--watch')
-    }
-
-    var webpackProcess = child_process.fork(path.join(__dirname, 'transpile.js'), parameters, {
-      env: extend({}, process.env, {
-        USER_CORDOVA: USER_CORDOVA,
-        NODE_ENV: JSON.stringify('production'),
-        WP_CACHE: options.cache || ''
-      })
-    });
-
-    webpackProcess.on('message', function(data) {
-      if (data.monacaTranspileLifecycle) {
         if (cb != null) {
-          cb( { type: 'lifecycle', action : data.action } );
+          cb( { type: 'lifecycle', action : 'process-exit'} );
         }
-        // deferred.notify( data.text);
-      } else {
-        if (this.clientType === 'cli') {
-          process.stdout.write(data + '\n');
+
+        if (err === 1) {
+          reject(new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.'));
         } else {
+          if (cb != null) {
+            cb( { type: 'lifecycle', action : 'end-compile' } );
+          }
+        }
+
+        this.emitter.emit('output', Object.assign({}, response, {type: 'success'}));
+
+        if(!options.watch) {
+          resolve(response);
+        }
+      }
+
+      this.emitter.emit('output', {
+        type: 'success',
+        message: 'Running Transpiler...'
+      });
+
+      process.stdout.write('Running Transpiler...\n');
+
+      if (cb != null) {
+        cb( { type: 'lifecycle', action : 'start-compile' } );
+      }
+
+      const command = options.watch ? 'monaca:debug' : 'monaca:transpiles';
+      let npm;
+
+      try {
+        npm = spawn('npm', ['run', command], {
+          cwd: projectDir,
+          stdio: this.clientType === 'cli' ? 'inherit' : 'pipe',
+          env: process.env
+        });
+      } catch (ex) {
+        exitCb(ex);
+      }
+
+      // Emmit message to localkit
+      if (this.clientType !== 'cli') {
+        process.stdin.pipe(npm.stdin)
+
+        npm.stdout.on('data', (data) => {
           this.emitter.emit('output', {
             type: 'progress',
-            message: data
+            message: data.toString()
           });
-        }
-      }
-    }.bind(this));
+        });
 
-    webpackProcess.on('exit', function(code) {
-      if (cb != null) {
-        cb( { type: 'lifecycle', action : 'process-exit'} );
+        npm.stderr.on('data', (data) => {
+          this.emitter.emit('output', {
+            type: 'progress',
+            message: data.toString()
+          });
+        });
       }
-      if (code === 1) {
-        var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
-        deferred.reject(error);
-      } else {
-        deferred.resolve({
-          message: '\n\nTranspiling finished for ' + projectDir
+
+      // Ctrl + C
+      process.on('SIGINT', exitCb(1));
+      // Finish
+      npm.on('exit', exitCb);
+
+      if (options.watch) {
+        resolve({
+          message: 'Watching directory "' + projectDir + '" for changes...',
+          pid: npm.pid
         });
       }
     });
-
-    if (options.watch) {
-      deferred.resolve({
-        message: 'Watching directory "' + projectDir + '" for changes...',
-        pid: webpackProcess.pid
-      });
-    }
-
-    return deferred.promise;
   };
 
   /**
