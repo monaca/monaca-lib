@@ -23,7 +23,7 @@
     EventEmitter = require('events'),
     npm;
 
-  const { spawn } = require('child_process');
+  const { spawn, exec } = require('child_process');
   const utils = require(path.join(__dirname, 'utils'));
 
   // local imports
@@ -2683,6 +2683,8 @@
   Monaca.prototype.transpile = function(projectDir, options, cb) {
     options = options || {};
 
+    //options.watch = true;
+
     if (!this.isTranspilable(projectDir)) {
       return Q.resolve({
         message: 'This project\'s type does not support transpiling capabilities.\n'
@@ -2702,16 +2704,12 @@
       let exitCb = (err, stats) => {
         const response = {message: '\n\nTranspiling finished for ' + projectDir};
 
-        if (cb != null) {
+        if (cb) {
           cb( { type: 'lifecycle', action : 'process-exit'} );
         }
 
         if (err === 1) {
           reject(new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.'));
-        } else {
-          if (cb != null) {
-            cb( { type: 'lifecycle', action : 'end-compile' } );
-          }
         }
 
         this.emitter.emit('output', Object.assign({}, response, {type: 'success'}));
@@ -2725,29 +2723,50 @@
         type: 'success',
         message: 'Running Transpiler...'
       });
-
       process.stdout.write('Running Transpiler...\n');
 
       if (cb != null) {
         cb( { type: 'lifecycle', action : 'start-compile' } );
       }
 
-      const command = options.watch ? 'monaca:debug' : 'monaca:transpiles';
+      const command = options.watch ? 'monaca:debug' : 'monaca:transpile';
       let npm;
 
       try {
         npm = spawn('npm', ['run', command], {
           cwd: projectDir,
-          stdio: this.clientType === 'cli' ? 'inherit' : 'pipe',
+          stdio: this.clientType === 'cli' ? ( options.watch ? ['inherit', 'pipe', 'inherit'] : 'inherit'): 'pipe',
           env: process.env
-        });
+        })
       } catch (ex) {
-        exitCb(ex);
+        exitCb(1);
       }
+
+      // Watch option: waiting for after emit message
+      if (options.watch) {
+
+        npm.stdout.on('data', (data) => {
+          if (data.toString() === 'after-emit') {
+            if (cb) {
+              cb( { type: 'lifecycle', action : 'end-compile' } );
+            }
+          } else {
+            process.stdout.write(data.toString(), 'utf8');
+          }        
+        });
+        
+        console.log('\n\n\n\n\n' + npm.pid);
+        console.log(npm);
+        resolve({
+          message: 'Watching directory "' + projectDir + '" for changes...',
+          pid: npm.pid
+        });
+      }
+
 
       // Emmit message to localkit
       if (this.clientType !== 'cli') {
-        process.stdin.pipe(npm.stdin)
+        //process.stdin.pipe(npm.stdin);
 
         npm.stdout.on('data', (data) => {
           this.emitter.emit('output', {
@@ -2765,16 +2784,12 @@
       }
 
       // Ctrl + C
-      process.on('SIGINT', exitCb(1));
+      process.on('SIGINT',() => {
+        exitCb(1);
+      });
       // Finish
       npm.on('exit', exitCb);
 
-      if (options.watch) {
-        resolve({
-          message: 'Watching directory "' + projectDir + '" for changes...',
-          pid: npm.pid
-        });
-      }
     });
   };
 
