@@ -727,6 +727,12 @@
   Monaca.prototype.uploadFile = function(projectId, localPath, remotePath) {
     var deferred = Q.defer();
 
+    // Ctrl + C
+    process.on('SIGINT',() => {
+      clearInterval(interval);
+      deferred.reject(new Error('Upload stopped!'));
+    });
+
     fs.exists(localPath, function(exists) {
       if (!exists) {
         deferred.reject(new Error('File does not exist.'));
@@ -2197,6 +2203,11 @@
               );
             }
           }
+          // Ctrl + C
+          process.on('SIGINT',() => {
+            clearInterval(interval);
+            deferred.reject(new Error('Remote Build stopped!'));
+          });
         }.bind(this),
         function(error) {
           clearInterval(interval);
@@ -2683,8 +2694,6 @@
   Monaca.prototype.transpile = function(projectDir, options, cb) {
     options = options || {};
 
-    //options.watch = true;
-
     if (!this.isTranspilable(projectDir)) {
       return Q.resolve({
         message: 'This project\'s type does not support transpiling capabilities.\n'
@@ -2751,12 +2760,9 @@
               cb( { type: 'lifecycle', action : 'end-compile' } );
             }
           } else {
-            process.stdout.write(data.toString(), 'utf8');
+            process.stdout.write(data);
           }        
         });
-        
-        console.log('\n\n\n\n\n' + npm.pid);
-        console.log(npm);
         resolve({
           message: 'Watching directory "' + projectDir + '" for changes...',
           pid: npm.pid
@@ -2784,9 +2790,11 @@
       }
 
       // Ctrl + C
-      process.on('SIGINT',() => {
-        exitCb(1);
-      });
+      if (this.clientType === 'cli') {
+        process.on('SIGINT',() => {
+          exitCb(1);
+        });
+      }
       // Finish
       npm.on('exit', exitCb);
 
