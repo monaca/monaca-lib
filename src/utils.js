@@ -1,8 +1,9 @@
 
-let path = require('path');
-let fs = require('fs-extra');
-let crc32 = require('buffer-crc32');
-let ignore = require('ignore');
+const path = require('path');
+const fs = require('fs-extra');
+const crc32 = require('buffer-crc32');
+const ignore = require('ignore');
+const inquirer = require('monaca-inquirer');
 
 
 let filterIgnoreFiles = function(files, ignoreList, removeBasePath = false) {
@@ -64,6 +65,19 @@ let filterObjectByKeys = function(files, selectedKeys) {
   return filtered;
 };
 
+let confirmationMessage = (message, byDefault = false) => {
+  return inquirer.prompt(
+    [
+      {
+        type: 'confirm',
+        name: 'value',
+        message: message,
+        default: byDefault
+      }
+    ]
+  )
+};
+
 module.exports = {
   filterIgnoreFiles: filterIgnoreFiles,
   isDirectory: isDirectory,
@@ -71,4 +85,5 @@ module.exports = {
   info: info,
   filterObjectByKeys: filterObjectByKeys,
   filter: filter,
+  confirmationMessage: confirmationMessage,
 };

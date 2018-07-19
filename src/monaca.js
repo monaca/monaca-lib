@@ -23,7 +23,7 @@
     EventEmitter = require('events'),
     npm;
 
-  const { spawn, exec } = require('child_process');
+  const { spawn } = require('child_process');
   const utils = require(path.join(__dirname, 'utils'));
 
   // local imports
@@ -2343,7 +2343,7 @@
       );
   };
 
-  Monaca.prototype._npmInit = function() {
+  Monaca.prototype._npmInit = function () {
     if (npm) {
       return Q.resolve(npm);
     }
@@ -2378,32 +2378,34 @@
    *   Runs NPM install command
    * @param {String} Directory
    * @param {String} Dependencies to install. Omit it to use the directory's package.json
+   * @param {Boolean} dev Install devDependencies
    * @return {Promise}
    */
-  Monaca.prototype._npmInstall = function(dir, argvs) {
+  Monaca.prototype._npmInstall = function (dir, argvs, dev = false) {
     argvs = argvs || [];
-    var deferred = Q.defer();
 
-    this._npmInit().then(function() {
-      npm.load({}, function (err) {
-        if (err) {
-          return deferred.reject(err);
-        }
-
-        npm.commands.install(dir, argvs, function(err, data) {
+    return new Promise((resolve, reject) => {
+      this._npmInit().then(function () {
+        let opts = dev ? {
+          'save-dev': true
+        } : {};
+        npm.load(opts, function (err) {
           if (err) {
-            return deferred.reject(err);
+            return reject(err);
           }
 
-          deferred.resolve(data);
+          npm.commands.install(dir, argvs, function (err, data) {
+            if (err) {
+              return reject(err);
+            }
+            resolve(data);
+          });
         });
+      }, function (err) {
+        console.error(err.message);
+        process.exit(1);
       });
-    }, function(err) {
-      console.error(err.message);
-      process.exit(1);
     });
-
-    return deferred.promise;
   };
 
   function _jsStringEscape(string) {
@@ -2433,60 +2435,47 @@
    * @method
    * @memberof Monaca
    * @description
-   *   Installs build dependencies.
+   *   Installs build dependencies in a project.
    * @param {String} Project's Directory
+   * @param {Boolean} isTranspile
    * @return {Promise}
    */
-  Monaca.prototype.installBuildDependencies = function(projectDir) {
-    var config = this.fetchProjectData(projectDir);
+  Monaca.prototype.installBuildDependencies = function (projectDir, isTranspile) {
 
-    if (!config.build) {
-      return Q.resolve(projectDir);
-    }
+    return new Promise((resolve, reject) => {
+      let installDependencies = [];
 
-    var deferred = Q.defer();
-    var packageJsonFile = path.resolve(path.join(__dirname, '..', 'package.json'));
-    var dependencies = require(packageJsonFile).additionalDependencies;
-    var installDependencies = [];
+      if (isTranspile) {
+        let packageJsonFile = path.resolve(path.join(__dirname, '..', 'package.json'));
+        let dependencies = require(packageJsonFile).additionalDependencies;
 
-    if (!fs.existsSync(USER_CORDOVA)) {
-      fs.mkdirSync(USER_CORDOVA);
-    }
-    if (!fs.existsSync(NPM_PACKAGE_FILE)) {
-      fs.writeFileSync(NPM_PACKAGE_FILE, '{}');
-    }
-    var nodeModules = path.join(USER_CORDOVA, 'node_modules');
-    if (!fs.existsSync(nodeModules)) {
-      fs.mkdirSync(nodeModules);
-    }
-
-    Object.keys(dependencies).forEach(function(key) {
-      var dep;
-      try {
-        dep = require(path.join(USER_CORDOVA, 'node_modules', key, 'package.json'));
-      } catch (e) {
-      } finally {
-        if (!dep || dep.version !== dependencies[key]) {
-          installDependencies.push(key + '@' + dependencies[key]);
-          var depPath = path.join(nodeModules, key)
-          if (!fs.existsSync(depPath)) {
-            fs.mkdirSync(depPath);
+        installDependencies.push('cordova' + '@' + '7.1.0');
+        Object.keys(dependencies).forEach(function (key) {
+          let dep;
+          try {
+            dep = require(path.join(projectDir, 'node_modules', key, 'package.json'));
+          } catch (e) {} finally {
+            if (!dep || dep.version !== dependencies[key]) {
+              installDependencies.push(key + '@' + dependencies[key]);
+            }
           }
-        }
+        });
+      } else {
+        installDependencies.push('browser-sync' + '@' + '2.24.5');
+        installDependencies.push('cordova' + '@' + '7.1.0');
+      }
+
+      if (installDependencies.length > 0) {
+        process.stdout.write('\nInstalling build dependencies...\n');
+        this._npmInstall(projectDir, installDependencies, true).then(
+          resolve.bind(null, projectDir),
+          reject.bind(null, new Error('Failed to install build dependencies.'))
+        );
+      } else {
+        resolve(projectDir);
       }
     });
 
-    if (installDependencies.length > 0) {
-      process.stdout.write('\n\nInstalling build dependencies...\n');
-      this._npmInstall(USER_CORDOVA, installDependencies).then(
-        deferred.resolve.bind(null, projectDir),
-        deferred.reject.bind(null, new Error('Failed to install build dependencies.'))
-      );
-    } else {
-      deferred.resolve(projectDir);
-    }
-
-    return deferred.promise;
   };
 
   /**
@@ -2496,9 +2485,10 @@
    *   Get webpack config template and replace string variables with project specific values.
    * @param {String} Webpack Config Environment Type (prod|dev)
    * @param {String} Project Directory
+   * @param {String} newFolder Folder to get the webpack files
    * @return {String}
    */
-  Monaca.prototype.getWebpackConfig = function(environment, projectDir) {
+  Monaca.prototype.getWebpackConfig = function(environment, projectDir, newFolder = null) {
     try {
       var config = this.fetchProjectData(projectDir);
     } catch(error) {
@@ -2506,8 +2496,10 @@
     }
 
     var framework = config['template-type'];
+
     var file = 'webpack.' + environment + '.' + framework +  '.js';
-    var asset = path.resolve(path.join(__dirname, 'template', file));
+    var folder = newFolder ? newFolder : 'template';
+    var asset = path.resolve(path.join(__dirname, folder, file));
 
     if (!fs.existsSync(asset)) {
       throw 'Failed to locate Webpack config template for framework ' + framework;
@@ -4177,6 +4169,188 @@
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
       (error) => { return Q.reject(error || unknownErrorMsg); }
     );
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns true if it is a old project (created using Monaca 2.7.x or lower).
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  Monaca.prototype.isOldProject = function (projectDir) {
+    let packageJsonFile = path.join(projectDir, 'package.json');
+    let packageJsonContent = require(packageJsonFile);
+
+    return packageJsonContent.scripts ? (!packageJsonContent.scripts['monaca:preview']) : true;
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Writes new webpack configs with new dependencies to the project directory.
+   * @param {String} Project Directory
+   * @return {Promise}
+   */
+  Monaca.prototype.generateTemplateWebpackConfigs = function (projectDir) {
+    const config = this.fetchProjectData(projectDir);
+    const environment = ['dev', 'prod'];
+    const folder = 'upgrade/template';
+
+    if (!config.build) {
+      return Promise.resolve(projectDir);
+    }
+
+    return new Promise((resolve, reject) => {
+      try {
+        environment.forEach((env) => {
+          let webpackConfig = 'webpack.' + env + '.new.config.js';
+          let webpackFile = path.resolve(path.join(projectDir, webpackConfig));
+          if (!fs.existsSync(webpackFile)) {
+            let fileContent = this.getWebpackConfig(env, projectDir, folder);
+            fs.writeFileSync(webpackFile, fileContent, 'utf8');
+          } else {
+            process.stdout.write(`${webpackConfig} already exists. Skipping.\n`);
+          }
+        })
+        resolve(projectDir);
+      } catch (error) {
+        reject(error);
+      }
+      resolve(projectDir);
+    });
+
+  };
+
+  /**
+   * Local function to write the new commands into package.json, install build dependencies
+   *  and create monaca_preview.json script in case of transpile project.
+   * @param {Object} packageJsonFile package.json's name
+   * @param {Object} packageJsonContent package.json's content
+   * @param {Object} projectDir Project directory
+   * @param {Boolean} isTranspile
+   * @return {Promise}
+   */
+  Monaca.prototype._executeUpgradeProcess = function (packageJsonFile, packageJsonContent, projectDir, isTranspile) {
+    const previewScriptName = 'monaca_preview.js';
+
+    return new Promise((resolve, reject) => {
+      // Adding scripts commands
+      utils.info('\nAdding script commands into package.json...');
+      fs.writeFile(packageJsonFile, JSON.stringify(packageJsonContent), (err) => {
+        if (err) reject.bind(err, new Error('Failed to update package.json.'))
+
+        // Installing building dependencies
+        this.installBuildDependencies(projectDir, isTranspile).then(
+            (data) => {
+              if (isTranspile) {
+
+                // Creating preview script
+                let previewScript = path.join(projectDir, previewScriptName);
+                let asset = path.resolve(path.join(__dirname, 'upgrade', previewScriptName));
+
+                fs.writeFileSync(previewScript, fs.readFileSync(asset, 'utf8'), 'utf8');
+                utils.info('\nPreview script created.');
+
+                // Creating new webpack config files
+                return this.generateTemplateWebpackConfigs(projectDir);
+              } else {
+                resolve(data);
+              }
+            }
+          )
+          .catch(
+            (err) => {
+              reject(err);
+            }
+          );
+      });
+    });
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Upgrade old projects to Monaca CLI 3.0.0 structure:
+   *      - Dependencies
+   *      - package.json script commands
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  Monaca.prototype.upgrade = function (projectDir) {
+    const isTranspile = this.isTranspilable(projectDir);
+
+    const monacaPreview = isTranspile ? 'npm run dev & npm run watch' : 'npm run dev';
+    const monacaTranspile = 'npm run build';
+    const monacaDebug = 'npm run watch';
+    const devCommand = isTranspile ? 'node ./monaca_preview.js' : 'browser-sync start -s www/ --watch --port 8080';
+    const watchCommand = 'webpack --watch --config ./webpack.prod.new.config.js';
+    const buildCommand = 'webpack --config ./webpack.prod.new.config.js';
+
+    const confirmMessage = isTranspile ? `We are going to inject some new commands under script: 'watch', 'dev' or 'build'.\n` +
+      `\t'dev': ${devCommand}\n\t'build': ${buildCommand}\n\t'watch': ${watchCommand}\n` +
+      `Do you want to overwrite them?` : `Do you want to overwrite 'dev'?`;
+
+    const packageJsonFile = path.join(projectDir, 'package.json');
+    let packageJsonContent = require(packageJsonFile);
+
+    return new Promise((resolve, reject) => {
+      // Ctrl + C
+      process.on('SIGINT', () => {
+        reject(new Error(`Failed to upgrade ${projectDir}. Process cancelled.`));
+      });
+
+      // Check if it is a old project
+      if (this.isOldProject(projectDir)) {
+        if (!fs.existsSync(packageJsonFile)) {
+          reject.bind(null, new Error('Failed to update package.json. File missing, please restore it.'));
+        }
+
+        // Check scripts tag
+        if (packageJsonContent.scripts) {
+          packageJsonContent.scripts['monaca:preview'] = monacaPreview;
+          if (isTranspile) {
+            packageJsonContent.scripts['monaca:transpile'] = monacaTranspile;
+            packageJsonContent.scripts['monaca:debug'] = monacaDebug;
+          }
+          console.log('\n');
+          utils.confirmationMessage(confirmMessage).then(
+            (answer) => {
+              if (answer.value) {
+                packageJsonContent.scripts['dev'] = devCommand;
+                if (isTranspile) {
+                  packageJsonContent.scripts['build'] = buildCommand;
+                  packageJsonContent.scripts['watch'] = watchCommand;
+                }
+              } else {
+                packageJsonContent.scripts['dev'] = packageJsonContent.scripts.dev ? packageJsonContent.scripts.dev : devCommand;
+                if (isTranspile) {
+                  packageJsonContent.scripts['build'] = packageJsonContent.scripts.build ? packageJsonContent.scripts.build : buildCommand;
+                  packageJsonContent.scripts['watch'] = packageJsonContent.scripts.watch ? packageJsonContent.scripts.watch : watchCommand;
+                }
+              }
+              this._executeUpgradeProcess(packageJsonFile, packageJsonContent, projectDir, isTranspile);
+            }
+          )
+        } else {
+          packageJsonContent.scripts = {};
+          packageJsonContent.scripts['monaca:preview'] = monacaPreview;
+          packageJsonContent.scripts['dev'] = devCommand;
+          if (isTranspile) {
+            packageJsonContent.scripts['monaca:transpile'] = monacaTranspile;
+            packageJsonContent.scripts['build'] = buildCommand;
+            packageJsonContent.scripts['monaca:debug'] = monacaDebug;
+            packageJsonContent.scripts['watch'] = watchCommand;
+          }
+          this._executeUpgradeProcess(packageJsonFile, packageJsonContent, projectDir, isTranspile);
+        }
+      } else {
+        reject.bind(null, new Error('It is not an old project.'));
+      }
+    });
   }
 
   module.exports = Monaca;
