@@ -2435,6 +2435,37 @@
    * @method
    * @memberof Monaca
    * @description
+   *   Get latest Cordova Version supports by Monaca
+   * @return {String}
+   */
+  Monaca.prototype.getCordovaVersion = function () {
+    return '7.1.0';
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Checking if Cordova is already installed in the project and we need to install it
+   * @param {String} Project's Directory
+   * @return {Boolean}
+   */
+  Monaca.prototype._isCordovaInstalled = function (projectDir) {
+    let dep;
+    try {
+      dep = require(path.join(projectDir, 'node_modules', 'cordova', 'package.json'));
+    } catch (e) {
+      return false
+    } finally {
+      if (!dep) return true;
+      return false;
+    }
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *   Installs build dependencies in a project.
    * @param {String} Project's Directory
    * @param {Boolean} isTranspile
@@ -2449,20 +2480,22 @@
         let packageJsonFile = path.resolve(path.join(__dirname, '..', 'package.json'));
         let dependencies = require(packageJsonFile).additionalDependencies;
 
-        installDependencies.push('cordova' + '@' + '7.1.0');
         Object.keys(dependencies).forEach(function (key) {
           let dep;
           try {
             dep = require(path.join(projectDir, 'node_modules', key, 'package.json'));
           } catch (e) {} finally {
-            if (!dep || dep.version !== dependencies[key]) {
+            if (!dep || dep.version < dependencies[key]) {
               installDependencies.push(key + '@' + dependencies[key]);
             }
           }
         });
       } else {
         installDependencies.push('browser-sync' + '@' + '2.24.5');
-        installDependencies.push('cordova' + '@' + '7.1.0');
+      }
+
+      if (this._isCordovaInstalled(projectDir)) {
+        installDependencies.push('cordova' + '@' + this.getCordovaVersion());
       }
 
       if (installDependencies.length > 0) {
