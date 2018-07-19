@@ -2512,48 +2512,6 @@
    * @method
    * @memberof Monaca
    * @description
-   *   Writes webpack configs to the project directory.
-   * @param {String} Project Directory
-   * @return {Promise}
-   */
-  Monaca.prototype.generateBuildConfigs = function(projectDir) {
-    var config = this.fetchProjectData(projectDir);
-
-    if (!config.build) {
-      return Q.resolve(projectDir);
-    }
-
-    var deferred = Q.defer();
-
-    try {
-      var webpackDevFile = path.resolve(path.join(projectDir, 'webpack.dev.config.js'));
-      if (!fs.existsSync(webpackDevFile)) {
-        var fileContent = this.getWebpackConfig('dev', projectDir);
-        fs.writeFileSync(webpackDevFile, fileContent, 'utf8');
-      } else {
-        process.stdout.write('webpack.dev.config.js already exists. Skipping.\n');
-      }
-
-      var webpackProdFile = path.resolve(path.join(projectDir, 'webpack.prod.config.js'));
-      if (!fs.existsSync(path.resolve(path.join(projectDir, 'webpack.prod.config.js')))) {
-        var fileContent = this.getWebpackConfig('prod', projectDir);
-        fs.writeFileSync(webpackProdFile, fileContent, 'utf8');
-      } else {
-        process.stdout.write('webpack.prod.config.js already exists. Skipping.\n');
-      }
-
-      deferred.resolve(projectDir);
-    } catch (error) {
-      deferred.reject(error);
-    }
-
-    return Q.resolve(projectDir);
-  };
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
    *   Copies Monaca components folder to www.
    * @param {String} Project Directory
    * @return {Promise}
@@ -2897,9 +2855,7 @@
       .then(fetchFile)
       .then(unzipFile)
       .then(this.initComponents.bind(this))
-      .then(this.generateBuildConfigs.bind(this))
-      .then(this.installTemplateDependencies.bind(this))
-      .then(this.installBuildDependencies.bind(this));
+      .then(this.installTemplateDependencies.bind(this));
   };
 
   /**
