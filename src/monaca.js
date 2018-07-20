@@ -25,7 +25,7 @@
 
   const { spawn } = require('child_process');
   const utils = require(path.join(__dirname, 'utils'));
-  const upgrade = require('./upgrade').upgrade;
+  const upgrade = require('./migration').upgrade;
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -4227,35 +4227,36 @@
     const previewScriptName = 'monaca_preview.js';
 
     return new Promise((resolve, reject) => {
+      process.on('SIGINT', () => {
+        // throw new  Error(`Failed to upgrade ${projectDir}. Process cancelled.`);
+        reject(new Error(`Failed to upgrade ${projectDir}. Process cancelled.`));
+      });
+
       // Adding scripts commands
       utils.info('\nAdding script commands into package.json...');
       fs.writeFile(packageJsonFile, JSON.stringify(packageJsonContent), (err) => {
-        if (err) reject.bind(err, new Error('Failed to update package.json.'))
+        if (err) reject.bind(err, new Error('Failed to update package.json.'));
 
         // Installing building dependencies
-        this.installBuildDependencies(projectDir, isTranspile).then(
+        this.installBuildDependencies(projectDir, isTranspile)
+        .then(
             (data) => {
               if (isTranspile) {
 
                 // Creating preview script
-                let previewScript = path.join(projectDir, previewScriptName);
-                let asset = path.resolve(path.join(__dirname, 'upgrade', previewScriptName));
+                const previewScript = path.join(projectDir, previewScriptName);
+                const asset = path.resolve(path.join(__dirname, 'upgrade', previewScriptName));
 
                 fs.writeFileSync(previewScript, fs.readFileSync(asset, 'utf8'), 'utf8');
                 utils.info('\nPreview script created.');
 
                 // Creating new webpack config files
                 return this.generateTemplateWebpackConfigs(projectDir);
-              } else {
-                resolve(data);
               }
+              resolve(data);
             }
           )
-          .catch(
-            (err) => {
-              reject(err);
-            }
-          );
+          .catch( err => reject(err) );
       });
     });
   };
@@ -4270,6 +4271,7 @@
    */
   Monaca.prototype.upgrade = function (projectDir) {
     return upgrade(projectDir, this);
+    // return init(projectDir, this);
   }
 
   module.exports = Monaca;
