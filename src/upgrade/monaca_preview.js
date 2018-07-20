@@ -26,6 +26,11 @@ try {
   if (webpackConfig.devServer.inline) {
     let packUrl = "http://localhost:" + port + "/";
 
+    if (process.env.MONACA_TERMINAL) {
+      packUrl = "https://0.0.0.0/";
+      webpackConfig.devServer.disableHostCheck = true;
+    }
+
     if (webpackConfig.entry.watch && webpackConfig.entry.watch instanceof Array) {
       webpackConfig.entry.watch.unshift("webpack-dev-server/client?" + packUrl);
     } else if (webpackConfig.entry.app && webpackConfig.entry.app instanceof Array) {

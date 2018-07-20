@@ -5,7 +5,7 @@ const utils = require(path.join(__dirname, 'utils'));
 module.exports = {
   /**
    * @method
-   * @memberof Upgrade
+   * @memberof Monaca
    * @description
    *   Upgrade old projects to Monaca CLI 3.0.0 structure:
    *      - Dependencies
