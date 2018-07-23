@@ -9,9 +9,10 @@ const utils = require(path.join(__dirname, 'utils'));
  * @param {String} projectDir Project directory
  * @param {Boolean} isTranspile
  * @param {String} packageJsonFile Project's packake.json file
+ * @param {Boolean} overwrite Overwrite scripts commands defined by user
  * @return {Promise}
  */
-let injectScriptsCommand = (projectDir, isTranspile, packageJsonFile) => {
+let injectScriptsCommand = (projectDir, isTranspile, packageJsonFile, overwrite) => {
 
   const monacaPreview = isTranspile ? 'npm run dev & npm run watch' : 'npm run dev';
   const monacaTranspile = 'npm run build';
@@ -19,10 +20,6 @@ let injectScriptsCommand = (projectDir, isTranspile, packageJsonFile) => {
   const devCommand = isTranspile ? 'node ./monaca_preview.js' : 'browser-sync start -s www/ --watch --port 8080';
   const watchCommand = 'webpack --watch --config ./webpack.prod.new.config.js';
   const buildCommand = 'webpack --config ./webpack.prod.new.config.js';
-
-  const confirmMessage = isTranspile ? `We are going to inject some new commands under script: 'watch', 'dev' or 'build'.\n` +
-    `\t'dev': ${devCommand}\n\t'build': ${buildCommand}\n\t'watch': ${watchCommand}\n` +
-    `Do you want to overwrite them?` : `Do you want to overwrite 'dev'?`;
 
   let packageJsonContent = require(packageJsonFile);
 
@@ -35,24 +32,20 @@ let injectScriptsCommand = (projectDir, isTranspile, packageJsonFile) => {
           packageJsonContent.scripts['monaca:debug'] = monacaDebug;
         }
         console.log('\n');
-        utils.confirmationMessage(confirmMessage).then(
-          (answer) => {
-            if (answer.value) {
-              packageJsonContent.scripts['dev'] = devCommand;
-              if (isTranspile) {
-                packageJsonContent.scripts['build'] = buildCommand;
-                packageJsonContent.scripts['watch'] = watchCommand;
-              }
-            } else {
-              packageJsonContent.scripts['dev'] = packageJsonContent.scripts.dev ? packageJsonContent.scripts.dev : devCommand;
-              if (isTranspile) {
-                packageJsonContent.scripts['build'] = packageJsonContent.scripts.build ? packageJsonContent.scripts.build : buildCommand;
-                packageJsonContent.scripts['watch'] = packageJsonContent.scripts.watch ? packageJsonContent.scripts.watch : watchCommand;
-              }
-            }
-            return resolve(packageJsonContent);
+        if (overwrite) {
+          packageJsonContent.scripts['dev'] = devCommand;
+          if (isTranspile) {
+            packageJsonContent.scripts['build'] = buildCommand;
+            packageJsonContent.scripts['watch'] = watchCommand;
           }
-        )
+        } else {
+          packageJsonContent.scripts['dev'] = packageJsonContent.scripts.dev ? packageJsonContent.scripts.dev : devCommand;
+          if (isTranspile) {
+            packageJsonContent.scripts['build'] = packageJsonContent.scripts.build ? packageJsonContent.scripts.build : buildCommand;
+            packageJsonContent.scripts['watch'] = packageJsonContent.scripts.watch ? packageJsonContent.scripts.watch : watchCommand;
+          }
+        }
+        return resolve(packageJsonContent);
       } else {
         packageJsonContent.scripts = {};
         packageJsonContent.scripts['monaca:preview'] = monacaPreview;
@@ -109,7 +102,9 @@ let injectScriptsCommand = (projectDir, isTranspile, packageJsonFile) => {
                 utils.info('\nPreview script created.');
 
                 // Creating new webpack config files
-                return monaca.generateTemplateWebpackConfigs(projectDir);
+                return monaca.generateTemplateWebpackConfigs(projectDir)
+                  .then( data => resolve(data) )
+                  .catch( err => reject(err) );
               }
               resolve(data);
             }
@@ -128,10 +123,11 @@ module.exports = {
    *      - Dependencies
    *      - package.json script commands
    * @param {String} projectDir Project directory
+   * @param {Boolean} overwrite Overwrite scripts commands defined by user
    * @param {Object} monaca Monaca instance
    * @return {Promise}
    */
-  upgrade: function (projectDir, monaca) {
+  upgrade: function (projectDir, overwrite, monaca) {
     const failedCb = (error) => { throw (error); };
 
     if(!monaca.isOldProject(projectDir)) return Promise.reject(new Error('Project created using Monaca CLI 3.x'));
@@ -142,11 +138,11 @@ module.exports = {
 
     const isTranspile = monaca.isTranspilable(projectDir);
 
-    return injectScriptsCommand(projectDir, isTranspile, packageJsonFile)
+    return injectScriptsCommand(projectDir, isTranspile, packageJsonFile, overwrite)
       .then(
         packageJsonContent => executeUpgradeProcess(packageJsonFile, packageJsonContent, projectDir, isTranspile, monaca),
         failedCb
       );
-    
+
   }
 }

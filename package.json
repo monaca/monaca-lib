@@ -39,7 +39,6 @@
     "ignore": "^3.3.8",
     "lockfile": "^1.0.0",
     "minimatch": "https://github.com/frandiox/minimatch/archive/escape-fix.tar.gz",
-    "monaca-inquirer": "^1.0.4",
     "nconf": "^0.7.1",
     "padlock": "^1.1.2",
     "portfinder": "^1.0.7",
