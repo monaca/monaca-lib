@@ -488,7 +488,8 @@
     var defaultConfig = path.resolve(__dirname, 'default-config', '.monacaignore');
 
     if (fs.existsSync(defaultConfig)) {
-      console.log("Generating default .monacaignore file.");
+      console.log('Generating default .monacaignore file.');
+      console.log('This file is used to filter files for download and upload operation. Please modify the content as your requirements.');
       return fs.copySync(defaultConfig, path.resolve(projectDir, '.monacaignore'));
     } else {
       return (new Error('No default .monacaignore file found.'));
@@ -1546,6 +1547,7 @@
    *   tracked.
    * @param {string} projectId - Monaca project ID.
    * @param {string} destDir - Destination directory.
+   * @param {boolean} clone (default true). if true, set `project_id` to `.monaca/local_properties.json`
    * @return {Promise}
    * @example
    *   monaca.cloneProject(123, '/home/user/workspace/myproject').then(
@@ -1561,7 +1563,7 @@
    *     }
    *   );
    */
-  Monaca.prototype.cloneProject = function(projectId, destDir) {
+  Monaca.prototype.cloneProject = function(projectId, destDir, clone = true) {
     var deferred = Q.defer();
     fs.exists(destDir, function(exists) {
       if (exists && shell.ls(destDir).length > 0) {
@@ -1625,7 +1627,11 @@
                 }
               }.bind(this)))).then(
                 function() {
-                  return this.setProjectId(destDir, projectId);
+                  if (clone === true) {
+                    return this.setProjectId(destDir, projectId);
+                  } else {
+                    return deferred.resolve(destDir);
+                  }
                 }.bind(this)
               ).then(
                 function() {
