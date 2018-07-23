@@ -27,7 +27,6 @@ let injectScriptsCommand = (projectDir, isTranspile, packageJsonFile) => {
   let packageJsonContent = require(packageJsonFile);
 
   return new Promise((resolve, reject) => {
-    
       // Check scripts tag
       if (packageJsonContent.scripts) {
         packageJsonContent.scripts['monaca:preview'] = monacaPreview;
@@ -66,12 +65,59 @@ let injectScriptsCommand = (projectDir, isTranspile, packageJsonFile) => {
         }
         return resolve(packageJsonContent);
       }
-
-      return reject(new Error('Something failed preparing the new scripts commands.'));
-
   });
 
 }
+
+/**
+   *
+   * Local function to write the new commands into package.json, install build dependencies
+   *  and create monaca_preview.json script in case of transpile project.
+   *
+   * @param {Object} packageJsonFile package.json's name
+   * @param {Object} packageJsonContent package.json's content
+   * @param {Object} projectDir Project directory
+   * @param {Boolean} isTranspile
+   * @param {Object} monaca Monaca instance
+   * @return {Promise}
+   */
+  let executeUpgradeProcess = (packageJsonFile, packageJsonContent, projectDir, isTranspile, monaca) => {
+    const previewScriptName = 'monaca_preview.js';
+
+    return new Promise((resolve, reject) => {
+      process.on('SIGINT', () => {
+        // throw new  Error(`Failed to upgrade ${projectDir}. Process cancelled.`);
+        reject(new Error(`Failed to upgrade ${projectDir}. Process cancelled.`));
+      });
+
+      // Adding scripts commands
+      utils.info('\nAdding script commands into package.json...');
+      fs.writeFile(packageJsonFile, JSON.stringify(packageJsonContent, null, 2), 'utf8', (err) => {
+        if (err) reject.bind(err, new Error('Failed to update package.json.'));
+
+        // Installing building dependencies
+        monaca.installBuildDependencies(projectDir, isTranspile)
+        .then(
+            (data) => {
+              if (isTranspile) {
+
+                // Creating preview script
+                const previewScript = path.join(projectDir, previewScriptName);
+                const asset = path.resolve(path.join(__dirname, utils.MIGRATION_FOLDER, previewScriptName));
+
+                fs.writeFileSync(previewScript, fs.readFileSync(asset, 'utf8'), 'utf8');
+                utils.info('\nPreview script created.');
+
+                // Creating new webpack config files
+                return monaca.generateTemplateWebpackConfigs(projectDir);
+              }
+              resolve(data);
+            }
+          )
+          .catch( err => reject(err) );
+      });
+    });
+  };
 
 module.exports = {
   /**
@@ -98,10 +144,9 @@ module.exports = {
 
     return injectScriptsCommand(projectDir, isTranspile, packageJsonFile)
       .then(
-        packageJsonContent => monaca._executeUpgradeProcess(packageJsonFile, packageJsonContent, projectDir, isTranspile),
+        packageJsonContent => executeUpgradeProcess(packageJsonFile, packageJsonContent, projectDir, isTranspile, monaca),
         failedCb
       );
     
-  },
-
+  }
 }

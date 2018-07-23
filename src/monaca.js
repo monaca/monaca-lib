@@ -25,7 +25,7 @@
 
   const { spawn } = require('child_process');
   const utils = require(path.join(__dirname, 'utils'));
-  const upgrade = require('./migration').upgrade;
+  const { upgrade, init } = require('./migration');
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -4187,7 +4187,7 @@
   Monaca.prototype.generateTemplateWebpackConfigs = function (projectDir) {
     const config = this.fetchProjectData(projectDir);
     const environment = ['dev', 'prod'];
-    const folder = 'upgrade/template';
+    const folder = utils.MIGRATION_FOLDER + '/template';
 
     if (!config.build) {
       return Promise.resolve(projectDir);
@@ -4215,53 +4215,6 @@
   };
 
   /**
-   * Local function to write the new commands into package.json, install build dependencies
-   *  and create monaca_preview.json script in case of transpile project.
-   * @param {Object} packageJsonFile package.json's name
-   * @param {Object} packageJsonContent package.json's content
-   * @param {Object} projectDir Project directory
-   * @param {Boolean} isTranspile
-   * @return {Promise}
-   */
-  Monaca.prototype._executeUpgradeProcess = function (packageJsonFile, packageJsonContent, projectDir, isTranspile) {
-    const previewScriptName = 'monaca_preview.js';
-
-    return new Promise((resolve, reject) => {
-      process.on('SIGINT', () => {
-        // throw new  Error(`Failed to upgrade ${projectDir}. Process cancelled.`);
-        reject(new Error(`Failed to upgrade ${projectDir}. Process cancelled.`));
-      });
-
-      // Adding scripts commands
-      utils.info('\nAdding script commands into package.json...');
-      fs.writeFile(packageJsonFile, JSON.stringify(packageJsonContent), (err) => {
-        if (err) reject.bind(err, new Error('Failed to update package.json.'));
-
-        // Installing building dependencies
-        this.installBuildDependencies(projectDir, isTranspile)
-        .then(
-            (data) => {
-              if (isTranspile) {
-
-                // Creating preview script
-                const previewScript = path.join(projectDir, previewScriptName);
-                const asset = path.resolve(path.join(__dirname, 'upgrade', previewScriptName));
-
-                fs.writeFileSync(previewScript, fs.readFileSync(asset, 'utf8'), 'utf8');
-                utils.info('\nPreview script created.');
-
-                // Creating new webpack config files
-                return this.generateTemplateWebpackConfigs(projectDir);
-              }
-              resolve(data);
-            }
-          )
-          .catch( err => reject(err) );
-      });
-    });
-  };
-
-  /**
    * @method
    * @memberof Monaca
    * @description
@@ -4271,8 +4224,7 @@
    */
   Monaca.prototype.upgrade = function (projectDir) {
     return upgrade(projectDir, this);
-    // return init(projectDir, this);
   }
-
+  
   module.exports = Monaca;
 })();

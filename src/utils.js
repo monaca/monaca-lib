@@ -4,6 +4,7 @@ const fs = require('fs-extra');
 const crc32 = require('buffer-crc32');
 const ignore = require('ignore');
 const inquirer = require('monaca-inquirer');
+const MIGRATION_FOLDER = 'migration';
 
 
 let filterIgnoreFiles = function(files, ignoreList, removeBasePath = false) {
@@ -86,4 +87,5 @@ module.exports = {
   filterObjectByKeys: filterObjectByKeys,
   filter: filter,
   confirmationMessage: confirmationMessage,
+  MIGRATION_FOLDER
 };
