@@ -2,6 +2,7 @@
 const path = require('path');
 const fs = require('fs-extra');
 const crc32 = require('buffer-crc32');
+const ignore = require('ignore');
 const MIGRATION_FOLDER = 'migration';
 
 
