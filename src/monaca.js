@@ -25,7 +25,7 @@
 
   const { spawn } = require('child_process');
   const utils = require(path.join(__dirname, 'utils'));
-  const { upgrade, init } = require('./migration');
+  const { upgrade } = require('./migration');
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -2467,12 +2467,12 @@
    * @method
    * @memberof Monaca
    * @description
-   *   Installs build dependencies in a project.
+   *   Installs dev dependencies in a project.
    * @param {String} Project's Directory
    * @param {Boolean} isTranspile
    * @return {Promise}
    */
-  Monaca.prototype.installBuildDependencies = function (projectDir, isTranspile) {
+  Monaca.prototype.installDevDependencies = function (projectDir, isTranspile) {
 
     return new Promise((resolve, reject) => {
       let installDependencies = [];
@@ -2500,7 +2500,7 @@
       }
 
       if (installDependencies.length > 0) {
-        process.stdout.write('\nInstalling build dependencies...\n');
+        process.stdout.write('\nInstalling dev dependencies...\n');
         this._npmInstall(projectDir, installDependencies, true).then(
           resolve.bind(null, projectDir),
           reject.bind(null, new Error('Failed to install build dependencies.'))
@@ -2628,7 +2628,11 @@
     }
 
     var type = config['template-type'];
-    return type && ( type === 'react' || type === 'angular2' || type === 'vue' );
+    /**
+     * Some projects (those initialized using init and created using other CLI tools)
+     * do not have 'template-type' tag into .monaca/project_info.json.
+     */
+    return ( type && ( type === 'react' || type === 'angular2' || type === 'vue' ) ) || ( config.build && config.build.transpile );
   }
 
   /**

@@ -89,7 +89,7 @@ let executeUpgradeProcess = (packageJsonFile, packageJsonContent, projectDir, is
       if (err) reject.bind(err, new Error('Failed to update package.json.'));
 
       // Installing building dependencies
-      monaca.installBuildDependencies(projectDir, isTranspile)
+      monaca.installDevDependencies(projectDir, isTranspile)
         .then(
           (data) => {
             if (isTranspile) {
