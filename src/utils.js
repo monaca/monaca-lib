@@ -4,6 +4,8 @@ const fs = require('fs-extra');
 const crc32 = require('buffer-crc32');
 const ignore = require('ignore');
 const MIGRATION_FOLDER = 'migration';
+const MIGRATION_TEMPLATES_FOLDER = MIGRATION_FOLDER + '/template';
+const PROJECT_INFO_FOLDER = MIGRATION_FOLDER + '/project_info'
 
 
 let filterIgnoreFiles = function(files, ignoreList, removeBasePath = false) {
@@ -72,5 +74,7 @@ module.exports = {
   info: info,
   filterObjectByKeys: filterObjectByKeys,
   filter: filter,
-  MIGRATION_FOLDER
+  MIGRATION_FOLDER,
+  MIGRATION_TEMPLATES_FOLDER,
+  PROJECT_INFO_FOLDER
 };

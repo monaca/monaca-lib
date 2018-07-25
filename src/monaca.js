@@ -2478,36 +2478,29 @@
       let installDependencies = [];
 
       if (isTranspile) {
-        let packageJsonFile = path.resolve(path.join(__dirname, '..', 'package.json'));
-        let dependencies = require(packageJsonFile).additionalDependencies;
+        const templateType = this.getTemplateType(projectDir);
+        if(!templateType) return reject(new Error('[Dev dependencies] Failed to get the project type'));
 
-        Object.keys(dependencies).forEach(function (key) {
-          let dep;
-          try {
-            dep = require(path.join(projectDir, 'node_modules', key, 'package.json'));
-          } catch (e) {} finally {
-            if (!dep || dep.version < dependencies[key]) {
-              installDependencies.push(key + '@' + dependencies[key]);
-            }
-          }
-        });
-      } else {
-        installDependencies.push('browser-sync' + '@' + '2.24.5');
-      }
+        const dependencies = ['babel-core@6.24.0', 'babel-loader@6.2.4', 'babel-preset-es2015@6.9.0', 'babel-preset-react@6.11.1', 'babel-preset-stage-2@6.11.0', 'copy-webpack-plugin@3.0.1', 'css-loader@0.23.1', 'css-to-string-loader@0.1.0', 'extract-text-webpack-plugin@1.0.1', 'file-loader@0.9.0', 'html-loader@0.4.3', 'html-webpack-plugin@2.22.0', 'null-loader@0.1.1', 'postcss-loader@0.9.1', 'postcss-cssnext@2.9.0', 'postcss-import@9.1.0', 'postcss-url@7.0.0', 'progress-bar-webpack-plugin@1.8.0', 'raw-loader@0.5.1', 'read-cache@1.0.0', 'stylus@0.54.5', 'stylus-loader@2.1.1', 'style-loader@0.13.1', 'webpack@1.13.1', 'webpack-dev-server@1.14.1', 'write-file-webpack-plugin@4.3.2', 'script-ext-html-webpack-plugin@2.0.1'];
+        const reactDependencies = ['react-hot-loader@3.0.0-beta.1'];
+        const vueDependencies = ['vue-loader@11.0.0', 'vue-template-compiler@2.3.4']
+        const angualrDependencies = ['ts-loader@1.3.3', 'typescript@2.4.2']
 
-      if (this._isCordovaInstalled(projectDir)) {
-        installDependencies.push('cordova' + '@' + this.getCordovaVersion());
-      }
+        if (templateType === 'vue') installDependencies = installDependencies.concat(dependencies, vueDependencies);
+        if (templateType === 'angular2') installDependencies = installDependencies.concat(dependencies, angualrDependencies);
+        if (templateType === 'react') installDependencies = installDependencies.concat(dependencies, reactDependencies);
+
+      } else installDependencies.push('browser-sync@2.24.5');
+
+      if (this._isCordovaInstalled(projectDir)) installDependencies.push('cordova@' + this.getCordovaVersion());
 
       if (installDependencies.length > 0) {
-        process.stdout.write('\nInstalling dev dependencies...\n');
+        process.stdout.write('\n[Dev dependencies] Installing...\n');
         this._npmInstall(projectDir, installDependencies, true).then(
           resolve.bind(null, projectDir),
-          reject.bind(null, new Error('Failed to install build dependencies.'))
+          reject.bind(null, new Error('[Dev dependencies] Failed to install dev dependencies.'))
         );
-      } else {
-        resolve(projectDir);
-      }
+      } else resolve(projectDir);
     });
 
   };
@@ -2555,7 +2548,7 @@
     var componentsPath = path.join(projectDir, 'www', 'components');
     fs.exists(componentsPath, function(exists) {
       if (exists) {
-        process.stdout.write('www/components already exists. Skipping.\n');
+        process.stdout.write('\twww/components already exists. Skipping.\n');
         return deferred.resolve(projectDir);
       } else {
         fs.copy(path.resolve(__dirname, 'template', 'components'), componentsPath, function(error) {
@@ -2633,6 +2626,23 @@
      * do not have 'template-type' tag into .monaca/project_info.json.
      */
     return ( type && ( type === 'react' || type === 'angular2' || type === 'vue' ) ) || ( config.build && config.build.transpile );
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Get the project's framework
+   * @param {String} Project Directory
+   * @return {String}
+   */
+  Monaca.prototype.getTemplateType = function(projectDir) {
+    let config = this.fetchProjectData(projectDir);
+
+    if (!config) return null;
+    let type = config['template-type'];
+
+    return type ? type : null;
   }
 
   /**
@@ -4191,7 +4201,7 @@
   Monaca.prototype.generateTemplateWebpackConfigs = function (projectDir) {
     const config = this.fetchProjectData(projectDir);
     const environment = ['dev', 'prod'];
-    const folder = utils.MIGRATION_FOLDER + '/template';
+    const folder = utils.MIGRATION_TEMPLATES_FOLDER;
 
     if (!config.build) {
       return Promise.resolve(projectDir);
@@ -4206,7 +4216,7 @@
             let fileContent = this.getWebpackConfig(env, projectDir, folder);
             fs.writeFileSync(webpackFile, fileContent, 'utf8');
           } else {
-            process.stdout.write(`${webpackConfig} already exists. Skipping.\n`);
+            process.stdout.write(`\t${webpackConfig} already exists. Skipping.\n`);
           }
         })
         resolve(projectDir);
