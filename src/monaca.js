@@ -4137,7 +4137,7 @@
    * @method
    * @memberof Monaca
    * @description
-   *   Returns true if it is a old project (created using Monaca 2.7.x or lower).
+   *   Returns true if it is a old project (created using Monaca 2.x or lower).
    * @param {String} projectDir Project directory
    * @return {Promise}
    */
