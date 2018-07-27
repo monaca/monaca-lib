@@ -2475,7 +2475,7 @@
       } else installDependencies.push('browser-sync@2.24.5');
 
       let cordovaVersion = this.getCordovaVersion(projectDir);
-      if (utils.isCordovaInstalled(projectDir)) installDependencies.push('cordova@' + (cordovaVersion ? cordovaVersion : this.getLatestCordovaVersion()) );
+      if (utils.needToInstallCordova(projectDir)) installDependencies.push('cordova@' + (cordovaVersion ? cordovaVersion : this.getLatestCordovaVersion()) );
 
       if (installDependencies.length > 0) {
         process.stdout.write('\n[Dev dependencies] Installing...\n');

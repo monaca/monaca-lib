@@ -75,10 +75,10 @@ let filterObjectByKeys = function(files, selectedKeys) {
  * @param {String} Project's Directory
  * @return {Boolean}
  */
-let isCordovaInstalled = (projectDir) => {
+let needToInstallCordova = (projectDir) => {
   let dep;
   try { dep = require(path.resolve(projectDir, 'node_modules', 'cordova', 'package.json')); }
-  catch (e) { return false }
+  catch (e) { return true }
   finally { if (!dep) return true; return false; }
 };
 
@@ -89,7 +89,7 @@ module.exports = {
   info: info,
   filterObjectByKeys: filterObjectByKeys,
   filter: filter,
-  isCordovaInstalled: isCordovaInstalled,
+  needToInstallCordova: needToInstallCordova,
   MIGRATION_FOLDER,
   MIGRATION_TEMPLATES_FOLDER,
   PROJECT_INFO_FOLDER,

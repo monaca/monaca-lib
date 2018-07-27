@@ -156,7 +156,7 @@ const installLatestCordova = (projectDir, monaca) => {
   return new Promise((resolve, reject) => {
     let installDependencies = [];
 
-    if (utils.isCordovaInstalled(projectDir)) installDependencies.push('cordova@' + utils.CORDOVA_VERSION);
+    if (utils.needToInstallCordova(projectDir)) installDependencies.push('cordova@' + utils.CORDOVA_VERSION);
     if (installDependencies.length > 0) {
       monaca._npmInstall(projectDir, installDependencies, true).then(
         resolve.bind(null, projectDir),
