@@ -25,7 +25,7 @@
 
   const { spawn } = require('child_process');
   const utils = require(path.join(__dirname, 'utils'));
-  const { upgrade } = require('./migration');
+  const migration = require('./migration');
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -2403,7 +2403,7 @@
           });
         });
       }, function (err) {
-        console.error(err.message);
+        console.error('[NPM ERROR]', err.message);
         process.exit(1);
       });
     });
@@ -2436,31 +2436,13 @@
    * @method
    * @memberof Monaca
    * @description
-   *   Get latest Cordova Version supports by Monaca
-   * @return {String}
-   */
-  Monaca.prototype.getCordovaVersion = function () {
-    return '7.1.0';
-  };
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Checking if Cordova is already installed in the project and we need to install it
+   *   Get Cordova version used by the project
    * @param {String} Project's Directory
-   * @return {Boolean}
+   * @return {Promise}
    */
-  Monaca.prototype._isCordovaInstalled = function (projectDir) {
-    let dep;
-    try {
-      dep = require(path.join(projectDir, 'node_modules', 'cordova', 'package.json'));
-    } catch (e) {
-      return false
-    } finally {
-      if (!dep) return true;
-      return false;
-    }
+  Monaca.prototype.getCordovaVersion = function (projectDir) {
+    let config = this.fetchProjectData(projectDir);
+    return config['cordova_version'];
   };
 
   /**
@@ -2483,7 +2465,7 @@
 
         const dependencies = ['babel-core@6.24.0', 'babel-loader@6.2.4', 'babel-preset-es2015@6.9.0', 'babel-preset-react@6.11.1', 'babel-preset-stage-2@6.11.0', 'copy-webpack-plugin@3.0.1', 'css-loader@0.23.1', 'css-to-string-loader@0.1.0', 'extract-text-webpack-plugin@1.0.1', 'file-loader@0.9.0', 'html-loader@0.4.3', 'html-webpack-plugin@2.22.0', 'null-loader@0.1.1', 'postcss-loader@0.9.1', 'postcss-cssnext@2.9.0', 'postcss-import@9.1.0', 'postcss-url@7.0.0', 'progress-bar-webpack-plugin@1.8.0', 'raw-loader@0.5.1', 'read-cache@1.0.0', 'stylus@0.54.5', 'stylus-loader@2.1.1', 'style-loader@0.13.1', 'webpack@1.13.1', 'webpack-dev-server@1.14.1', 'write-file-webpack-plugin@4.3.2', 'script-ext-html-webpack-plugin@2.0.1'];
         const reactDependencies = ['react-hot-loader@3.0.0-beta.1'];
-        const vueDependencies = ['vue-loader@11.0.0', 'vue-template-compiler@2.3.4']
+        const vueDependencies = ['vue-loader@11.0.0', 'vue-template-compiler@~2.5.0']
         const angualrDependencies = ['ts-loader@1.3.3', 'typescript@2.4.2']
 
         if (templateType === 'vue') installDependencies = installDependencies.concat(dependencies, vueDependencies);
@@ -2492,7 +2474,8 @@
 
       } else installDependencies.push('browser-sync@2.24.5');
 
-      if (this._isCordovaInstalled(projectDir)) installDependencies.push('cordova@' + this.getCordovaVersion());
+      let cordovaVersion = this.getCordovaVersion(projectDir);
+      if (utils.isCordovaInstalled(projectDir)) installDependencies.push('cordova@' + (cordovaVersion ? cordovaVersion : this.getLatestCordovaVersion()) );
 
       if (installDependencies.length > 0) {
         process.stdout.write('\n[Dev dependencies] Installing...\n');
@@ -2534,31 +2517,6 @@
 
     return fs.readFileSync(asset, 'utf8');
   }
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Copies Monaca components folder to www.
-   * @param {String} Project Directory
-   * @return {Promise}
-   */
-  Monaca.prototype.initComponents = function(projectDir) {
-    var deferred = Q.defer();
-    var componentsPath = path.join(projectDir, 'www', 'components');
-    fs.exists(componentsPath, function(exists) {
-      if (exists) {
-        process.stdout.write('\twww/components already exists. Skipping.\n');
-        return deferred.resolve(projectDir);
-      } else {
-        fs.copy(path.resolve(__dirname, 'template', 'components'), componentsPath, function(error) {
-          return error ? deferred.reject(error) : deferred.resolve(projectDir);
-        });
-      }
-    });
-
-    return deferred.promise;
-  };
 
   /**
    * @method
@@ -4203,9 +4161,7 @@
     const environment = ['dev', 'prod'];
     const folder = utils.MIGRATION_TEMPLATES_FOLDER;
 
-    if (!config.build) {
-      return Promise.resolve(projectDir);
-    }
+    if (!config.build) return Promise.resolve(projectDir);
 
     return new Promise((resolve, reject) => {
       try {
@@ -4232,13 +4188,94 @@
    * @method
    * @memberof Monaca
    * @description
+   *   This is the lastest Cordova Version for building
+   * @return {String}
+   */
+  Monaca.prototype.getLatestCordovaVersion = function () {
+    return utils.CORDOVA_VERSION;
+  };
+
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Function to create .monaca/project_info.json file
+   *
+   * @param {String} projectDir Project directory
+   * @param {Boolean} isTranspile
+   * @return {Promise}
+   */
+  Monaca.prototype.createProjectInfoFile = function (projectDir, isTranspile) {
+    return migration.createProjectInfoFile(projectDir, isTranspile);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Function to create res folder with icons and splashes
+   *
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  Monaca.prototype.initIconsSplashes = function (projectDir) {
+    return migration.initIconsSplashes(projectDir);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Copies Monaca components folder to www.
+   *
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  Monaca.prototype.initComponents = function (projectDir) {
+    return migration.initComponents(projectDir);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Create default config.xml file.
+   *
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  Monaca.prototype.createConfigFile = function (projectDir) {
+    return migration.createConfigFile(projectDir);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *   Upgrade old projects to Monaca CLI 3.0.0 structure
+   *
    * @param {String} projectDir Project directory
    * @param {Boolean} overwrite Overwrite scripts commands defined by user
    * @return {Promise}
    */
   Monaca.prototype.upgrade = function (projectDir, overwrite) {
-    return upgrade(projectDir, overwrite, this);
+    return migration.upgrade(projectDir, overwrite, this);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Allow projects created using other cli tools to use Monaca
+   *
+   * @param {String} projectDir Project directory
+   * @param {Boolean} isTranspile
+   * @param {Object} commands commands to inject into package.json
+   * @return {Promise}
+   */
+  Monaca.prototype.init = function (projectDir, isTranspile, commands) {
+    return migration.init(projectDir, isTranspile, commands, this);
   }
 
   module.exports = Monaca;
