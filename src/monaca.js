@@ -4143,9 +4143,11 @@
    */
   Monaca.prototype.isOldProject = function (projectDir) {
     let packageJsonFile = path.join(projectDir, 'package.json');
-    let packageJsonContent = require(packageJsonFile);
+    let packageJsonContent;
 
-    return packageJsonContent.scripts ? (!packageJsonContent.scripts['monaca:preview']) : true;
+    try {packageJsonContent = require(packageJsonFile);} catch(e) {};
+
+    return (packageJsonContent && packageJsonContent.scripts) ? (!packageJsonContent.scripts['monaca:preview']) : true;
   }
 
   /**
