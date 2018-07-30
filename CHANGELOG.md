@@ -2,6 +2,12 @@
 CHANGELOG
 ====
 
+v2.7.9
+----
+* add optional param to `cloneProject` function (to fix `monaca import`)
+* change content of default `.monacaignore`
+* add message during generating `.monacaignore`
+
 v2.7.8
 ----
 * Modified `webpack` development configuration of `Angular` to fix `live reloading`
