@@ -2650,17 +2650,8 @@
   Monaca.prototype.transpile = function(projectDir, options, cb) {
     options = options || {};
 
-    if (!this.isTranspilable(projectDir)) {
-      return Q.resolve({
-        message: 'This project\'s type does not support transpiling capabilities.\n'
-      });
-    }
-
-    if (!this.isTranspileEnabled(projectDir)) {
-      return Q.resolve({
-        message: 'The transpiling feature for this project is currently disabled.\n'
-      });
-    }
+    if (!this.isTranspilable(projectDir)) return Q.resolve({ message: 'This project\'s type does not support transpiling capabilities.\n' });
+    if (!this.isTranspileEnabled(projectDir)) return Q.resolve({ message: 'The transpiling feature for this project is currently disabled.\n' });
 
     return new Promise((resolve, reject) => {
       /**
@@ -2669,30 +2660,16 @@
       let exitCb = (err, stats) => {
         const response = {message: '\n\nTranspiling finished for ' + projectDir};
 
-        if (cb) {
-          cb( { type: 'lifecycle', action : 'process-exit'} );
-        }
-
-        if (err === 1) {
-          reject(new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.'));
-        }
-
+        if (cb) cb( { type: 'lifecycle', action : 'process-exit'} );
+        if (err === 1) reject(new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.'));
         this.emitter.emit('output', Object.assign({}, response, {type: 'success'}));
-
-        if(!options.watch) {
-          resolve(response);
-        }
+        if(!options.watch) resolve(response);
       }
 
-      this.emitter.emit('output', {
-        type: 'success',
-        message: 'Running Transpiler...'
-      });
+      this.emitter.emit('output', { type: 'success', message: 'Running Transpiler...' });
       process.stdout.write('Running Transpiler...\n');
 
-      if (cb != null) {
-        cb( { type: 'lifecycle', action : 'start-compile' } );
-      }
+      if (cb != null) cb( { type: 'lifecycle', action : 'start-compile' } );
 
       const command = options.watch ? 'monaca:debug' : 'monaca:transpile';
       let npm;
@@ -2700,7 +2677,7 @@
       try {
         npm = spawn('npm', ['run', command], {
           cwd: projectDir,
-          stdio: this.clientType === 'cli' ? ( options.watch ? ['inherit', 'pipe', 'inherit'] : 'inherit'): 'pipe',
+          stdio: this.clientType === 'cli' ? 'inherit': 'pipe',
           env: process.env
         })
       } catch (ex) {
@@ -2708,52 +2685,18 @@
       }
 
       // Watch option: waiting for after emit message
-      if (options.watch) {
-
-        npm.stdout.on('data', (data) => {
-          if (data.toString() === 'after-emit') {
-            if (cb) {
-              cb( { type: 'lifecycle', action : 'end-compile' } );
-            }
-          } else {
-            process.stdout.write(data);
-          }        
-        });
-        resolve({
-          message: 'Watching directory "' + projectDir + '" for changes...',
-          pid: npm.pid
-        });
-      }
-
+      if (options.watch) resolve({ message: 'Watching directory "' + projectDir + '" for changes...', pid: npm.pid });
 
       // Emmit message to localkit
       if (this.clientType !== 'cli') {
-        //process.stdin.pipe(npm.stdin);
-
-        npm.stdout.on('data', (data) => {
-          this.emitter.emit('output', {
-            type: 'progress',
-            message: data.toString()
-          });
-        });
-
-        npm.stderr.on('data', (data) => {
-          this.emitter.emit('output', {
-            type: 'progress',
-            message: data.toString()
-          });
-        });
+        npm.stdout.on('data', (data) => { this.emitter.emit('output', { type: 'progress', message: data.toString() }); });
+        npm.stderr.on('data', (data) => { this.emitter.emit('output', { type: 'progress', message: data.toString() }); });
       }
 
       // Ctrl + C
-      if (this.clientType === 'cli') {
-        process.on('SIGINT',() => {
-          exitCb(1);
-        });
-      }
+      if (this.clientType === 'cli') process.on('SIGINT',() => { exitCb(1); });
       // Finish
       npm.on('exit', exitCb);
-
     });
   };
 
