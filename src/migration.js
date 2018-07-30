@@ -109,7 +109,6 @@ const executeUpgradeProcess = (packageJsonFile, packageJsonContent, projectDir, 
 
   return new Promise((resolve, reject) => {
     process.on('SIGINT', () => {
-      // throw new  Error(`Failed to upgrade ${projectDir}. Process cancelled.`);
       reject(new Error(`Failed to upgrade ${projectDir}. Process cancelled.`));
     });
 

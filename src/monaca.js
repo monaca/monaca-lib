@@ -728,12 +728,6 @@
   Monaca.prototype.uploadFile = function(projectId, localPath, remotePath) {
     var deferred = Q.defer();
 
-    // Ctrl + C
-    process.on('SIGINT',() => {
-      clearInterval(interval);
-      deferred.reject(new Error('Upload stopped!'));
-    });
-
     fs.exists(localPath, function(exists) {
       if (!exists) {
         deferred.reject(new Error('File does not exist.'));
@@ -2204,11 +2198,6 @@
               );
             }
           }
-          // Ctrl + C
-          process.on('SIGINT',() => {
-            clearInterval(interval);
-            deferred.reject(new Error('Remote Build stopped!'));
-          });
         }.bind(this),
         function(error) {
           clearInterval(interval);
