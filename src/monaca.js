@@ -2682,8 +2682,6 @@
         npm.stderr.on('data', (data) => { this.emitter.emit('output', { type: 'progress', message: data.toString() }); });
       }
 
-      // Ctrl + C
-      if (this.clientType === 'cli') process.on('SIGINT',() => { exitCb(1); });
       // Finish
       npm.on('exit', exitCb);
     });

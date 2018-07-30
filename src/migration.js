@@ -108,10 +108,6 @@ const executeUpgradeProcess = (packageJsonFile, packageJsonContent, projectDir, 
   const previewScriptName = 'monaca_preview.js';
 
   return new Promise((resolve, reject) => {
-    process.on('SIGINT', () => {
-      reject(new Error(`Failed to upgrade ${projectDir}. Process cancelled.`));
-    });
-
     // Adding scripts commands
     utils.info('\n[package.json] Adding script commands...');
     fs.writeFile(packageJsonFile, JSON.stringify(packageJsonContent, null, 2), 'utf8', (err) => {
