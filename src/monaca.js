@@ -4198,6 +4198,19 @@
    * @method
    * @memberof Monaca
    * @description
+   *   Create default package.json file.
+   *
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  Monaca.prototype.createPackageJsonFile = function (projectDir) {
+    return migration.createPackageJsonFile(projectDir);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *   Upgrade old projects to Monaca CLI 3.0.0 structure
    *
    * @param {String} projectDir Project directory

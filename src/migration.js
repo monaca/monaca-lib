@@ -79,11 +79,12 @@ const injectScriptsCommand = (isTranspile, packageJsonFile, overwrite = false) =
  * @param {Object} commands Object with the commands
  * @return {Object | Exception}
  */
-const injectScriptsCommandInit = (packageJsonFile, commands) => {
+const prepareScriptsCommandInit = (packageJsonFile, commands) => {
   let packageJsonContent;
 
   try { packageJsonContent = require(packageJsonFile); } catch (ex) { throw new Error(`Failed getting ${packageJsonFile}`); }
 
+  if (!packageJsonContent.scripts) packageJsonContent.scripts = {};
   packageJsonContent.scripts['monaca:preview'] = commands.serve;
   packageJsonContent.scripts['monaca:transpile'] = commands.build;
   packageJsonContent.scripts['monaca:debug'] = commands.watch;
@@ -314,6 +315,31 @@ module.exports = {
    * @method
    * @memberof Monaca
    * @description
+   *   Create default package.jsonfile.
+   *
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  createPackageJsonFile: function (projectDir) {
+    utils.info('[package.json] Creating file...');
+    return new Promise((resolve, reject) => {
+      const packageFolder = path.resolve(projectDir, 'package.json');
+      const packageTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'package.json');
+
+      fs.exists(packageFolder, (exists) => {
+        if(exists) { process.stdout.write('\tpackage.json already exists. Skipping.\n'); return resolve(projectDir)}
+        fs.copy(packageTemplateFolder, packageFolder, (err) => {
+          if (err) return reject(err);
+          return resolve(projectDir);
+        });
+      });
+    });
+  },
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *   Upgrade old projects to Monaca CLI 3.0.0 structure:
    *      - Dependencies
    *      - package.json script commands
@@ -351,19 +377,19 @@ module.exports = {
    */
   init: function (projectDir, isTranspile, commands, monaca) {
     const packageJsonFile = path.join(projectDir, 'package.json');
-    let packageJsonContent;
 
-    if (!fs.existsSync(packageJsonFile)) return Promise.reject(new Error('Failed to update package.json. File missing, please restore it.'));
-
-    try { packageJsonContent = injectScriptsCommandInit(packageJsonFile, commands); }
-    catch(err) { return Promise.reject(err) }
-
-    return injectCommandsIntoPackageJson(packageJsonFile, packageJsonContent)
-      .then( () => this.initComponents(projectDir) )
-      .then( () => this.createConfigFile(projectDir) )
-      .then( () => this.initIconsSplashes(projectDir) )
-      .then( () => installLatestCordova(projectDir, monaca) )
-      .then( () => this.createProjectInfoFile(projectDir, isTranspile) )
+    return this.createPackageJsonFile(projectDir)
+      .then(() => {
+        let packageJsonContent;
+        try { packageJsonContent = prepareScriptsCommandInit(packageJsonFile, commands); }
+        catch (err) { return Promise.reject(err) }
+        injectCommandsIntoPackageJson(packageJsonFile, packageJsonContent)
+      })
+      .then(() => this.initComponents(projectDir))
+      .then(() => this.createConfigFile(projectDir))
+      .then(() => this.initIconsSplashes(projectDir))
+      .then(() => installLatestCordova(projectDir, monaca))
+      .then(() => this.createProjectInfoFile(projectDir, isTranspile))
       .catch(failedCb);
-  }
+    }
 }
