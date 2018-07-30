@@ -339,11 +339,11 @@ module.exports = {
    *      - Dependencies
    *      - package.json script commands
    * @param {String} projectDir Project directory
-   * @param {Boolean} overwrite Overwrite scripts commands defined by user
+   * @param {Object} options Options
    * @param {Object} monaca Monaca instance
    * @return {Promise}
    */
-  upgrade: function (projectDir, overwrite, monaca) {
+  upgrade: function (projectDir, options, monaca) {
     if (!monaca.isOldProject(projectDir)) return Promise.reject(new Error('Project created using Monaca CLI 3.x'));
 
     const packageJsonFile = path.join(projectDir, 'package.json');
@@ -352,7 +352,7 @@ module.exports = {
 
     const isTranspile = monaca.isTranspilable(projectDir);
 
-    return injectScriptsCommand(isTranspile, packageJsonFile, overwrite)
+    return injectScriptsCommand(isTranspile, packageJsonFile, options.overwrite)
       .then(
         packageJsonContent => executeUpgradeProcess(packageJsonFile, packageJsonContent, projectDir, isTranspile, monaca)
       )

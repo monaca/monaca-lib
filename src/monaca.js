@@ -4201,11 +4201,11 @@
    *   Upgrade old projects to Monaca CLI 3.0.0 structure
    *
    * @param {String} projectDir Project directory
-   * @param {Boolean} overwrite Overwrite scripts commands defined by user
+   * @param {Object} options Options
    * @return {Promise}
    */
-  Monaca.prototype.upgrade = function (projectDir, overwrite) {
-    return migration.upgrade(projectDir, overwrite, this);
+  Monaca.prototype.upgrade = function (projectDir, options) {
+    return migration.upgrade(projectDir, options, this);
   }
 
   /**
