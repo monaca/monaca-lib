@@ -10,9 +10,6 @@ try {
   var postcssImport = require('postcss-import');
   var postcssUrl = require('postcss-url');
 
-  // Writing files to the output directory (www) during development
-  var CopyWebpackPlugin = require('copy-webpack-plugin');
-  var WriteFileWebpackPlugin = require('write-file-webpack-plugin');
 } catch (e) {
   throw new Error('Missing Webpack Build Dependencies.');
 }
@@ -34,7 +31,7 @@ module.exports = {
     path: path.join(__dirname, 'www'),
     filename: '[name].bundle.js',
     chunkFilename: '[id].chunk.js',
-    publicPath: './'
+    publicPath: '/'
   },
 
   resolve: {
@@ -115,23 +112,9 @@ module.exports = {
     }),
     new HtmlWebpackPlugin({
       template: 'src/public/index.html.ejs',
-      chunksSortMode: 'dependency',
-      minify: {
-        caseSensitive: true,
-        collapseWhitespace: true,
-        conservativeCollapse: true,
-        removeAttributeQuotes: false,
-        removeComments: true
-      }
+      chunksSortMode: 'dependency'
     }),
-    new ProgressBarPlugin(),
-    new WriteFileWebpackPlugin({
-      test: /^(?!.*(watch\.bundle\.js|hot)).*/,
-    }),
-      new CopyWebpackPlugin([{
-      from: path.join(__dirname, 'src', 'public'),
-      ignore: ['index.html.ejs']
-    }])
+    new ProgressBarPlugin()
   ],
 
   resolveLoader: {
