@@ -187,14 +187,11 @@ module.exports = {
   createProjectInfoFile: function (projectDir, isTranspile) {
     utils.info('[.monaca] Creating project_info.json...');
     return new Promise((resolve, reject) => {
-
       const projectInfo = path.resolve(projectDir, '.monaca', 'project_info.json');
       const projectInfoTemplate = path.resolve(__dirname, 'template', 'blank', '.monaca', 'project_info.json');
 
       fs.copy(projectInfoTemplate, projectInfo, (err) => {
         if (err) return reject(err);
-
-        //if (!isTranspile) return resolve(projectDir);
         try {
           if (!fs.existsSync('.monaca')) fs.mkdirSync('.monaca');
 
@@ -204,12 +201,9 @@ module.exports = {
               "enabled": isTranspile ? true: false
             }
           };
-
           fs.writeFileSync(projectInfo, JSON.stringify(projectInfoContent, null, 2), 'utf8'); return resolve(projectDir);
         } catch (err) { reject(err); }
-
       });
-
     });
   },
 
