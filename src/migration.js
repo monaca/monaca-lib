@@ -6,14 +6,15 @@ const packageBackupJsonFile = 'package.backup.json';
 
 /**
  *
- * Function to generate the new scripts commands list overwriting the package.json.
+ * Function to generate the new scripts commands list into package.json.
  *
+ * @param {String} projectDir
  * @param {Boolean} isTranspile
  * @param {String} packageJsonFile Project's packake.json file
  * @param {Boolean} overwrite Overwrite scripts commands defined by user
- * @return {Promise}
+ * @return {Object | Exception}
  */
-const injectScriptsCommand = (isTranspile, packageJsonFile, overwrite = false) => {
+const prepareScriptsCommand = (projectDir, isTranspile, packageJsonFile, overwrite = false) => {
 
   const monacaPreview = isTranspile ? 'npm run dev & npm run watch' : 'npm run dev';
   const monacaTranspile = 'npm run build';
@@ -23,52 +24,60 @@ const injectScriptsCommand = (isTranspile, packageJsonFile, overwrite = false) =
   const buildCommand = 'webpack --config ./webpack.prod.new.config.js';
   let packageJsonContent;
 
-  try {
-    packageJsonContent = require(packageJsonFile);
-  } catch (ex) { Promise.reject.bind(null, new Error(`Failed getting ${packageJsonFile}`)); }
+  try { packageJsonContent = require(packageJsonFile); } catch (ex) { throw `Failed getting ${packageJsonFile}`; }
 
+  createPackageJsonBackup(projectDir, packageJsonContent);
+
+  // Check scripts tag
+  if (packageJsonContent.scripts) {
+    packageJsonContent.scripts['monaca:preview'] = monacaPreview;
+    if (isTranspile) {
+      packageJsonContent.scripts['monaca:transpile'] = monacaTranspile;
+      packageJsonContent.scripts['monaca:debug'] = monacaDebug;
+    }
+    if (overwrite) {
+      packageJsonContent.scripts['dev'] = devCommand;
+      if (isTranspile) {
+        packageJsonContent.scripts['build'] = buildCommand;
+        packageJsonContent.scripts['watch'] = watchCommand;
+      }
+    } else {
+      packageJsonContent.scripts['dev'] = packageJsonContent.scripts.dev ? packageJsonContent.scripts.dev : devCommand;
+      if (isTranspile) {
+        packageJsonContent.scripts['build'] = packageJsonContent.scripts.build ? packageJsonContent.scripts.build : buildCommand;
+        packageJsonContent.scripts['watch'] = packageJsonContent.scripts.watch ? packageJsonContent.scripts.watch : watchCommand;
+      }
+    }
+  } else {
+    packageJsonContent.scripts = {};
+    packageJsonContent.scripts['monaca:preview'] = monacaPreview;
+    packageJsonContent.scripts['dev'] = devCommand;
+    if (isTranspile) {
+      packageJsonContent.scripts['monaca:transpile'] = monacaTranspile;
+      packageJsonContent.scripts['build'] = buildCommand;
+      packageJsonContent.scripts['monaca:debug'] = monacaDebug;
+      packageJsonContent.scripts['watch'] = watchCommand;
+    }
+  }
+
+  return packageJsonContent;
+
+}
+
+/**
+ *
+ * Function to create a backup from package.json
+ *
+ * @param {String} projectDir
+ * @param {String} packageJsonContent Project's packake.json content
+ * @return {null | Exception}
+ */
+const createPackageJsonBackup = (projectDir, packageJsonContent) => {
   // Backup package.json
   try {
     utils.info('\n[package.json] Creating backup...');
-    fs.writeFileSync(packageBackupJsonFile, JSON.stringify(packageJsonContent, null, 2), 'utf8');
-  } catch (ex) { Promise.reject.bind(null, new Error('Failed backuping up package.json.')); }
-
-  return new Promise((resolve, reject) => {
-    // Check scripts tag
-    if (packageJsonContent.scripts) {
-      packageJsonContent.scripts['monaca:preview'] = monacaPreview;
-      if (isTranspile) {
-        packageJsonContent.scripts['monaca:transpile'] = monacaTranspile;
-        packageJsonContent.scripts['monaca:debug'] = monacaDebug;
-      }
-      if (overwrite) {
-        packageJsonContent.scripts['dev'] = devCommand;
-        if (isTranspile) {
-          packageJsonContent.scripts['build'] = buildCommand;
-          packageJsonContent.scripts['watch'] = watchCommand;
-        }
-      } else {
-        packageJsonContent.scripts['dev'] = packageJsonContent.scripts.dev ? packageJsonContent.scripts.dev : devCommand;
-        if (isTranspile) {
-          packageJsonContent.scripts['build'] = packageJsonContent.scripts.build ? packageJsonContent.scripts.build : buildCommand;
-          packageJsonContent.scripts['watch'] = packageJsonContent.scripts.watch ? packageJsonContent.scripts.watch : watchCommand;
-        }
-      }
-      return resolve(packageJsonContent);
-    } else {
-      packageJsonContent.scripts = {};
-      packageJsonContent.scripts['monaca:preview'] = monacaPreview;
-      packageJsonContent.scripts['dev'] = devCommand;
-      if (isTranspile) {
-        packageJsonContent.scripts['monaca:transpile'] = monacaTranspile;
-        packageJsonContent.scripts['build'] = buildCommand;
-        packageJsonContent.scripts['monaca:debug'] = monacaDebug;
-        packageJsonContent.scripts['watch'] = watchCommand;
-      }
-      return resolve(packageJsonContent);
-    }
-  });
-
+    fs.writeFileSync(path.resolve(projectDir, packageBackupJsonFile), JSON.stringify(packageJsonContent, null, 2), 'utf8');
+  } catch (ex) { throw 'Failed backuping up package.json.'; }
 }
 
 /**
@@ -91,53 +100,6 @@ const prepareScriptsCommandInit = (packageJsonFile, commands) => {
 
   return packageJsonContent;
 }
-
-/**
- *
- * Local function to write the new commands into package.json, install build dependencies
- *  and create monaca_preview.json script in case of transpile project.
- *
- * @param {Object} packageJsonFile package.json's name
- * @param {Object} packageJsonContent package.json's content
- * @param {Object} projectDir Project directory
- * @param {Boolean} isTranspile
- * @param {Object} monaca Monaca instance
- * @return {Promise}
- */
-const executeUpgradeProcess = (packageJsonFile, packageJsonContent, projectDir, isTranspile, monaca) => {
-  const previewScriptName = 'monaca_preview.js';
-
-  return new Promise((resolve, reject) => {
-    // Adding scripts commands
-    utils.info('\n[package.json] Adding script commands...');
-    fs.writeFile(packageJsonFile, JSON.stringify(packageJsonContent, null, 2), 'utf8', (err) => {
-      if (err) reject.bind(err, new Error('Failed to update package.json.'));
-
-      // Installing building dependencies
-      monaca.installDevDependencies(projectDir, isTranspile)
-        .then(
-          (data) => {
-            if (isTranspile) {
-              // Creating preview script
-              const previewScript = path.join(projectDir, previewScriptName);
-              const asset = path.resolve(path.join(__dirname, utils.MIGRATION_FOLDER, previewScriptName));
-
-              utils.info('\n[monaca_preview.js] Creating...');
-              fs.writeFileSync(previewScript, fs.readFileSync(asset, 'utf8'), 'utf8');
-
-              // Creating new webpack config files
-              utils.info('\n[Webpack Config] Creating templates...');
-              return monaca.generateTemplateWebpackConfigs(projectDir)
-                .then(data => resolve(data) )
-                .catch(err => reject(err));
-            }
-            resolve(data);
-          }
-        )
-        .catch(err => reject(err));
-    });
-  });
-};
 
 /**
  *
@@ -164,6 +126,28 @@ const installLatestCordova = (projectDir, monaca) => {
 
 /**
  *
+ * Create Webpack config files and preview script
+ *
+ * @param {String} projectDir Project directory
+ * @param {Object} monaca Monaca instance
+ * @return {Promise}
+ */
+const createWebpackFiles = (projectDir, monaca) => {
+  const previewScriptName = 'monaca_preview.js';
+
+  // Creating preview script
+  const previewScript = path.join(projectDir, previewScriptName);
+  const asset = path.resolve(path.join(__dirname, utils.MIGRATION_FOLDER, previewScriptName));
+
+  utils.info('\n[monaca_preview.js] Creating...');
+  fs.writeFileSync(previewScript, fs.readFileSync(asset, 'utf8'), 'utf8');
+
+  // Creating new webpack config files
+  utils.info('\n[Webpack Config] Creating templates...');
+  return monaca.generateTemplateWebpackConfigs(projectDir);
+}
+/**
+ *
  * Inject scripts commands into package.json
  *
  * @param {Object} packageJsonFile package.json's path
@@ -187,11 +171,7 @@ const injectCommandsIntoPackageJson = (packageJsonFile, packageJsonContent) => {
  * @param {Object} error
  * @return {Exception}
  */
-const failedCb = (error) => {
-  // Restore previous package.json file
-  try { fs.writeFileSync('package.json', fs.readFileSync(packageBackupJsonFile), 'utf8'); } catch(ex){}
-  throw (error);
-};
+const failedCb = (error) => { throw (error); };
 
 module.exports = {
   /**
@@ -351,11 +331,11 @@ module.exports = {
     if (!fs.existsSync(packageJsonFile)) return Promise.reject(new Error('Failed to update package.json. File missing, please restore it.'));
 
     const isTranspile = monaca.isTranspilable(projectDir);
+    let packageJsonContent = prepareScriptsCommand(projectDir, isTranspile, packageJsonFile, options.overwrite)
 
-    return injectScriptsCommand(isTranspile, packageJsonFile, options.overwrite)
-      .then(
-        packageJsonContent => executeUpgradeProcess(packageJsonFile, packageJsonContent, projectDir, isTranspile, monaca)
-      )
+    return injectCommandsIntoPackageJson(packageJsonFile, packageJsonContent)
+      .then( () => monaca.installDevDependencies(projectDir, isTranspile))
+      .then( (data) => { if (isTranspile) return createWebpackFiles(projectDir, monaca); else return resolve(data); } )
       .catch(failedCb);
   },
 
