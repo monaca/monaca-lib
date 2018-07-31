@@ -2427,10 +2427,12 @@
    * @description
    *   Get Cordova version used by the project
    * @param {String} Project's Directory
-   * @return {Promise}
+   * @return {String | Exception}
    */
   Monaca.prototype.getCordovaVersion = function (projectDir) {
     let config = this.fetchProjectData(projectDir);
+
+    if (!config) throw '\'.monaca/project_info.json\' is missing. Please execute \'monaca preview\' to convert your project into a Monaca project.';
     return config['cordova_version'];
   };
 
