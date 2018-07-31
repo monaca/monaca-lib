@@ -76,7 +76,7 @@ const createPackageJsonBackup = (projectDir, packageJsonContent) => {
   // Backup package.json
   try {
     utils.info('\n[package.json] Creating backup...');
-    fs.writeFileSync(path.resolve(projectDir, packageBackupJsonFile), JSON.stringify(packageJsonContent, null, 2), 'utf8');
+    fs.writeFileSync(path.resolve(projectDir, packageBackupJsonFile), JSON.stringify(packageJsonContent, null, 4), 'utf8');
   } catch (ex) { throw 'Failed backuping up package.json.'; }
 }
 
@@ -158,7 +158,7 @@ const createWebpackFiles = (projectDir, monaca) => {
 const injectCommandsIntoPackageJson = (packageJsonFile, packageJsonContent) => {
   return new Promise((resolve, reject) => {
     utils.info('[package.json] Adding script commands...');
-    fs.writeFile(packageJsonFile, JSON.stringify(packageJsonContent, null, 2), 'utf8', (err) => {
+    fs.writeFile(packageJsonFile, JSON.stringify(packageJsonContent, null, 4), 'utf8', (err) => {
       if (err) return reject(new Error('Failed to update package.json.'));
       return resolve(true);
     });
@@ -180,8 +180,31 @@ const createMinimumPackageJsonFile = (projectDir) => {
       "name": projectDir.substring(projectDir.lastIndexOf('/') + 1),
       "description": "Upgraded project",
     };
-    fs.writeFileSync(packageFolder, JSON.stringify(packageContent, null, 2));
+    fs.writeFileSync(packageFolder, JSON.stringify(packageContent, null, 4));
   } catch(ex) { throw 'Failed to create package.json'; }
+};
+
+/**
+ *
+ * Inject necessary commands for Cloud into JSON file
+ *
+ * @param {String} jsonFile Json file
+ * @return {Promise}
+ */
+const injectCloudIDECommands = (jsonFile) => {
+  utils.info(`[${jsonFile}] Adding Cloud commands...`);
+  return new Promise((resolve, reject) => {
+    let jsonFileContent;
+    try { jsonFileContent = require(jsonFile); } catch (ex) { throw new Error(`Failed getting ${jsonFileContent}`); }
+    jsonFileContent['cloud_ide'] = {
+        "preview_command": "monaca preview",
+        "preview_port": "8080"
+    };
+    fs.writeFile(jsonFile, JSON.stringify(jsonFileContent, null, 4), 'utf8', (err) => {
+      if (err) return reject(new Error(`Failed to update ${jsonFile}`));
+      return resolve(true);
+    });
+  })
 };
 
 /**
@@ -205,11 +228,10 @@ module.exports = {
    * @return {Promise}
    */
   createProjectInfoFile: function (projectDir, isTranspile) {
+    const projectInfo = path.resolve(projectDir, '.monaca', 'project_info.json');
+    const projectInfoTemplate = path.resolve(__dirname, 'template', 'blank', '.monaca', 'project_info.json');
     utils.info('[.monaca] Creating project_info.json...');
     return new Promise((resolve, reject) => {
-      const projectInfo = path.resolve(projectDir, '.monaca', 'project_info.json');
-      const projectInfoTemplate = path.resolve(__dirname, 'template', 'blank', '.monaca', 'project_info.json');
-
       fs.copy(projectInfoTemplate, projectInfo, (err) => {
         if (err) return reject(err);
         try {
@@ -221,10 +243,11 @@ module.exports = {
               "enabled": isTranspile ? true: false
             }
           };
-          fs.writeFileSync(projectInfo, JSON.stringify(projectInfoContent, null, 2), 'utf8'); return resolve(projectDir);
+          fs.writeFileSync(projectInfo, JSON.stringify(projectInfoContent, null, 4), 'utf8'); return resolve(projectDir);
         } catch (err) { reject(err); }
       });
-    });
+    })
+    .then(() => injectCloudIDECommands(projectInfo));
   },
 
   /**
@@ -346,6 +369,7 @@ module.exports = {
     if (!fs.existsSync(packageJsonFile)) return Promise.reject(new Error('Failed to update package.json. File missing, please restore it.'));
 
     const isTranspile = monaca.isTranspilable(projectDir);
+    const projectInfo = path.resolve(projectDir, '.monaca', 'project_info.json');
     let packageJsonContent = prepareScriptsCommand(projectDir, isTranspile, packageJsonFile, options.overwrite)
 
     return injectCommandsIntoPackageJson(packageJsonFile, packageJsonContent)
@@ -354,6 +378,7 @@ module.exports = {
         if (isTranspile) return createWebpackFiles(projectDir, monaca);
         else return Promise.resolve(data);
       })
+      .then( () => injectCloudIDECommands(projectInfo))
       .catch(failedCb);
   },
 
