@@ -146,6 +146,7 @@ const createWebpackFiles = (projectDir, monaca) => {
   utils.info('\n[Webpack Config] Creating templates...');
   return monaca.generateTemplateWebpackConfigs(projectDir);
 }
+
 /**
  *
  * Inject scripts commands into package.json
@@ -162,6 +163,25 @@ const injectCommandsIntoPackageJson = (packageJsonFile, packageJsonContent) => {
       return resolve(true);
     });
   })
+};
+
+/**
+ *
+ * Function to create a minimum package.json file
+ *
+ * @param {String} projectDir Project directory
+ * @return {Promise}
+ */
+const createMinimumPackageJsonFile = (projectDir) => {
+  utils.info('[package.json] Creating minimum file...');
+  try {
+    const packageFolder = path.resolve(projectDir, 'package.json');
+    const packageContent = {
+      "name": projectDir.substring(projectDir.lastIndexOf('/') + 1),
+      "description": "Upgraded project",
+    };
+    fs.writeFileSync(packageFolder, JSON.stringify(packageContent, null, 2));
+  } catch(ex) { throw 'Failed to create package.json'; }
 };
 
 /**
@@ -322,6 +342,7 @@ module.exports = {
 
     const packageJsonFile = path.join(projectDir, 'package.json');
 
+    if (options.createPackageJson && !fs.existsSync(packageJsonFile)) createMinimumPackageJsonFile(projectDir);
     if (!fs.existsSync(packageJsonFile)) return Promise.reject(new Error('Failed to update package.json. File missing, please restore it.'));
 
     const isTranspile = monaca.isTranspilable(projectDir);
@@ -329,7 +350,10 @@ module.exports = {
 
     return injectCommandsIntoPackageJson(packageJsonFile, packageJsonContent)
       .then( () => monaca.installDevDependencies(projectDir, isTranspile))
-      .then( (data) => { if (isTranspile) return createWebpackFiles(projectDir, monaca); else return resolve(data); } )
+      .then( (data) => {
+        if (isTranspile) return createWebpackFiles(projectDir, monaca);
+        else return Promise.resolve(data);
+      })
       .catch(failedCb);
   },
 
