@@ -170,7 +170,7 @@ const injectCommandsIntoPackageJson = (packageJsonFile, packageJsonContent) => {
  * Function to create a minimum package.json file
  *
  * @param {String} projectDir Project directory
- * @return {Promise}
+ * @return {null | Exception}
  */
 const createMinimumPackageJsonFile = (projectDir) => {
   utils.info('[package.json] Creating minimum file...');
@@ -409,5 +409,5 @@ module.exports = {
       .then(() => installLatestCordova(projectDir, monaca))
       .then(() => this.createProjectInfoFile(projectDir, isTranspile))
       .catch(failedCb);
-    }
+  }
 }
