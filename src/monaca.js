@@ -2438,7 +2438,7 @@
   Monaca.prototype.getCordovaVersion = function (projectDir) {
     let config = this.fetchProjectData(projectDir);
 
-    if (!config) throw '\'.monaca/project_info.json\' is missing. Please execute \'monaca preview\' to convert your project into a Monaca project.';
+    if (!config) throw '\'.monaca/project_info.json\' is missing. Please execute \'monaca init\' to convert your project into a Monaca project.';
     return config['cordova_version'];
   };
 
