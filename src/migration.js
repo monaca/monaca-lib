@@ -235,8 +235,6 @@ module.exports = {
       fs.copy(projectInfoTemplate, projectInfo, (err) => {
         if (err) return reject(err);
         try {
-          if (!fs.existsSync('.monaca')) fs.mkdirSync('.monaca');
-
           let projectInfoContent = require(projectInfo);
           if(isTranspile) {
             projectInfoContent['template-type'] = 'transpile'

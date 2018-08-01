@@ -3172,14 +3172,17 @@
    * @return {Promise}
    */
   Monaca.prototype.isMonacaProject = function(projectDir) {
-
     return this.isReactNativeProject(projectDir)
     .then(
       function(value) {
         return Q.resolve(value);
       },
       function() {
-        return this.isCordovaProject(projectDir);
+        return this.isCordovaProject(projectDir)
+          .then(values => {
+            if(!!this.fetchProjectData(projectDir)) Q.resolve('monaca');
+            else throw '[.monaca/project_info.json] File is missing';
+          });
       }.bind(this)
     )
   };
@@ -4077,7 +4080,7 @@
    * @description
    *   Returns true if it is a old project (created using Monaca 2.x or lower).
    * @param {String} projectDir Project directory
-   * @return {Promise}
+   * @return {Boolean}
    */
   Monaca.prototype.isOldProject = function (projectDir) {
     let packageJsonFile = path.join(projectDir, 'package.json');
