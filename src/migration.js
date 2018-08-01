@@ -372,7 +372,11 @@ module.exports = {
 
     const isTranspile = monaca.isTranspilable(projectDir);
     const projectInfo = path.resolve(projectDir, '.monaca', 'project_info.json');
-    let packageJsonContent = prepareScriptsCommand(projectDir, isTranspile, packageJsonFile, options.overwrite)
+
+    let packageJsonContent;
+    try { packageJsonContent = prepareScriptsCommand(projectDir, isTranspile, packageJsonFile, options.overwrite); }
+    catch (err) { return Promise.reject(err) }
+
 
     return injectCommandsIntoPackageJson(packageJsonFile, packageJsonContent)
       .then( () => monaca.installDevDependencies(projectDir, isTranspile))
