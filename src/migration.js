@@ -238,11 +238,14 @@ module.exports = {
           if (!fs.existsSync('.monaca')) fs.mkdirSync('.monaca');
 
           let projectInfoContent = require(projectInfo);
-          projectInfoContent['build'] = {
-            "transpile": {
-              "enabled": isTranspile ? true: false
-            }
-          };
+          if(isTranspile) {
+            projectInfoContent['template-type'] = 'transpile'
+            projectInfoContent['build'] = {
+              "transpile": {
+                "enabled": true
+              }
+            };
+          }
           fs.writeFileSync(projectInfo, JSON.stringify(projectInfoContent, null, 4), 'utf8'); return resolve(projectDir);
         } catch (err) { reject(err); }
       });

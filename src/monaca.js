@@ -2578,9 +2578,9 @@
     var type = config['template-type'];
     /**
      * Some projects (those initialized using init and created using other CLI tools)
-     * do not have 'template-type' tag into .monaca/project_info.json.
+     * do not have 'template-type' tag into .monaca/project_info.json. We set it to 'transpile'
      */
-    return ( type && ( type === 'react' || type === 'angular2' || type === 'vue' ) ) || ( config.build && config.build.transpile );
+    return ( type && ( type === 'react' || type === 'angular2' || type === 'vue' || type === 'transpile' ) );
   }
 
   /**
