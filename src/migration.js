@@ -94,9 +94,9 @@ const prepareScriptsCommandInit = (packageJsonFile, commands) => {
   try { packageJsonContent = require(packageJsonFile); } catch (ex) { throw new Error(`Failed getting ${packageJsonFile}`); }
 
   if (!packageJsonContent.scripts) packageJsonContent.scripts = {};
-  packageJsonContent.scripts['monaca:preview'] = commands.serve;
-  packageJsonContent.scripts['monaca:transpile'] = commands.build;
-  packageJsonContent.scripts['monaca:debug'] = commands.watch;
+  if (commands.serve) packageJsonContent.scripts['monaca:preview'] = commands.serve;
+  if (commands.build) packageJsonContent.scripts['monaca:transpile'] = commands.build;
+  if (commands.watch) packageJsonContent.scripts['monaca:debug'] = commands.watch;
 
   return packageJsonContent;
 }
