@@ -2,7 +2,7 @@
 * Collaborator: yong@asial.co.jp
 */
 const open = require('open');
-const port = 8080;
+const port = process.env.PORT ? process.env.PORT : 8080;
 
 let hookStdout = function() {
   var originalWrite = process.stdout.write
