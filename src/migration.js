@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs-extra');
 const utils = require(path.join(__dirname, 'utils'));
+const common = require(path.join(__dirname, 'common'));
 
 const packageBackupJsonFile = 'package.backup.json';
 
@@ -409,6 +410,7 @@ module.exports = {
       .then(() => this.initIconsSplashes(projectDir))
       .then(() => installLatestCordova(projectDir, monaca))
       .then(() => this.createProjectInfoFile(projectDir, isTranspile))
+      .then(() => Promise.resolve({doc: common.CLI_MIGRATION_DOC_URL}))
       .catch(failedCb);
   }
 }
