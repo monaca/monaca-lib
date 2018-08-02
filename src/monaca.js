@@ -2453,8 +2453,15 @@
    */
   Monaca.prototype.installDevDependencies = function (projectDir, isTranspile) {
 
+    let needToInstall = (projectDir, dependency) => {
+      let dep;
+      try { dep = require(path.resolve(projectDir, 'node_modules', dependency, 'package.json')); }
+      catch (e) { return true }
+      finally { if (!dep) return true; return false; }
+    };
+
     return new Promise((resolve, reject) => {
-      let installDependencies = [];
+      let installDependencies = [], allDependencies = [];
 
       if (isTranspile) {
         const templateType = this.getTemplateType(projectDir);
@@ -2465,11 +2472,16 @@
         const vueDependencies = ['vue-loader@11.0.0', 'vue-template-compiler@~2.5.0']
         const angualrDependencies = ['ts-loader@1.3.3', 'typescript@2.4.2']
 
-        if (templateType === 'vue') installDependencies = installDependencies.concat(dependencies, vueDependencies);
-        if (templateType === 'angular2') installDependencies = installDependencies.concat(dependencies, angualrDependencies);
-        if (templateType === 'react') installDependencies = installDependencies.concat(dependencies, reactDependencies);
+        if (templateType === 'vue') allDependencies = allDependencies.concat(dependencies, vueDependencies);
+        if (templateType === 'angular2') allDependencies = allDependencies.concat(dependencies, angualrDependencies);
+        if (templateType === 'react') allDependencies = allDependencies.concat(dependencies, reactDependencies);
 
-      } else installDependencies.push('browser-sync@2.24.5');
+      } else allDependencies.push('browser-sync@2.24.5');
+
+      // Checking installed dependencies
+      allDependencies.forEach( dependency => {
+        if(needToInstall(projectDir, dependency.split('@')[0])) installDependencies.push(dependency);
+      })
 
       let cordovaVersion = this.getCordovaVersion(projectDir);
       if (utils.needToInstallCordova(projectDir)) installDependencies.push('cordova@' + (cordovaVersion ? cordovaVersion : this.getLatestCordovaVersion()) );
