@@ -2382,9 +2382,10 @@
 
     return new Promise((resolve, reject) => {
       this._npmInit().then(function () {
-        let opts = dev ? {
-          'save-dev': true
-        } : {};
+        let opts = {
+          'audit': false
+        };
+        if (dev) opts['save-dev'] = true;
         npm.load(opts, function (err) {
           if (err) {
             return reject(err);
@@ -2392,6 +2393,7 @@
 
           npm.commands.install(dir, argvs, function (err, data) {
             if (err) {
+              utils.info(err);
               return reject(err);
             }
             resolve(data);
