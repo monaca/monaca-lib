@@ -4,6 +4,21 @@ const utils = require(path.join(__dirname, 'utils'));
 const common = require(path.join(__dirname, 'common'));
 
 const packageBackupJsonFile = 'package.backup.json';
+/**
+   *
+   * Returns true if the type of project supports transpile.
+   *
+   * @param {String} Project Directory
+   * @param {Object} monaca Monaca instance
+   * @return {Boolean}
+   */
+  const isTranspilable = (projectDir, monaca) => {
+    let config = monaca.fetchProjectData(projectDir);
+    if (!config) return false;
+    let type = config['template-type'];
+
+    return ( type && ( type === 'react' || type === 'angular2' || type === 'vue' ) );
+  }
 
 /**
  *
@@ -187,6 +202,31 @@ const createMinimumPackageJsonFile = (projectDir) => {
 
 /**
  *
+ * Remove transpile options from project_info.json.
+ *
+ * @param {String} projectDir Project directory
+ * @return {Promise}
+ */
+const removeTranspileFields = (projectDir) => {
+  const projectInfo = path.resolve(projectDir, '.monaca', 'project_info.json');
+  utils.info(`[project_info.json] Removing deprecated options...`);
+  return new Promise((resolve, reject) => {
+    let jsonFileContent;
+    try { jsonFileContent = require(projectInfo); } catch (ex) { throw new Error(`Failed getting ${projectInfo}`); }
+    try {
+      if (jsonFileContent['template-type']) delete jsonFileContent['template-type'];
+      if (jsonFileContent['build']) delete jsonFileContent['build'];
+    } catch (ex) { throw new Error(`Failed removing deprecated options.`); }
+
+    fs.writeFile(projectInfo, JSON.stringify(jsonFileContent, null, 4), 'utf8', (err) => {
+      if (err) return reject(new Error(`Failed to update ${projectInfo}`));
+      return resolve(true);
+    });
+  })
+};
+
+/**
+ *
  * Inject necessary commands for Cloud into JSON file
  *
  * @param {String} jsonFile Json file
@@ -196,7 +236,7 @@ const injectCloudIDECommands = (jsonFile) => {
   utils.info(`[${jsonFile}] Adding Cloud commands...`);
   return new Promise((resolve, reject) => {
     let jsonFileContent;
-    try { jsonFileContent = require(jsonFile); } catch (ex) { throw new Error(`Failed getting ${jsonFileContent}`); }
+    try { jsonFileContent = require(jsonFile); } catch (ex) { throw new Error(`Failed getting ${jsonFile}`); }
     jsonFileContent['cloud_ide'] = {
         "preview_command": "monaca preview",
         "preview_port": "8080"
@@ -225,28 +265,17 @@ module.exports = {
    *   Function to create .monaca/project_info.json file
    *
    * @param {String} projectDir Project directory
-   * @param {Boolean} isTranspile
    * @return {Promise}
    */
-  createProjectInfoFile: function (projectDir, isTranspile) {
+  createProjectInfoFile: function (projectDir) {
     const projectInfo = path.resolve(projectDir, '.monaca', 'project_info.json');
     const projectInfoTemplate = path.resolve(__dirname, 'template', 'blank', '.monaca', 'project_info.json');
+    
     utils.info('[.monaca] Creating project_info.json...');
     return new Promise((resolve, reject) => {
       fs.copy(projectInfoTemplate, projectInfo, (err) => {
         if (err) return reject(err);
-        try {
-          let projectInfoContent = require(projectInfo);
-          if(isTranspile) {
-            projectInfoContent['template-type'] = 'transpile'
-            projectInfoContent['build'] = {
-              "transpile": {
-                "enabled": true
-              }
-            };
-          }
-          fs.writeFileSync(projectInfo, JSON.stringify(projectInfoContent, null, 4), 'utf8'); return resolve(projectDir);
-        } catch (err) { reject(err); }
+        return resolve(projectDir);
       });
     })
     .then(() => injectCloudIDECommands(projectInfo));
@@ -370,7 +399,7 @@ module.exports = {
     if (options.createPackageJson && !fs.existsSync(packageJsonFile)) createMinimumPackageJsonFile(projectDir);
     if (!fs.existsSync(packageJsonFile)) return Promise.reject(new Error('Failed to update package.json. File missing, please restore it.'));
 
-    const isTranspile = monaca.isTranspilable(projectDir);
+    const isTranspile = isTranspilable(projectDir, monaca);
     const projectInfo = path.resolve(projectDir, '.monaca', 'project_info.json');
 
     let packageJsonContent;
@@ -379,12 +408,13 @@ module.exports = {
 
 
     return injectCommandsIntoPackageJson(packageJsonFile, packageJsonContent)
-      .then( () => monaca.installDevDependencies(projectDir, isTranspile))
-      .then( (data) => {
+      .then(() => monaca.installDevDependencies(projectDir, isTranspile))
+      .then((data) => {
         if (isTranspile) return createWebpackFiles(projectDir, monaca);
         else return Promise.resolve(data);
       })
-      .then( () => injectCloudIDECommands(projectInfo))
+      .then(() => removeTranspileFields(projectDir))
+      .then(() => injectCloudIDECommands(projectInfo))
       .catch(failedCb);
   },
 
@@ -413,7 +443,7 @@ module.exports = {
       .then(() => this.createConfigFile(projectDir))
       .then(() => this.initIconsSplashes(projectDir))
       .then(() => installLatestCordova(projectDir, monaca))
-      .then(() => this.createProjectInfoFile(projectDir, isTranspile))
+      .then(() => this.createProjectInfoFile(projectDir))
       .then(() => Promise.resolve({doc: common.CLI_MIGRATION_DOC_URL}))
       .catch(failedCb);
   }

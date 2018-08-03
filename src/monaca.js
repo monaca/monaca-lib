@@ -2576,29 +2576,6 @@
    * @method
    * @memberof Monaca
    * @description
-   *   Returns true if the type of project supports transpile.
-   * @param {String} Project Directory
-   * @return {Boolean}
-   */
-  Monaca.prototype.isTranspilable = function(projectDir) {
-    var config = this.fetchProjectData(projectDir);
-
-    if (!config) {
-      return false;
-    }
-
-    var type = config['template-type'];
-    /**
-     * Some projects (those initialized using init and created using other CLI tools)
-     * do not have 'template-type' tag into .monaca/project_info.json. We set it to 'transpile'
-     */
-    return ( type && ( type === 'react' || type === 'angular2' || type === 'vue' || type === 'transpile' ) );
-  }
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
    *   Get the project's framework
    * @param {String} Project Directory
    * @return {String}
@@ -2611,19 +2588,6 @@
 
     return type ? type : null;
   }
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Returns true if user has enabled the project transpile feature.
-   * @param {String} Project Directory
-   * @return {Boolean}
-   */
-  Monaca.prototype.isTranspileEnabled = function(projectDir) {
-    var config = this.fetchProjectData(projectDir);
-    return config ? config.build && config.build.transpile && config.build.transpile.enabled : null;
-  };
 
   /**
    * @method
@@ -2659,8 +2623,7 @@
   Monaca.prototype.transpile = function(projectDir, options, cb) {
     options = options || {};
 
-    if (!this.isTranspilable(projectDir)) return Q.resolve({ message: 'This project\'s type does not support transpiling capabilities.\n' });
-    if (!this.isTranspileEnabled(projectDir)) return Q.resolve({ message: 'The transpiling feature for this project is currently disabled.\n' });
+    if (!this.hasTranspileScript(projectDir)) return Q.resolve({ message: 'This project\'s type does not support transpiling capabilities.\n' });
 
     return new Promise((resolve, reject) => {
       /**
@@ -4084,6 +4047,24 @@
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
       (error) => { return Q.reject(error || unknownErrorMsg); }
     );
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns true if the project has the (Monaca) Transpile command defined.
+   *
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  Monaca.prototype.hasTranspileScript = function (projectDir) {
+    let packageJsonFile = path.join(projectDir, 'package.json');
+    let packageJsonContent;
+
+    try {packageJsonContent = require(packageJsonFile);} catch(e) {};
+
+    return !!(packageJsonContent && packageJsonContent.scripts && packageJsonContent.scripts['monaca:transpile']);
   }
 
   /**
