@@ -2625,9 +2625,14 @@
   Monaca.prototype.transpile = function(projectDir, options, cb) {
     options = options || {};
 
-    if (!this.hasTranspileScript(projectDir)) return Q.resolve({ message: 'This project\'s type does not support transpiling capabilities.\n' });
-
     return new Promise((resolve, reject) => {
+
+      if (!this.hasTranspileScript(projectDir)) {
+        return resolve(new Error('This project\'s type does not support transpiling capabilities. Please create \'monaca:transpile\' script to transpile the project in the \'package.json\' \n' ));
+      } else if ((options && options.watch) && !this.hasDebugScript(projectDir)) {
+        return reject(new Error('Transpile --watch option failed! Please create \'monaca:debug\' script in \'package.json\''));
+      }
+
       /**
        * Exit Callback function
        */
@@ -4067,6 +4072,24 @@
     try {packageJsonContent = require(packageJsonFile);} catch(e) {};
 
     return !!(packageJsonContent && packageJsonContent.scripts && packageJsonContent.scripts['monaca:transpile']);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns true if the project has the (Monaca) Transpile command defined.
+   *
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  Monaca.prototype.hasDebugScript = function (projectDir) {
+    let packageJsonFile = path.join(projectDir, 'package.json');
+    let packageJsonContent;
+
+    try {packageJsonContent = require(packageJsonFile);} catch(e) {};
+
+    return !!(packageJsonContent && packageJsonContent.scripts && packageJsonContent.scripts['monaca:debug']);
   }
 
   /**
