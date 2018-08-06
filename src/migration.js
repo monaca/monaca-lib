@@ -345,7 +345,7 @@ module.exports = {
       const configTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'config.xml');
 
       fs.exists(configFolder, (exists) => {
-        if(exists) { process.stdout.write('\tconfig.xml already exists. Skipping.\n'); return resolve(projectDir)}
+        if(exists) { utils.info('\tconfig.xml already exists. Skipping.\n'); return resolve(projectDir)}
         fs.copy(configTemplateFolder, configFolder, (err) => {
           if (err) return reject(err);
           return resolve(projectDir);
@@ -370,7 +370,7 @@ module.exports = {
       const packageTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'package.json');
 
       fs.exists(packageFolder, (exists) => {
-        if(exists) { process.stdout.write('\tpackage.json already exists. Skipping.\n'); return resolve(projectDir)}
+        if(exists) { utils.info('\tpackage.json already exists. Skipping.\n'); return resolve(projectDir)}
         fs.copy(packageTemplateFolder, packageFolder, (err) => {
           if (err) return reject(err);
           return resolve(projectDir);

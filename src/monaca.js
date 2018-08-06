@@ -2489,7 +2489,7 @@
       if (utils.needToInstallCordova(projectDir)) installDependencies.push('cordova@' + (cordovaVersion ? cordovaVersion : this.getLatestCordovaVersion()) );
 
       if (installDependencies.length > 0) {
-        process.stdout.write('\n[Dev dependencies] Installing...\n');
+        utils.info('\n[Dev dependencies] Installing...\n');
         this._npmInstall(projectDir, installDependencies, true).then(
           resolve.bind(null, projectDir),
           reject.bind(null, new Error('[Dev dependencies] Failed to install dev dependencies.'))
@@ -2542,7 +2542,7 @@
 
     fs.exists(path.resolve(path.join(projectDir, 'package.json')), function(exists) {
       if (exists) {
-        process.stdout.write('Installing template dependencies...\n');
+        utils.info('Installing template dependencies...\n');
         this._npmInstall(projectDir).then(
           deferred.resolve.bind(null, projectDir),
           deferred.reject.bind(null, 'Failed to install template dependencies.')
@@ -2646,7 +2646,7 @@
       }
 
       this.emitter.emit('output', { type: 'success', message: 'Running Transpiler...' });
-      process.stdout.write('Running Transpiler...\n');
+      utils.info('Running Transpiler...\n');
 
       if (cb != null) cb( { type: 'lifecycle', action : 'start-compile' } );
 
@@ -2668,8 +2668,14 @@
 
       // Emmit message to localkit
       if (this.clientType !== 'cli') {
-        npm.stdout.on('data', (data) => { this.emitter.emit('output', { type: 'progress', message: data.toString() }); });
-        npm.stderr.on('data', (data) => { this.emitter.emit('output', { type: 'progress', message: data.toString() }); });
+        npm.stdout.on('data', (data) => { 
+          this.emitter.emit('output', { type: 'progress', message: data.toString() }); //transpile tab
+          utils.info(data.toString()); //log file
+        });
+        npm.stderr.on('data', (data) => { 
+          this.emitter.emit('output', { type: 'progress', message: data.toString() }); 
+          utils.info(data.toString());
+        });
       }
 
       // Finish
@@ -2769,7 +2775,7 @@
     };
 
     var fetchFile = function() {
-      process.stdout.write('\nDownloading template...\n');
+      utils.info('\nDownloading template...\n');
 
       return this._get(resource)
         .then(function(data) {
@@ -4133,7 +4139,7 @@
             let fileContent = this.getWebpackConfig(env, projectDir, folder);
             fs.writeFileSync(webpackFile, fileContent, 'utf8');
           } else {
-            process.stdout.write(`\t${webpackConfig} already exists. Skipping.\n`);
+            utils.info(`\t${webpackConfig} already exists. Skipping.\n`);
           }
         })
         resolve(projectDir);
