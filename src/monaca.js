@@ -4073,9 +4073,7 @@
    */
   Monaca.prototype.hasTranspileScript = function (projectDir) {
     let packageJsonFile = path.join(projectDir, 'package.json');
-    let packageJsonContent;
-
-    try {packageJsonContent = require(packageJsonFile);} catch(e) {};
+    let packageJsonContent = utils.readJSONFile(packageJsonFile);
 
     return !!(packageJsonContent && packageJsonContent.scripts && packageJsonContent.scripts['monaca:transpile']);
   }
@@ -4091,9 +4089,7 @@
    */
   Monaca.prototype.hasDebugScript = function (projectDir) {
     let packageJsonFile = path.join(projectDir, 'package.json');
-    let packageJsonContent;
-
-    try {packageJsonContent = require(packageJsonFile);} catch(e) {};
+    let packageJsonContent = utils.readJSONFile(packageJsonFile);
 
     return !!(packageJsonContent && packageJsonContent.scripts && packageJsonContent.scripts['monaca:debug']);
   }
@@ -4108,9 +4104,7 @@
    */
   Monaca.prototype.isOldProject = function (projectDir) {
     let packageJsonFile = path.join(projectDir, 'package.json');
-    let packageJsonContent;
-
-    try {packageJsonContent = require(packageJsonFile);} catch(e) {};
+    let packageJsonContent = utils.readJSONFile(packageJsonFile);
 
     return (packageJsonContent && packageJsonContent.scripts) ? (!packageJsonContent.scripts['monaca:preview']) : true;
   }

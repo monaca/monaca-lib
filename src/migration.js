@@ -40,7 +40,7 @@ const prepareScriptsCommand = (projectDir, isTranspile, packageJsonFile, overwri
   const buildCommand = 'webpack --config ./webpack.prod.new.config.js';
   let packageJsonContent;
 
-  try { packageJsonContent = require(packageJsonFile); } catch (ex) { throw `Failed getting ${packageJsonFile}`; }
+  try { packageJsonContent = JSON.parse(fs.readFileSync(packageJsonFile, 'UTF8')); } catch (ex) { throw `Failed getting ${packageJsonFile}`; }
 
   createPackageJsonBackup(projectDir, packageJsonContent);
 
@@ -107,7 +107,7 @@ const createPackageJsonBackup = (projectDir, packageJsonContent) => {
 const prepareScriptsCommandInit = (packageJsonFile, commands) => {
   let packageJsonContent;
 
-  try { packageJsonContent = require(packageJsonFile); } catch (ex) { throw new Error(`Failed getting ${packageJsonFile}`); }
+  try { packageJsonContent = JSON.parse(fs.readFileSync(packageJsonFile, 'UTF8')); } catch (ex) { throw new Error(`Failed getting ${packageJsonFile}`); }
 
   if (!packageJsonContent.scripts) packageJsonContent.scripts = {};
   if (commands.serve) packageJsonContent.scripts['monaca:preview'] = commands.serve;
@@ -209,14 +209,14 @@ const createMinimumPackageJsonFile = (projectDir) => {
  */
 const removeTranspileFields = (projectDir) => {
   const projectInfo = path.resolve(projectDir, '.monaca', 'project_info.json');
-  utils.info(`[project_info.json] Removing deprecated options...`);
+  utils.info('[project_info.json] Removing deprecated options...');
   return new Promise((resolve, reject) => {
     let jsonFileContent;
-    try { jsonFileContent = require(projectInfo); } catch (ex) { throw new Error(`Failed getting ${projectInfo}`); }
+    try { jsonFileContent = JSON.parse(fs.readFileSync(projectInfo, 'UTF8')); } catch (ex) { throw new Error(`Failed getting ${projectInfo}`); }
     try {
       if (jsonFileContent['template-type']) delete jsonFileContent['template-type'];
       if (jsonFileContent['build']) delete jsonFileContent['build'];
-    } catch (ex) { throw new Error(`Failed removing deprecated options.`); }
+    } catch (ex) { throw new Error('Failed removing deprecated options.'); }
 
     fs.writeFile(projectInfo, JSON.stringify(jsonFileContent, null, 4), 'utf8', (err) => {
       if (err) return reject(new Error(`Failed to update ${projectInfo}`));
@@ -236,7 +236,7 @@ const injectCloudIDECommands = (jsonFile) => {
   utils.info(`[${jsonFile}] Adding Cloud commands...`);
   return new Promise((resolve, reject) => {
     let jsonFileContent;
-    try { jsonFileContent = require(jsonFile); } catch (ex) { throw new Error(`Failed getting ${jsonFile}`); }
+    try { jsonFileContent = JSON.parse(fs.readFileSync(jsonFile, 'UTF8')); } catch (ex) { throw new Error(`Failed getting ${jsonFile}`); }
     jsonFileContent['cloud_ide'] = {
         "preview_command": "monaca preview",
         "preview_port": "8080"
