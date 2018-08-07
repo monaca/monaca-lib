@@ -2008,7 +2008,7 @@
               d.resolve();
             },
             function(error) {
-              console.log(error);
+              utils.info('error ' + absolutePath, deferred);
               d.reject(error);
             }
           )
@@ -2146,6 +2146,7 @@
               d.resolve();
             },
             function(error) {
+              utils.info('error ' + absolutePath, deferred);
               d.reject(error);
             }
           )
