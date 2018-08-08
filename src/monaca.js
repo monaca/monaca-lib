@@ -678,7 +678,7 @@
   Monaca.prototype.downloadFile = function(projectId, remotePath, localPath) {
     var deferred = Q.defer();
 
-    this._post('/project/' + projectId + '/file/read', { path: remotePath }).then(
+    this._post('/project/' + projectId + '/file/read' + remotePath, { path: remotePath }).then(
       function(data) {
         var parentDir = path.dirname(localPath);
 
@@ -737,7 +737,7 @@
             deferred.reject(error);
           }
           else {
-            this._post_file('/project/' + projectId + '/file/save', {
+            this._post_file('/project/' + projectId + '/file/save' + remotePath, {
               path: remotePath,
 //              contentBase64: data.toString('base64')
               file: fs.createReadStream(localPath)
