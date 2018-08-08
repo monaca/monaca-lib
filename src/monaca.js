@@ -1996,11 +1996,13 @@
         let uploadFile = function(key) {
           let d = Q.defer();
           let absolutePath = path.join(projectDir, key.substr(1));
+          let notifyDeferred = null;
 
           this.uploadFile(projectId, absolutePath, key)
           .then(
             function(remotePath) {
-              deferred.notify({
+              notifyDeferred = (options.deferred) ? options.deferred : deferred;
+              notifyDeferred.notify({
                 path: remotePath,
                 total: totalLength,
                 index: currentIndex
@@ -2135,10 +2137,12 @@
         let downloadFile = function(key) {
           let d = Q.defer();
           let absolutePath = path.join(projectDir, key.substr(1));
+          let notifyDeferred = null;
 
           this.downloadFile(projectId, key, absolutePath).then(
             function(remotePath) {
-              deferred.notify({
+              notifyDeferred = (options.deferred) ? options.deferred : deferred;
+              notifyDeferred.notify({
                 path: remotePath,
                 total: totalLength,
                 index: currentIndex
@@ -3289,6 +3293,7 @@
           options.userDefinedSelectedFileFlag = true;
           options.userDefinedSelectedFiles = arg.userDefinedSelectedFiles;
         }
+        options.deferred = outerDeferred;
         return this.uploadProject(arg.path, options);
       }.bind(this);
 
@@ -3307,6 +3312,7 @@
         if (arg.delete) {
           options = {'delete' : true};
         }
+        options.deferred = outerDeferred;
         return this.downloadProject(arg.path, options);
       }.bind(this);
 
