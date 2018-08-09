@@ -485,7 +485,22 @@
   };
 
   Monaca.prototype._generateMonacaIgnore = function(projectDir) {
-    var defaultConfig = path.resolve(__dirname, 'default-config', '.monacaignore');
+    let defaultConfig = '';
+    let cordovaVersion = 0;
+
+    // Get cordova version
+    try {
+      cordovaVersion = parseInt(this.getCordovaVersion(projectDir));
+    } catch (e) {
+      cordovaVersion = 0;
+    }
+
+    if (cordovaVersion > 5) {
+      defaultConfig = path.resolve(__dirname, 'default-config', '.monacaignore');
+    } else {
+      // remove /platform from .monacaignore for lower cordovaVersion <= 5
+      defaultConfig = path.resolve(__dirname, 'default-config', 'cordova5', '.monacaignore');
+    }
 
     if (fs.existsSync(defaultConfig)) {
       console.log('Generating default .monacaignore file.');
@@ -2514,6 +2529,22 @@
 
     return fs.readFileSync(asset, 'utf8');
   }
+
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Get Cordova version used by the project
+   * @param {String} Project's Directory
+   * @return {String | Exception}
+   */
+  Monaca.prototype.getCordovaVersion = function (projectDir) {
+    let config = this.fetchProjectData(projectDir);
+
+    if (!config) throw '\'.monaca/project_info.json\' is missing.';
+    return config['cordova_version'];
+  };
 
   /**
    * @method
