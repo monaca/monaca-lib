@@ -2,6 +2,12 @@
 CHANGELOG
 ====
 
+v2.7.11
+----
+* appended `path` to the `upload` and `download` request url
+* return `upload` and `download` progress to `localkit`
+* remove `platforms` from default `.monacaignore` for project with lower cordova version ( <= 5.x)
+
 v2.7.10
 ----
 * added `loader.js` and `loader.css` to webpack-dev-server (webpack.dev.config.js)
