@@ -82,6 +82,21 @@ let needToInstallCordova = (projectDir) => {
   finally { if (!dep) return true; return false; }
 };
 
+/**
+ * Read file and parse to JSON
+ * @param {String} file path
+ * @return {Object}
+ */
+let readJSONFile = (file, encoding = 'UTF8') => {
+  let content = null;
+  try {
+    content = JSON.parse(fs.readFileSync(file, encoding));
+  } catch(e) {
+    content = null;
+  };
+  return content;
+};
+
 module.exports = {
   filterIgnoreFiles: filterIgnoreFiles,
   isDirectory: isDirectory,
@@ -93,5 +108,6 @@ module.exports = {
   MIGRATION_FOLDER,
   MIGRATION_TEMPLATES_FOLDER,
   PROJECT_INFO_FOLDER,
-  CORDOVA_VERSION
+  CORDOVA_VERSION,
+  readJSONFile: readJSONFile
 };
