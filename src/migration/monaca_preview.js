@@ -27,7 +27,7 @@ try {
     let packUrl = "http://localhost:" + port + "/";
 
     if (process.env.MONACA_TERMINAL) {
-      packUrl = "https://0.0.0.0/";
+      packUrl = "https://0.0.0.0:" + port  +  "/";
       webpackConfig.devServer.disableHostCheck = true;
     }
 
