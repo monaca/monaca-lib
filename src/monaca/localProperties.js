@@ -33,13 +33,9 @@ var hasPropertyFile = function(directory) {
   var deferred = Q.defer(),
     propertyFile = path.join(directory, '.monaca', 'local_properties.json');
 
-  fs.exists(propertyFile, function(exists) {
-    if (exists) {
-      deferred.resolve(propertyFile);
-    }
-    else {
-      deferred.reject(propertyFile);
-    }
+  fs.access(file, fs.constants.F_OK, (err) => {
+    if (err) deferred.reject(propertyFile);
+    else deferred.resolve(propertyFile);
   });
 
   return deferred.promise;

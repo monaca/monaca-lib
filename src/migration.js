@@ -271,11 +271,9 @@ module.exports = {
       const resFolder = path.join(projectDir, 'res');
       const resTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'res');
 
-      fs.exists(resFolder, (exists) => {
-        fs.copy(resTemplateFolder, resFolder, {clobber: false}, (err) => {
-          if (err) return reject(err);
-          return resolve(projectDir);
-        });
+      fs.copy(resTemplateFolder, resFolder, {clobber: false}, (err) => {
+        if (err) return reject(err);
+        return resolve(projectDir);
       });
     });
   },
@@ -295,11 +293,9 @@ module.exports = {
       const componentsFolder = path.join(projectDir, 'www', 'components');
       const componentsTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'www', 'components');
 
-      fs.exists(componentsFolder, (exists) => {
-        fs.copy(componentsTemplateFolder, componentsFolder, {clobber: false}, (err) => {
-          if (err) return reject(err);
-          return resolve(projectDir);
-        });
+      fs.copy(componentsTemplateFolder, componentsFolder, {clobber: false}, (err) => {
+        if (err) return reject(err);
+        return resolve(projectDir);
       });
     });
   },
@@ -319,12 +315,10 @@ module.exports = {
       const configFolder = path.resolve(projectDir, 'config.xml');
       const configTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'config.xml');
 
-      fs.exists(configFolder, (exists) => {
-        if(exists) { utils.info('\tconfig.xml already exists. Skipping.\n'); return resolve(projectDir)}
-        fs.copy(configTemplateFolder, configFolder, (err) => {
-          if (err) return reject(err);
-          return resolve(projectDir);
-        });
+      if (fs.existsSync(configFolder)) { utils.info('\tconfig.xml already exists. Skipping.\n'); return resolve(projectDir)}
+      fs.copy(configTemplateFolder, configFolder, (err) => {
+        if (err) return reject(err);
+        return resolve(projectDir);
       });
     });
   },
@@ -344,12 +338,10 @@ module.exports = {
       const packageFolder = path.resolve(projectDir, 'package.json');
       const packageTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'package.json');
 
-      fs.exists(packageFolder, (exists) => {
-        if(exists) { utils.info('\tpackage.json already exists. Skipping.\n'); return resolve(projectDir)}
-        fs.copy(packageTemplateFolder, packageFolder, (err) => {
-          if (err) return reject(err);
-          return resolve(projectDir);
-        });
+      if (fs.existsSync(packageFolder)) { utils.info('\tpackage.json already exists. Skipping.\n'); return resolve(projectDir)}
+      fs.copy(packageTemplateFolder, packageFolder, (err) => {
+        if (err) return reject(err);
+        return resolve(projectDir);
       });
     });
   },
