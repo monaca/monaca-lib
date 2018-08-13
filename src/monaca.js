@@ -4227,7 +4227,7 @@
    * @method
    * @memberof Monaca
    * @description
-   *   Upgrade old projects to Monaca CLI 3.0.0 structure
+   *   Upgrade old projects (Monaca CLI 2.x or lower) to Monaca CLI 3.0.0 structure
    *
    * @param {String} projectDir Project directory
    * @param {Object} options Options
