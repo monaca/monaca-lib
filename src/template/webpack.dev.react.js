@@ -121,6 +121,8 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: 'src/public/index.html.ejs',
       chunksSortMode: 'dependency',
+      externalCSS: ['components/loader.css'],
+      externalJS: ['components/loader.js'],
       minify: {
         caseSensitive: true,
         collapseWhitespace: true,

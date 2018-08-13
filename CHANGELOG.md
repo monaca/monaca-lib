@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v2.7.10
+----
+* added `loader.js` and `loader.css` to webpack-dev-server (webpack.dev.config.js)
+
+
 v2.7.9
 ----
 * add optional param to `cloneProject` function (to fix `monaca import`)

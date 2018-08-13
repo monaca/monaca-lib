@@ -1,0 +1,8 @@
+/.monaca/*
+!/.monaca/project_info.json
+.DS_Store
+*.swp
+.vscode/
+typings/
+node_modules
+.git

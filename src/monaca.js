@@ -487,7 +487,22 @@
   };
 
   Monaca.prototype._generateMonacaIgnore = function(projectDir) {
-    var defaultConfig = path.resolve(__dirname, 'default-config', '.monacaignore');
+    let defaultConfig = '';
+    let cordovaVersion = 0;
+
+    // Get cordova version
+    try {
+      cordovaVersion = parseInt(this.getCordovaVersion(projectDir));
+    } catch (e) {
+      cordovaVersion = 0;
+    }
+
+    if (cordovaVersion > 5) {
+      defaultConfig = path.resolve(__dirname, 'default-config', '.monacaignore');
+    } else {
+      // remove /platform from .monacaignore for lower cordovaVersion <= 5
+      defaultConfig = path.resolve(__dirname, 'default-config', 'cordova5', '.monacaignore');
+    }
 
     if (fs.existsSync(defaultConfig)) {
       console.log('Generating default .monacaignore file.');
@@ -680,7 +695,7 @@
   Monaca.prototype.downloadFile = function(projectId, remotePath, localPath) {
     var deferred = Q.defer();
 
-    this._post('/project/' + projectId + '/file/read', { path: remotePath }).then(
+    this._post('/project/' + projectId + '/file/read' + remotePath, { path: remotePath }).then(
       function(data) {
         var parentDir = path.dirname(localPath);
 
@@ -739,7 +754,7 @@
             deferred.reject(error);
           }
           else {
-            this._post_file('/project/' + projectId + '/file/save', {
+            this._post_file('/project/' + projectId + '/file/save' + remotePath, {
               path: remotePath,
 //              contentBase64: data.toString('base64')
               file: fs.createReadStream(localPath)
@@ -1996,11 +2011,13 @@
         let uploadFile = function(key) {
           let d = Q.defer();
           let absolutePath = path.join(projectDir, key.substr(1));
+          let notifyDeferred = null;
 
           this.uploadFile(projectId, absolutePath, key)
           .then(
             function(remotePath) {
-              deferred.notify({
+              notifyDeferred = (options.deferred) ? options.deferred : deferred;
+              notifyDeferred.notify({
                 path: remotePath,
                 total: totalLength,
                 index: currentIndex
@@ -2008,7 +2025,7 @@
               d.resolve();
             },
             function(error) {
-              console.log(error);
+              utils.info('error ' + absolutePath, deferred);
               d.reject(error);
             }
           )
@@ -2135,10 +2152,12 @@
         let downloadFile = function(key) {
           let d = Q.defer();
           let absolutePath = path.join(projectDir, key.substr(1));
+          let notifyDeferred = null;
 
           this.downloadFile(projectId, key, absolutePath).then(
             function(remotePath) {
-              deferred.notify({
+              notifyDeferred = (options.deferred) ? options.deferred : deferred;
+              notifyDeferred.notify({
                 path: remotePath,
                 total: totalLength,
                 index: currentIndex
@@ -2146,6 +2165,7 @@
               d.resolve();
             },
             function(error) {
+              utils.info('error ' + absolutePath, deferred);
               d.reject(error);
             }
           )
@@ -2528,6 +2548,22 @@
 
     return fs.readFileSync(asset, 'utf8');
   }
+
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Get Cordova version used by the project
+   * @param {String} Project's Directory
+   * @return {String | Exception}
+   */
+  Monaca.prototype.getCordovaVersion = function (projectDir) {
+    let config = this.fetchProjectData(projectDir);
+
+    if (!config) throw '\'.monaca/project_info.json\' is missing.';
+    return config['cordova_version'];
+  };
 
   /**
    * @method
@@ -3288,6 +3324,7 @@
           options.userDefinedSelectedFileFlag = true;
           options.userDefinedSelectedFiles = arg.userDefinedSelectedFiles;
         }
+        options.deferred = outerDeferred;
         return this.uploadProject(arg.path, options);
       }.bind(this);
 
@@ -3306,6 +3343,7 @@
         if (arg.delete) {
           options = {'delete' : true};
         }
+        options.deferred = outerDeferred;
         return this.downloadProject(arg.path, options);
       }.bind(this);
 
