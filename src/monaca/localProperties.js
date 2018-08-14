@@ -33,7 +33,7 @@ var hasPropertyFile = function(directory) {
   var deferred = Q.defer(),
     propertyFile = path.join(directory, '.monaca', 'local_properties.json');
 
-  fs.access(file, fs.constants.F_OK, (err) => {
+  fs.access(propertyFile, fs.constants.F_OK, (err) => {
     if (err) deferred.reject(propertyFile);
     else deferred.resolve(propertyFile);
   });
