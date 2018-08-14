@@ -2526,10 +2526,10 @@
    *   Get webpack config template and replace string variables with project specific values.
    * @param {String} Webpack Config Environment Type (prod|dev)
    * @param {String} Project Directory
-   * @param {String} newFolder Folder to get the webpack files
+   * @param {String} folder Folder to get the webpack files
    * @return {String}
    */
-  Monaca.prototype.getWebpackConfig = function(environment, projectDir, newFolder = null) {
+  Monaca.prototype.getWebpackConfig = function(environment, projectDir, folder) {
     try {
       var config = this.fetchProjectData(projectDir);
     } catch(error) {
@@ -2539,8 +2539,7 @@
     var framework = config['template-type'];
 
     var file = 'webpack.' + environment + '.' + framework +  '.js';
-    var folder = newFolder ? newFolder : 'template';
-    var asset = path.resolve(path.join(__dirname, folder, file));
+    var asset = path.resolve(path.join(__dirname, newFolder, file));
 
     if (!fs.existsSync(asset)) {
       throw 'Failed to locate Webpack config template for framework ' + framework;
