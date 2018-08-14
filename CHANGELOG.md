@@ -2,6 +2,45 @@
 CHANGELOG
 ====
 
+v3.0.0
+----
+
+#### Features
+* Added `upgrade` function. This function is used to upgrade projects created using Monaca Lib 2.x or lower to Monaca Lib 3.
+* Added `init` function. This function is used to initialize projects created using other CLI tools to the Monaca structure.
+* Added `getCordovaVersion` function. This function is used to get the current Cordova version installed.
+* Added `getTemplateType` function. This function is used to get the template type from each old project.
+* Added `hasTranspileScript` function. This function is used to check if the project has the new Monaca Tranpile Command (`'monaca:transpile'`) defined and need to be transpiled.
+* Added `hasDebugScript` function. This function is used to check if the project has the new Monaca Debug Command (`'monaca:debug'`) defined.
+* Added `isOldProject` function. This function is used to check if the project was created using Monaca Lib 2.x or lower (mainly checks if the project has the Monaca Commands defined).
+* Added `getLatestCordovaVersion` function. This function returns the latest Cordova verion supported by Monaca Build Server.
+* Added `createProjectInfoFile` function. This function creates a basic `project_info.json` from `blank` template.
+* Added `initIconsSplashes` function. This function creates icons and splashes files from `blank` template.
+* Added `createConfigFile` function. This function creates a basic `config.xml` from `blank` template.
+* Added `createPackageJsonFile` function. This function creates a basic `package.json` from `blank` template.
+* Added `webpack 4` and `webpack-serve` support.
+* Added `blank` template as a submodule.
+* Added `monaca_preview.js` script to be able to execute old projects with the new version.
+
+#### Deprecated
+* Removed `isTranspilable`.
+* Removed `isTranspileEnabled`.
+* Renamed `installBuildDependencies`.
+* Renamed `generateBuildConfigs`.
+
+#### Breaking changes
+* Added `dev` to `_npmInstall` function to be able to install dev depependencies.
+* Modified `initComponents`function to get Monaca Components from `blank` template.
+* Renamed `installBuildDependencies` function to `installDevDependencies`. Additional dependencies were moved into this function to install them considering the `template-type` from `project_info.json`. This function installs Cordova as a dev dependency as well.
+* Added `folder` to `getWebpackConfig` function to be able to specify the new folder with the new Webpack templates.
+* Modified `transpile` function to be able to execute the new Monaca Command (`'monaca:transpile'`) defined under `scripts` tag in `package.json` instead of loading the Webpack Config file.
+* Renamed `generateBuildConfigs` function to `generateTemplateWebpackConfigs`.  This function gets the new webpack config template files.
+* Modified `isMonacaProject` function to check if the project has `project_info.json` file.
+* Upgraded `webpack.ENV.FRAMEWORK.js` files to use project dev dependencies:
+  * `Vue` webpack files.
+  * `React` webpack files.
+  * `Angular` webpack files.
+
 v2.7.10
 ----
 * added `loader.js` and `loader.css` to webpack-dev-server (webpack.dev.config.js)
