@@ -2539,7 +2539,7 @@
     var framework = config['template-type'];
 
     var file = 'webpack.' + environment + '.' + framework +  '.js';
-    var asset = path.resolve(path.join(__dirname, newFolder, file));
+    var asset = path.resolve(path.join(__dirname, folder, file));
 
     if (!fs.existsSync(asset)) {
       throw 'Failed to locate Webpack config template for framework ' + framework;
