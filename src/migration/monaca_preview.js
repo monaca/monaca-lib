@@ -1,21 +1,22 @@
-/*
-* Collaborator: yong@asial.co.jp
-*/
-const open = require('open');
 const port = process.env.PORT ? process.env.PORT : 8080;
 
 let hookStdout = function() {
-  var originalWrite = process.stdout.write
+  try {
+    const open = require('open');
+    var originalWrite = process.stdout.write
 
-  process.stdout.write = function(string) {
-    originalWrite.apply(process.stdout, arguments)
-    if (/bundle is now VALID|webpack: Compiled successfully/.test(string)) {
-      process.stdout.write('Opening browser...');
-      process.stdout.write = originalWrite;
-      process.stdout.write('\n');
-      open('http://127.0.0.1:' + port + '/webpack-dev-server/');
-    }
-  };
+    process.stdout.write = function(string) {
+      originalWrite.apply(process.stdout, arguments)
+      if (/bundle is now VALID|webpack: Compiled successfully/.test(string)) {
+        process.stdout.write('Opening browser...');
+        process.stdout.write = originalWrite;
+        process.stdout.write('\n');
+        open('http://127.0.0.1:' + port + '/webpack-dev-server/');
+      }
+    };
+  } catch (e) {
+    console.error(e);
+  }
 };
 
 try {
@@ -44,7 +45,11 @@ try {
   let WebpackDevServer = require('webpack-dev-server');
   let server = new WebpackDevServer(webpack(webpackConfig), webpackConfig.devServer);
 
-  server.listen(port, '0.0.0.0', hookStdout);
+  if (process.env.MONACA_TERMINAL) {
+    server.listen(port, '0.0.0.0');
+  } else {
+    server.listen(port, '0.0.0.0', hookStdout);
+  }
 
 } catch (e) {
   console.log('webpack error', e);
