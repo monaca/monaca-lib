@@ -2506,7 +2506,17 @@
       })
 
       let cordovaVersion = this.getCordovaVersion(projectDir);
-      if (utils.needToInstallCordova(projectDir)) installDependencies.push('cordova@' + (cordovaVersion ? cordovaVersion : this.getLatestCordovaVersion()) );
+      try {
+        if (!cordovaVersion || cordovaVersion <= 0) {
+          cordovaVersion = this.getLatestCordovaVersion(); // install the latest cordova version if failed to retrieve cordova version information
+        } else if (parseInt(cordovaVersion) <= 3) {
+          cordovaVersion = 4; // install cordova@4.x for lower cordova version 1 to 3
+        }
+      } catch (e) {
+        cordovaVersion = this.getLatestCordovaVersion(); // fallback, install the latest
+      }
+
+      if (utils.needToInstallCordova(projectDir)) installDependencies.push('cordova@' + cordovaVersion);
 
       if (installDependencies.length > 0) {
         utils.info('\n[Dev dependencies] Installing...\n');
