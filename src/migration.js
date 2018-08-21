@@ -47,6 +47,24 @@ const prepareScriptsCommand = (projectDir, isTranspile, packageJsonFile, overwri
 
   try { packageJsonContent = JSON.parse(fs.readFileSync(packageJsonFile, 'UTF8')); } catch (ex) { throw `Failed getting ${packageJsonFile}`; }
 
+  // change invalid name, if any
+  if (packageJsonContent.name) {
+    try {
+      const nameValidate = require('validate-npm-package-name');
+      const result = nameValidate(packageJsonContent.name);
+      if (!result || (!result.validForNewPackages && !result.validForOldPackages) || result.errors) {
+        const defaultPackageJsonName = getPackageJsonName();
+        utils.info('[package.json] invalid name:');
+        utils.info(result.errors);
+        utils.info(`[package.json] change name to ${defaultPackageJsonName}`);
+        packageJsonContent.name = defaultPackageJsonName;
+      }
+    } catch (e) {
+      utils.info(`[package.json] change name to ${defaultPackageJsonName}`);
+      packageJsonContent.name = getPackageJsonName();
+    }
+  }
+
   // convert private monaca plugins
   if (packageJsonContent.dependencies) {
     // dependencies
@@ -107,6 +125,15 @@ const prepareScriptsCommand = (projectDir, isTranspile, packageJsonFile, overwri
     }
   }
   return packageJsonContent;
+}
+
+/**
+ * Function to return default package.json's name
+ * @return {String}
+ *
+*/
+const getPackageJsonName = () => {
+  return 'monaca-project';
 }
 
 /**
