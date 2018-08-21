@@ -192,7 +192,7 @@ const createMinimumPackageJsonFile = (projectDir) => {
   try {
     const packageFolder = path.resolve(projectDir, 'package.json');
     const packageContent = {
-      "name": projectDir.substring(projectDir.lastIndexOf('/') + 1),
+      "name": "monaca-project",
       "description": "Monaca project",
     };
     fs.writeFileSync(packageFolder, JSON.stringify(packageContent, null, 4));
