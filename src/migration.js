@@ -4,6 +4,10 @@ const utils = require(path.join(__dirname, 'utils'));
 const common = require(path.join(__dirname, 'common'));
 
 const packageBackupJsonFile = 'package.backup.json';
+const oldMonacaPlugin = 'mobi.monaca.plugins.Monaca';
+const newMonacaPlugin = 'monaca-plugin-monaca-core';
+const oldBackendMonacaPlugin = 'mobi.monaca.plugins.MonacaBackend';
+const newBackendMonacaPlugin = 'monaca-plugin-backend';
 
 /**
  *
@@ -43,7 +47,33 @@ const prepareScriptsCommand = (projectDir, isTranspile, packageJsonFile, overwri
 
   try { packageJsonContent = JSON.parse(fs.readFileSync(packageJsonFile, 'UTF8')); } catch (ex) { throw `Failed getting ${packageJsonFile}`; }
 
-  createPackageJsonBackup(projectDir, packageJsonContent);
+  // convert private monaca plugins
+  if (packageJsonContent.dependencies) {
+    // dependencies
+    if (packageJsonContent.dependencies[oldMonacaPlugin]) {
+      utils.info(`[package.json] dependencies - replace ${oldMonacaPlugin} with ${newMonacaPlugin}`);
+      packageJsonContent.dependencies[newMonacaPlugin] = packageJsonContent.dependencies[oldMonacaPlugin]
+      delete packageJsonContent.dependencies[oldMonacaPlugin];
+    }
+    if (packageJsonContent.dependencies[oldBackendMonacaPlugin]) {
+      utils.info(`[package.json] dependencies - replace ${oldBackendMonacaPlugin} with ${newBackendMonacaPlugin}`);
+      packageJsonContent.dependencies[newBackendMonacaPlugin] = packageJsonContent.dependencies[oldBackendMonacaPlugin]
+      delete packageJsonContent.dependencies[oldBackendMonacaPlugin];
+    }
+  }
+  if (packageJsonContent.cordova && packageJsonContent.cordova.plugins) {
+    // plugins
+    if (packageJsonContent.cordova.plugins[oldMonacaPlugin]) {
+      utils.info(`[package.json] plugins - replace ${oldMonacaPlugin} with ${newMonacaPlugin}`);
+      packageJsonContent.cordova.plugins[newMonacaPlugin] = packageJsonContent.cordova.plugins[oldMonacaPlugin]
+      delete packageJsonContent.cordova.plugins[oldMonacaPlugin];
+    }
+    if (packageJsonContent.cordova.plugins[oldBackendMonacaPlugin]) {
+      utils.info(`[package.json] plugins - replace ${oldBackendMonacaPlugin} with ${newBackendMonacaPlugin}`);
+      packageJsonContent.cordova.plugins[newBackendMonacaPlugin] = packageJsonContent.cordova.plugins[oldBackendMonacaPlugin]
+      delete packageJsonContent.cordova.plugins[oldBackendMonacaPlugin];
+    }
+  }
 
   // Check scripts tag
   if (packageJsonContent.scripts) {
