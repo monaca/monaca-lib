@@ -40,7 +40,7 @@ const prepareScriptsCommand = (projectDir, isTranspile, packageJsonFile, overwri
   const monacaPreview = isTranspile ? 'npm run dev & npm run watch' : 'npm run dev';
   const monacaTranspile = 'npm run build';
   const monacaDebug = 'npm run watch';
-  const devCommand = isTranspile ? 'PORT=8080 node ./monaca_preview.js' : 'browser-sync start -s www/ --watch --port 8080';
+  const devCommand = isTranspile ? 'PORT=8080 node ./monaca_preview.js' : 'browser-sync start -s www/ --watch --port 8080 --ui-port 8081';
   const watchCommand = 'webpack --watch --config ./webpack.prod.new.config.js';
   const buildCommand = 'webpack --config ./webpack.prod.new.config.js';
   let packageJsonContent;
