@@ -2475,12 +2475,34 @@
    */
   Monaca.prototype.installDevDependencies = function (projectDir, isTranspile) {
 
-    let needToInstall = (projectDir, dependency) => {
+    let needToInstall = (packageJsonContent, projectDir, dependency) => {
       let dep;
-      try { dep = require(path.resolve(projectDir, 'node_modules', dependency, 'package.json')); }
-      catch (e) { return true }
-      finally { if (!dep) return true; return false; }
+      try {
+        // do not install if the package existed in dependencies or devDependencies or project's node_modules folder
+        if (packageJsonContent.dependencies[dependency] || packageJsonContent.devDependencies[dependency]) {
+          dep = true;
+        } else {
+          dep = require(path.resolve(projectDir, 'node_modules', dependency, 'package.json')); 
+        }
+      }
+      catch (e) { 
+        return true 
+      }
+      finally { 
+        if (!dep) 
+          return true; 
+        return false; 
+      }
     };
+
+    let packageJsonContent;
+    try { 
+      const packageJsonFile = path.join(projectDir, 'package.json');
+      packageJsonContent = JSON.parse(fs.readFileSync(packageJsonFile, 'UTF8')); 
+    } catch (ex) { 
+      const errorMessage = ex.message || '';
+      throw `Failed getting package.json: ${errorMessage}`; 
+    }
 
     return new Promise((resolve, reject) => {
       let installDependencies = [], allDependencies = [];
@@ -2502,7 +2524,7 @@
 
       // Checking installed dependencies
       allDependencies.forEach( dependency => {
-        if(needToInstall(projectDir, dependency.split('@')[0])) installDependencies.push(dependency);
+        if(needToInstall(packageJsonContent, projectDir, dependency.split('@')[0])) installDependencies.push(dependency);
       })
 
       let cordovaVersion = this.getCordovaVersion(projectDir);
