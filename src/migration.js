@@ -52,8 +52,8 @@ const prepareScriptsCommand = (projectDir, isTranspile, packageJsonFile, overwri
     try {
       const nameValidate = require('validate-npm-package-name');
       const result = nameValidate(packageJsonContent.name);
+      const defaultPackageJsonName = getPackageJsonName();
       if (!result || (!result.validForNewPackages && !result.validForOldPackages) || result.errors) {
-        const defaultPackageJsonName = getPackageJsonName();
         utils.info('[package.json] invalid name:');
         utils.info(result.errors);
         utils.info(`[package.json] change name to ${defaultPackageJsonName}`);
