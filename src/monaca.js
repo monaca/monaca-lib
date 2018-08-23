@@ -2725,8 +2725,10 @@
           cwd: projectDir,
           stdio: this.clientType === 'cli' ? 'inherit': 'pipe',
           env: process.env
-        })
+        });
       } catch (ex) {
+        utils.info('Could not spawn npm');
+        utils.info(ex.message);
         exitCb(1);
       }
 
