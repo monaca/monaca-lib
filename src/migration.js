@@ -47,6 +47,8 @@ const prepareScriptsCommand = (projectDir, isTranspile, packageJsonFile, overwri
 
   try { packageJsonContent = JSON.parse(fs.readFileSync(packageJsonFile, 'UTF8')); } catch (ex) { throw `Failed getting ${packageJsonFile}`; }
 
+  createPackageJsonBackup(projectDir, packageJsonContent);
+
   // change invalid name, if any
   if (packageJsonContent.name) {
     try {
@@ -390,16 +392,23 @@ module.exports = {
    * @return {Promise}
    */
   createPackageJsonFile: function (projectDir) {
-    utils.info('[package.json] Creating file...');
     return new Promise((resolve, reject) => {
       const packageFolder = path.resolve(projectDir, 'package.json');
       const packageTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'package.json');
 
-      if (fs.existsSync(packageFolder)) { utils.info('\tpackage.json already exists. Skipping.\n'); return resolve(projectDir)}
-      fs.copy(packageTemplateFolder, packageFolder, (err) => {
-        if (err) return reject(err);
-        return resolve(projectDir);
-      });
+      if (fs.existsSync(packageFolder)) {
+        // backup package.json
+        let packageJsonContent;
+        try { packageJsonContent = JSON.parse(fs.readFileSync(packageFolder, 'UTF8')); } catch (ex) { throw `Failed getting ${packageFolder}`; }
+        createPackageJsonBackup(projectDir, packageJsonContent);
+        return resolve(projectDir)
+      } else {
+        utils.info('[package.json] Creating file...');
+        fs.copy(packageTemplateFolder, packageFolder, (err) => {
+          if (err) return reject(err);
+          return resolve(projectDir);
+        });
+      }
     });
   },
 
