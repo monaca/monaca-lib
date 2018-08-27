@@ -1092,20 +1092,25 @@
   };
 
   /**
-   * @method
+   * Checks if the project can be built.
+   * 
    * @memberof Monaca
-   * @description
-   *   Checks if the project can be built.
-   * @return {Promise}
+   * 
+   * @param {Object} projectInfo Contains project information such as projectId
+   * @param {Object} buildParams Contains build parameters. Example: {platform: 'android', purpose: 'release', checkForMinimumRequirements: false}
+   * 
    * @example
-   *   monaca.checkBuildAvailability('myProjectID', 'android', 'debug').then(
-   *     function() {
-   *       //Build the project
-   *     },
-   *     function(err) {
-   *       //Cannot build the project
-   *     }
-   *   );
+   * monaca.checkBuildAvailability({
+   *    projectId: 'myProjectID'
+   * }, {
+   *  platform: 'android',
+   *  purpose: 'debug'
+   * }).then(
+   *  () => { //Build the project },
+   *  (err) => { //Cannot build the project }
+   * );
+   * 
+   * @return {Promise}
    */
   Monaca.prototype.checkBuildAvailability = function(projectInfo, buildParams) {
 
@@ -1119,6 +1124,8 @@
       framework = projectInfo.framework ? projectInfo.framework : '',
       platform = buildParams.platform,
       buildType = buildParams.purpose;
+
+    let checkForMinimumRequirements = !!buildParams.checkForMinimumRequirements;
 
     return this._get('/project/' + projectId + '/can_build_app')
     .then(
@@ -1146,7 +1153,7 @@
               if (!platformContent.is_versionname_valid) {
                 return 'Version name is invalid.';
               }
-              if (buildType === 'release' && !platformContent.has_keysetting) {
+              if (buildType === 'release' && (!checkForMinimumRequirements && !platformContent.has_keysetting || checkForMinimumRequirements && !platformContent.has_keystore)) {
                 return 'Missing KeyStore configuration. Configure remote build by executing `monaca remote build --browser`.';
               }
             }

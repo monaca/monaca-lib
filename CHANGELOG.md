@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v2.7.12
+----
+* Added `checkForMinimumRequirements` to the `buildParams` parameter in the `checkBuildAvailability` method.
+
 v2.7.11
 ----
 * appended `path` to the `upload` and `download` request url
