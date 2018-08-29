@@ -11,7 +11,6 @@
     crc32 = require('buffer-crc32'),
     nconf = require('nconf'),
     rimraf = require('rimraf'),
-    child_process = require('child_process'),
     async = require('async'),
     extend = require('extend'),
     crypto = require('crypto'),
@@ -26,6 +25,7 @@
   const { spawn } = require('child_process');
   const utils = require(path.join(__dirname, 'utils'));
   const migration = require('./migration');
+  const fixPath = require('fix-path');
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -2703,13 +2703,16 @@
       /**
        * Exit Callback function
        */
+      let exited = false;
       let exitCb = (err, stats) => {
+        if (exited) return;
         const response = {message: '\n\nTranspiling finished for ' + projectDir};
 
         if (cb) cb( { type: 'lifecycle', action : 'process-exit'} );
-        if (err === 1) reject(new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.'));
+        if (err === 1) reject(new Error('Error has occured while transpiling ' + projectDir));
         this.emitter.emit('output', Object.assign({}, response, {type: 'success'}));
         if(!options.watch) resolve(response);
+        exited = true;
       }
 
       this.emitter.emit('output', { type: 'success', message: 'Running Transpiler...' });
@@ -2721,34 +2724,73 @@
       let npm;
 
       try {
-        npm = spawn('npm', ['run', command], {
-          cwd: projectDir,
-          stdio: this.clientType === 'cli' ? 'inherit': 'pipe',
-          env: process.env
-        });
+
+        if (this.clientType === 'localkit') {
+
+          fixPath();
+
+          let npmPath;
+          if (options.npmPath) {
+            npmPath = options.npmPath;
+          } else {
+            npmPath = 'npm'; // use global npm
+          }
+
+          if (options.nodePath) process.env.PATH = options.nodePath + ':' + process.env.PATH;
+
+          npm = spawn(npmPath, ['run', command], {
+            cwd: projectDir,
+            stdio: 'pipe',
+            env: process.env
+          });
+
+          npm.stdout.on('data', (data) => {
+            utils.info(data.toString());
+            this.emitter.emit('output', { type: 'progress', message: data.toString() });
+          });
+
+          npm.stderr.on('data', (data) => {
+            let errorMessage = data.toString();
+            if (errorMessage &&
+                  (
+                    errorMessage.indexOf('npm: command not found') >= 0 ||
+                    errorMessage.indexOf('node: No such file or directory') >= 0
+                  )
+                ) {
+              utils.info(errorMessage);
+              this.emitter.emit('output', { type: 'error', message: 'NPM_NOT_FOUND' });
+            } else {
+              utils.info(errorMessage);
+              this.emitter.emit('output', { type: 'progress', message: errorMessage });
+            }
+          });
+
+        } else {
+
+          npm = spawn('npm', ['run', command], {
+            cwd: projectDir,
+            stdio: this.clientType === 'cli' ? 'inherit': 'pipe',
+            env: process.env
+          });
+        }
+
+        if (!npm || !npm.pid) {
+          utils.info('Could not spawn npm command');
+          exitCb(1);
+        }
+
+        // Watch option: waiting for after emit message
+        if (options.watch) resolve({ message: 'Watching directory "' + projectDir + '" for changes...', pid: npm.pid });
+
+        // Finish
+        npm.on('exit', exitCb);
+
       } catch (ex) {
         utils.info('Could not spawn npm');
         utils.info(ex.message);
         exitCb(1);
       }
 
-      // Watch option: waiting for after emit message
-      if (options.watch) resolve({ message: 'Watching directory "' + projectDir + '" for changes...', pid: npm.pid });
-
-      // Emmit message to localkit
-      if (this.clientType !== 'cli') {
-        npm.stdout.on('data', (data) => { 
-          this.emitter.emit('output', { type: 'progress', message: data.toString() }); //transpile tab
-          utils.info(data.toString()); //log file
-        });
-        npm.stderr.on('data', (data) => { 
-          this.emitter.emit('output', { type: 'progress', message: data.toString() }); 
-          utils.info(data.toString());
-        });
-      }
-
-      // Finish
-      npm.on('exit', exitCb);
     });
   };
 
