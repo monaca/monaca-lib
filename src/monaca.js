@@ -2722,21 +2722,36 @@
 
       const command = options.watch ? 'monaca:debug' : 'monaca:transpile';
       let npm;
+      let globalNpm;
 
       try {
 
-        if (this.clientType === 'localkit') {
+        // set global npm based on os
+        if (process.platform === 'win32') {
+          globalNpm = 'npm.cmd';
+        } else {
+          globalNpm = 'npm';
+        }
 
-          fixPath();
+        if (this.clientType === 'localkit') {
+          let pathDelimiter;
 
           let npmPath;
           if (options.npmPath) {
             npmPath = options.npmPath;
           } else {
-            npmPath = 'npm'; // use global npm
+            npmPath = globalNpm;
           }
 
-          if (options.nodePath) process.env.PATH = options.nodePath + ':' + process.env.PATH;
+          if (options.nodePath) {
+            if (process.platform === 'win32') {
+              pathDelimiter = ';'
+            } else {
+              pathDelimiter = ':';
+              fixPath();
+            }
+            process.env.PATH = options.nodePath + pathDelimiter + process.env.PATH;
+          }
 
           npm = spawn(npmPath, ['run', command], {
             cwd: projectDir,
@@ -2754,7 +2769,8 @@
             if (errorMessage &&
                   (
                     errorMessage.indexOf('npm: command not found') >= 0 ||
-                    errorMessage.indexOf('node: No such file or directory') >= 0
+                    errorMessage.indexOf('node: No such file or directory') >= 0 ||
+                    errorMessage.indexOf('\'node\' is not recognized as an internal or external command') >= 0
                   )
                 ) {
               utils.info(errorMessage);
@@ -2767,7 +2783,7 @@
 
         } else {
 
-          npm = spawn('npm', ['run', command], {
+          npm = spawn(globalNpm, ['run', command], {
             cwd: projectDir,
             stdio: this.clientType === 'cli' ? 'inherit': 'pipe',
             env: process.env
