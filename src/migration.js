@@ -475,7 +475,7 @@ module.exports = {
       .then(() => this.initIconsSplashes(projectDir))
       .then(() => installLatestCordova(projectDir, monaca))
       .then(() => this.createProjectInfoFile(projectDir))
-      .then(() => Promise.resolve({status: 'finished', doc: common.CLI_MIGRATION_DOC_URL}))
+      .then(() => Promise.resolve({status: 'finished', doc: common.migrationDocUrl()}))
       .catch(failedCb);
   }
 }

@@ -1,5 +1,9 @@
-const CLI_MIGRATION_DOC_URL = docsUrl = 'https://docs.monaca.io/' + (global.locale === 'ja' ? 'ja' : 'en') + '/products_guide/initialize';
+const migrationDocUrl = () => {
+	let language = 'en';
+	if (global.locale === 'ja' || process.env.LOCALE === 'ja') language = 'ja';
+	return `https://docs.monaca.io/${language}/products_guide/migration`;
+}
 
 module.exports = {
-  CLI_MIGRATION_DOC_URL
+  migrationDocUrl
 };
