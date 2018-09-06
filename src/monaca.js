@@ -2021,7 +2021,11 @@
           this.uploadFile(projectId, absolutePath, key)
           .then(
             function(remotePath) {
-              notifyDeferred = (options.deferred) ? options.deferred : deferred;
+              try {
+                notifyDeferred = (options && options.deferred) ? options.deferred : deferred;
+              } catch (e) {
+                notifyDeferred = deferred; // fallback
+              }
               notifyDeferred.notify({
                 path: remotePath,
                 total: totalLength,
@@ -2161,7 +2165,11 @@
 
           this.downloadFile(projectId, key, absolutePath).then(
             function(remotePath) {
-              notifyDeferred = (options.deferred) ? options.deferred : deferred;
+              try {
+                notifyDeferred = (options && options.deferred) ? options.deferred : deferred;
+              } catch (e) {
+                notifyDeferred = deferred; // fallback
+              }
               notifyDeferred.notify({
                 path: remotePath,
                 total: totalLength,
