@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v2.7.13
+----
+* Fixed bug in `uploadProject` and `downloadProject` function.
+
 v2.7.12
 ----
 * Added `checkForMinimumRequirements` to the `buildParams` parameter in the `checkBuildAvailability` method.
