@@ -1427,6 +1427,8 @@
       },
       function(error) {
         utils.info('Reading Remote Files [ERROR]', deferred);
+        if (error && (error.code === 404 || error.message === 'Not found')) utils.info(`\nThis project (${projectId}) is not existed in cloud.`, deferred);
+        if (error && (error === 500 || error.code === 500)) utils.info(`\nIt seems that there is problem with this project (${projectId}).\nPlease verify 'project_id' in '.monaca/local_properties.json' and this project in the cloud.`, deferred);
         deferred.reject(error);
       }
     );
