@@ -615,7 +615,8 @@
                     deferred.reject(new Error('Error in user authentication. Please run "monaca login" command to continue.'));
                   });
               } else if (response.statusCode === 401) {
-                deferred.reject(new Error('Failed to authenticate. Please run "monaca login" command to continue.'));
+                const url = 'https://monaca.io/pricing-detail.html';
+                deferred.reject(new Error(`Failed to authenticate. Please run "monaca login" command to continue.\nIf you\'re already logged in, you might not able to perform this operation due to limitations in your subscription plan.\nPlease review our subscription plan ${url} or contact us for more detail.`));
               } else {
                 try {
                   deferred.reject(JSON.parse(body));
