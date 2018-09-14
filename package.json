@@ -4,7 +4,7 @@
   "description": "Monaca cloud and localkit API bindings for JavaScript",
   "main": "./src/main.js",
   "scripts": {
-    "test": "jasmine-node --color spec/"
+    "test": "jasmine spec/**/*.spec.js"
   },
   "repository": {
     "type": "git",
@@ -25,8 +25,7 @@
   },
   "homepage": "https://github.com/monaca/monaca-lib",
   "devDependencies": {
-    "jasmine": "^3.1.0",
-    "jasmine-node": "^1.14.5"
+    "jasmine": "^3.1.0"
   },
   "dependencies": {
     "adbkit": "^2.2.1",
@@ -40,7 +39,6 @@
     "global-npm": "^0.3.0",
     "ignore": "^3.3.8",
     "lockfile": "^1.0.0",
-    "minimatch": "https://github.com/frandiox/minimatch/archive/escape-fix.tar.gz",
     "nconf": "^0.7.1",
     "padlock": "^1.1.2",
     "portfinder": "^1.0.7",
