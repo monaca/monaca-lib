@@ -25,8 +25,9 @@ v3.0.0
 #### Deprecated
 * Removed `isTranspilable`.
 * Removed `isTranspileEnabled`.
-* Renamed `installBuildDependencies`.
-* Renamed `generateBuildConfigs`.
+* Removed `_filterIgnoreList`.
+* Renamed `installBuildDependencies` as `installDevDependencies`.
+* Renamed `generateBuildConfigs` as `generateTemplateWebpackConfigs`.
 
 #### Breaking changes
 * Added `dev` to `_npmInstall` function to be able to install dev depependencies.
