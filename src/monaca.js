@@ -513,30 +513,6 @@
     }
   };
 
-  Monaca.prototype._filterIgnoreList = function(projectDir, framework) {
-    var allFiles = [],
-      ignoreList = this._filterMonacaIgnore(projectDir, framework);
-    
-    if (os.platform() === 'win32') {
-      projectDir = projectDir.replace(/\\/g,"/");
-    }
-
-    // We have to append '/**' to get all the subdirectories recursively.
-    allFiles = glob.sync(projectDir.replace(/[-[\]{}()*+?.,^$|#]/g, "\\$&") + "/**",
-      {
-        dot: true,
-        allowWindowsEscape: true,
-        ignore: ignoreList
-        .map(function(rule) {
-          // Since we are finding files with 'projectDir' which is an absolute path, we need to prepend '**/' for
-          // ignore patterns to match actual pattern.
-          return "**/" + rule;
-        })
-      }
-    )
-    return allFiles;
-  };
-
   Monaca.prototype._createRequestClient = function(data) {
     var deferred = Q.defer(), qs = {};
 
