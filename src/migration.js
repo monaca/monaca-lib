@@ -445,7 +445,7 @@ module.exports = {
         else return Promise.resolve(data);
       })
       .then(() => removeTranspileFields(projectDir))
-      .then(() => Promise.resolve({status: 'finished'}))
+      .then(() => Promise.resolve({status: 'finished', doc: common.updateDocUrl()}))
       .catch(failedCb);
   },
 
