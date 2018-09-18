@@ -1,20 +1,18 @@
 try {
   var path = require('path');
-  var os = require('os');
-  var cordovaNodeModules = path.join(os.homedir(), '.cordova', 'node_modules');
 
-  var webpack = require(path.join(cordovaNodeModules, 'webpack'));
-  var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
-  var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
-  var CopyWebpackPlugin = require(path.join(cordovaNodeModules, 'copy-webpack-plugin'));
-  var ProgressBarPlugin = require(path.join(cordovaNodeModules, 'progress-bar-webpack-plugin'));
+  var webpack = require('webpack');
+  var HtmlWebpackPlugin = require('html-webpack-plugin');
+  var ExtractTextPlugin = require('extract-text-webpack-plugin');
+  var CopyWebpackPlugin = require('copy-webpack-plugin');
+  var ProgressBarPlugin = require('progress-bar-webpack-plugin');
 
-  var cssnext = require(path.join(cordovaNodeModules, 'postcss-cssnext'));
-  var postcssImport = require(path.join(cordovaNodeModules, 'postcss-import'));
-  var postcssUrl = require(path.join(cordovaNodeModules, 'postcss-url'));
+  var cssnext = require('postcss-cssnext');
+  var postcssImport = require('postcss-import');
+  var postcssUrl = require('postcss-url');
 
 } catch (e) {
-  throw new Error('Missing Webpack Build Dependencies.');
+  throw new Error('Missing Webpack Build Dependencies. ');
 }
 
 var useCache = !!process.env.WP_CACHE;
@@ -28,15 +26,14 @@ module.exports = {
   },
 
   entry: {
-    'polyfills': './src/polyfills',
-    'vendor': './src/vendor',
-    'app': './src/main'
+    app: './src/main',
+    vendor: ['react', 'react-dom', 'onsenui', 'react-onsenui']
   },
 
   output: {
     path: path.join(__dirname, 'www'),
     filename: '[name].bundle.js',
-    chunkFilename: '[id].chunk.js'
+    chunkFilename: '[name].chunk.js'
   },
 
   resolve: {
@@ -45,24 +42,30 @@ module.exports = {
       path.join(__dirname, 'node_modules')
     ],
 
-    extensions: ['', '.ts', '.js', '.json', '.css', '.html', '.styl'],
+    extensions: ['', '.js', '.jsx', '.json', '.css', '.html', '.styl'],
 
-    unsafeCache: useCache
+    unsafeCache: useCache,
+
   },
 
   module: {
     loaders: [{
-      test: /\.ts$/,
-      loader: 'ts',
+      test: /\.(js|jsx)$/,
+      loader: 'babel-loader',
       include: path.join(__dirname, 'src'),
 
       query: {
         presets: [
-          path.join(cordovaNodeModules, 'babel-preset-es2015'),
-          path.join(cordovaNodeModules, 'babel-preset-stage-2')
+          'babel-preset-es2015',
+          'babel-preset-stage-2',
+          'babel-preset-react'
         ],
 
-        cacheDirectory: useCache
+        cacheDirectory: useCache,
+
+        plugins: [
+          path.join('react-hot-loader', 'babel')
+        ]
       }
     }, {
       test: /\.html$/,
@@ -76,7 +79,7 @@ module.exports = {
         path.join(__dirname, 'node_modules', 'onsenui', 'css-components-src', 'src'),
         path.join(__dirname, 'src')
       ],
-      loaders: ['css-to-string', ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')]
+      loader: ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')
     }, {
       test: /\.css$/,
       exclude: [
@@ -87,17 +90,7 @@ module.exports = {
     }, {
       test: /\.json$/,
       loader: 'json'
-    }],
-
-    noParse: [/.+zone\.js\/dist\/.+/, /.+angular2\/bundles\/.+/, /angular2-polyfills\.js/]
-  },
-
-  htmlLoader: {
-    minimize: true,
-    removeAttributeQuotes: false,
-    caseSensitive: true,
-    customAttrSurround: [[/#/, /(?:)/], [/\*/, /(?:)/], [/\[?\(?/, /(?:)/]],
-    customAttrAssign: [/\)?\]?=/]
+    }]
   },
 
   postcss: function() {
@@ -110,24 +103,16 @@ module.exports = {
     ]
   },
 
-  ts: {
-    compilerOptions: {
-      sourceMap: false,
-      sourceRoot: './src',
-      inlineSourceMap: true
-    }
-  },
-
   plugins: [
     new webpack.DefinePlugin({
       'process.env': {
         'NODE_ENV': JSON.stringify('production')
       }
     }),
-    new ExtractTextPlugin('[name].css'),
     new webpack.optimize.CommonsChunkPlugin({
-      name: ['app', 'vendor', 'polyfills']
+      name: ['vendor']
     }),
+    new ExtractTextPlugin('[name].css'),
     new HtmlWebpackPlugin({
       template: 'src/public/index.html.ejs',
       chunksSortMode: 'dependency',
@@ -137,7 +122,7 @@ module.exports = {
         caseSensitive: true,
         collapseWhitespace: true,
         conservativeCollapse: true,
-        removeAttributeQuotes: false,
+        removeAttributeQuotes: true,
         removeComments: true
       }
     }),
@@ -153,9 +138,7 @@ module.exports = {
 
   resolveLoader: {
     root: [
-      path.join(__dirname, 'node_modules'),
-      cordovaNodeModules
+      path.join(__dirname, 'node_modules')
     ]
   }
 };
-

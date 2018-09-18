@@ -11,7 +11,6 @@
     crc32 = require('buffer-crc32'),
     nconf = require('nconf'),
     rimraf = require('rimraf'),
-    child_process = require('child_process'),
     async = require('async'),
     extend = require('extend'),
     crypto = require('crypto'),
@@ -23,7 +22,10 @@
     EventEmitter = require('events'),
     npm;
 
+  const { spawn } = require('child_process');
   const utils = require(path.join(__dirname, 'utils'));
+  const migration = require('./migration');
+  const fixPath = require('fix-path');
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -511,30 +513,6 @@
     }
   };
 
-  Monaca.prototype._filterIgnoreList = function(projectDir, framework) {
-    var allFiles = [],
-      ignoreList = this._filterMonacaIgnore(projectDir, framework);
-    
-    if (os.platform() === 'win32') {
-      projectDir = projectDir.replace(/\\/g,"/");
-    }
-
-    // We have to append '/**' to get all the subdirectories recursively.
-    allFiles = glob.sync(projectDir.replace(/[-[\]{}()*+?.,^$|#]/g, "\\$&") + "/**",
-      {
-        dot: true,
-        allowWindowsEscape: true,
-        ignore: ignoreList
-        .map(function(rule) {
-          // Since we are finding files with 'projectDir' which is an absolute path, we need to prepend '**/' for
-          // ignore patterns to match actual pattern.
-          return "**/" + rule;
-        })
-      }
-    )
-    return allFiles;
-  };
-
   Monaca.prototype._createRequestClient = function(data) {
     var deferred = Q.defer(), qs = {};
 
@@ -613,7 +591,8 @@
                     deferred.reject(new Error('Error in user authentication. Please run "monaca login" command to continue.'));
                   });
               } else if (response.statusCode === 401) {
-                deferred.reject(new Error('Failed to authenticate. Please run "monaca login" command to continue.'));
+                const url = 'https://monaca.io/pricing-detail.html';
+                deferred.reject(new Error(`Failed to authenticate. Please run "monaca login" command to continue.\nIf you\'re already logged in, you might not able to perform this operation due to limitations in your subscription plan.\nPlease review our subscription plan ${url} or contact us for more detail.`));
               } else {
                 try {
                   deferred.reject(JSON.parse(body));
@@ -1425,6 +1404,8 @@
       },
       function(error) {
         utils.info('Reading Remote Files [ERROR]', deferred);
+        if (error && (error.code === 404 || error.message === 'Not found')) utils.info(`\nThis project (${projectId}) is not existed in cloud.`, deferred);
+        if (error && (error === 500 || error.code === 500)) utils.info(`\nIt seems that there is problem with this project (${projectId}).\nPlease verify 'project_id' in '.monaca/local_properties.json' and this project in the cloud.`, deferred);
         deferred.reject(error);
       }
     );
@@ -2372,7 +2353,7 @@
       );
   };
 
-  Monaca.prototype._npmInit = function() {
+  Monaca.prototype._npmInit = function () {
     if (npm) {
       return Q.resolve(npm);
     }
@@ -2407,32 +2388,36 @@
    *   Runs NPM install command
    * @param {String} Directory
    * @param {String} Dependencies to install. Omit it to use the directory's package.json
+   * @param {Boolean} dev Install devDependencies
    * @return {Promise}
    */
-  Monaca.prototype._npmInstall = function(dir, argvs) {
+  Monaca.prototype._npmInstall = function (dir, argvs, dev = false) {
     argvs = argvs || [];
-    var deferred = Q.defer();
 
-    this._npmInit().then(function() {
-      npm.load({}, function (err) {
-        if (err) {
-          return deferred.reject(err);
-        }
-
-        npm.commands.install(dir, argvs, function(err, data) {
+    return new Promise((resolve, reject) => {
+      this._npmInit().then(function () {
+        let opts = {
+          'audit': false
+        };
+        if (dev) opts['save-dev'] = true;
+        npm.load(opts, function (err) {
           if (err) {
-            return deferred.reject(err);
+            return reject(err);
           }
 
-          deferred.resolve(data);
+          npm.commands.install(dir, argvs, function (err, data) {
+            if (err) {
+              utils.info(err);
+              return reject(err);
+            }
+            resolve(data);
+          });
         });
+      }, function (err) {
+        console.error('[NPM ERROR]', err.message);
+        process.exit(1);
       });
-    }, function(err) {
-      console.error(err.message);
-      process.exit(1);
     });
-
-    return deferred.promise;
   };
 
   function _jsStringEscape(string) {
@@ -2462,60 +2447,102 @@
    * @method
    * @memberof Monaca
    * @description
-   *   Installs build dependencies.
+   *   Get Cordova version used by the project
    * @param {String} Project's Directory
+   * @return {String | Exception}
+   */
+  Monaca.prototype.getCordovaVersion = function (projectDir) {
+    let config = this.fetchProjectData(projectDir);
+
+    if (!config) throw '\'.monaca/project_info.json\' is missing. Please execute \'monaca init\' to convert your project into a Monaca project.';
+    return config['cordova_version'];
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Installs dev dependencies in a project.
+   * @param {String} Project's Directory
+   * @param {Boolean} isTranspile
    * @return {Promise}
    */
-  Monaca.prototype.installBuildDependencies = function(projectDir) {
-    var config = this.fetchProjectData(projectDir);
+  Monaca.prototype.installDevDependencies = function (projectDir, isTranspile) {
 
-    if (!config.build) {
-      return Q.resolve(projectDir);
-    }
-
-    var deferred = Q.defer();
-    var packageJsonFile = path.resolve(path.join(__dirname, '..', 'package.json'));
-    var dependencies = require(packageJsonFile).additionalDependencies;
-    var installDependencies = [];
-
-    if (!fs.existsSync(USER_CORDOVA)) {
-      fs.mkdirSync(USER_CORDOVA);
-    }
-    if (!fs.existsSync(NPM_PACKAGE_FILE)) {
-      fs.writeFileSync(NPM_PACKAGE_FILE, '{}');
-    }
-    var nodeModules = path.join(USER_CORDOVA, 'node_modules');
-    if (!fs.existsSync(nodeModules)) {
-      fs.mkdirSync(nodeModules);
-    }
-
-    Object.keys(dependencies).forEach(function(key) {
-      var dep;
+    let needToInstall = (packageJsonContent, projectDir, dependency) => {
+      let dep;
       try {
-        dep = require(path.join(USER_CORDOVA, 'node_modules', key, 'package.json'));
-      } catch (e) {
-      } finally {
-        if (!dep || dep.version !== dependencies[key]) {
-          installDependencies.push(key + '@' + dependencies[key]);
-          var depPath = path.join(nodeModules, key)
-          if (!fs.existsSync(depPath)) {
-            fs.mkdirSync(depPath);
-          }
+        // do not install if the package existed in dependencies or devDependencies or project's node_modules folder
+        if (packageJsonContent.dependencies[dependency] || packageJsonContent.devDependencies[dependency]) {
+          dep = true;
+        } else {
+          dep = require(path.resolve(projectDir, 'node_modules', dependency, 'package.json')); 
         }
       }
-    });
+      catch (e) { 
+        return true 
+      }
+      finally { 
+        if (!dep) 
+          return true; 
+        return false; 
+      }
+    };
 
-    if (installDependencies.length > 0) {
-      process.stdout.write('\n\nInstalling build dependencies...\n');
-      this._npmInstall(USER_CORDOVA, installDependencies).then(
-        deferred.resolve.bind(null, projectDir),
-        deferred.reject.bind(null, new Error('Failed to install build dependencies.'))
-      );
-    } else {
-      deferred.resolve(projectDir);
+    let packageJsonContent;
+    try { 
+      const packageJsonFile = path.join(projectDir, 'package.json');
+      packageJsonContent = JSON.parse(fs.readFileSync(packageJsonFile, 'UTF8')); 
+    } catch (ex) { 
+      const errorMessage = ex.message || '';
+      throw `Failed getting package.json: ${errorMessage}`; 
     }
 
-    return deferred.promise;
+    return new Promise((resolve, reject) => {
+      let installDependencies = [], allDependencies = [];
+
+      if (isTranspile) {
+        const templateType = this.getTemplateType(projectDir);
+        if(!templateType) return reject(new Error('[Dev dependencies] Failed to get the project type'));
+
+        const dependencies = ['babel-core@6.24.0', 'babel-loader@6.2.4', 'babel-preset-es2015@6.9.0', 'babel-preset-react@6.11.1', 'babel-preset-stage-2@6.11.0', 'copy-webpack-plugin@3.0.1', 'css-loader@0.23.1', 'css-to-string-loader@0.1.0', 'extract-text-webpack-plugin@1.0.1', 'file-loader@0.9.0', 'html-loader@0.4.3', 'html-webpack-plugin@2.22.0', 'null-loader@0.1.1', 'postcss-loader@0.9.1', 'postcss-cssnext@2.9.0', 'postcss-import@9.1.0', 'postcss-url@7.0.0', 'progress-bar-webpack-plugin@1.8.0', 'raw-loader@0.5.1', 'read-cache@1.0.0', 'stylus@0.54.5', 'stylus-loader@2.1.1', 'style-loader@0.13.1', 'webpack@1.13.1', 'webpack-dev-server@1.14.1', 'write-file-webpack-plugin@4.3.2', 'script-ext-html-webpack-plugin@2.0.1', 'open@0.0.5'];
+        const reactDependencies = ['react-hot-loader@3.0.0-beta.1'];
+        const vueDependencies = ['vue-loader@11.0.0', 'vue-template-compiler@~2.5.0']
+        const angualrDependencies = ['ts-loader@1.3.3', 'typescript@2.4.2']
+
+        if (templateType === 'vue') allDependencies = allDependencies.concat(dependencies, vueDependencies);
+        if (templateType === 'angular2') allDependencies = allDependencies.concat(dependencies, angualrDependencies);
+        if (templateType === 'react') allDependencies = allDependencies.concat(dependencies, reactDependencies);
+
+      } else allDependencies.push('browser-sync@2.24.5');
+
+      // Checking installed dependencies
+      allDependencies.forEach( dependency => {
+        if(needToInstall(packageJsonContent, projectDir, dependency.split('@')[0])) installDependencies.push(dependency);
+      })
+
+      let cordovaVersion = this.getCordovaVersion(projectDir);
+      try {
+        if (!cordovaVersion || cordovaVersion <= 0) {
+          cordovaVersion = this.getLatestCordovaVersion(); // install the latest cordova version if failed to retrieve cordova version information
+        } else if (parseInt(cordovaVersion) <= 3) {
+          cordovaVersion = 4; // install cordova@4.x for lower cordova version 1 to 3
+        }
+      } catch (e) {
+        cordovaVersion = this.getLatestCordovaVersion(); // fallback, install the latest
+      }
+
+      if (utils.needToInstallCordova(projectDir)) installDependencies.push('cordova@' + cordovaVersion);
+
+      if (installDependencies.length > 0) {
+        utils.info('\n[Dev dependencies] Installing...\n');
+        this._npmInstall(projectDir, installDependencies, true).then(
+          resolve.bind(null, projectDir),
+          reject.bind(null, new Error('[Dev dependencies] Failed to install dev dependencies.'))
+        );
+      } else resolve(projectDir);
+    });
+
   };
 
   /**
@@ -2525,9 +2552,10 @@
    *   Get webpack config template and replace string variables with project specific values.
    * @param {String} Webpack Config Environment Type (prod|dev)
    * @param {String} Project Directory
+   * @param {String} folder Folder to get the webpack files
    * @return {String}
    */
-  Monaca.prototype.getWebpackConfig = function(environment, projectDir) {
+  Monaca.prototype.getWebpackConfig = function(environment, projectDir, folder) {
     try {
       var config = this.fetchProjectData(projectDir);
     } catch(error) {
@@ -2535,8 +2563,9 @@
     }
 
     var framework = config['template-type'];
+
     var file = 'webpack.' + environment + '.' + framework +  '.js';
-    var asset = path.resolve(path.join(__dirname, 'template', file));
+    var asset = path.resolve(path.join(__dirname, folder, file));
 
     if (!fs.existsSync(asset)) {
       throw 'Failed to locate Webpack config template for framework ' + framework;
@@ -2565,73 +2594,6 @@
    * @method
    * @memberof Monaca
    * @description
-   *   Writes webpack configs to the project directory.
-   * @param {String} Project Directory
-   * @return {Promise}
-   */
-  Monaca.prototype.generateBuildConfigs = function(projectDir) {
-    var config = this.fetchProjectData(projectDir);
-
-    if (!config.build) {
-      return Q.resolve(projectDir);
-    }
-
-    var deferred = Q.defer();
-
-    try {
-      var webpackDevFile = path.resolve(path.join(projectDir, 'webpack.dev.config.js'));
-      if (!fs.existsSync(webpackDevFile)) {
-        var fileContent = this.getWebpackConfig('dev', projectDir);
-        fs.writeFileSync(webpackDevFile, fileContent, 'utf8');
-      } else {
-        process.stdout.write('webpack.dev.config.js already exists. Skipping.\n');
-      }
-
-      var webpackProdFile = path.resolve(path.join(projectDir, 'webpack.prod.config.js'));
-      if (!fs.existsSync(path.resolve(path.join(projectDir, 'webpack.prod.config.js')))) {
-        var fileContent = this.getWebpackConfig('prod', projectDir);
-        fs.writeFileSync(webpackProdFile, fileContent, 'utf8');
-      } else {
-        process.stdout.write('webpack.prod.config.js already exists. Skipping.\n');
-      }
-
-      deferred.resolve(projectDir);
-    } catch (error) {
-      deferred.reject(error);
-    }
-
-    return Q.resolve(projectDir);
-  };
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Copies Monaca components folder to www.
-   * @param {String} Project Directory
-   * @return {Promise}
-   */
-  Monaca.prototype.initComponents = function(projectDir) {
-    var deferred = Q.defer();
-    var componentsPath = path.join(projectDir, 'www', 'components');
-    fs.exists(componentsPath, function(exists) {
-      if (exists) {
-        process.stdout.write('www/components already exists. Skipping.\n');
-        return deferred.resolve(projectDir);
-      } else {
-        fs.copy(path.resolve(__dirname, 'template', 'components'), componentsPath, function(error) {
-          return error ? deferred.reject(error) : deferred.resolve(projectDir);
-        });
-      }
-    });
-
-    return deferred.promise;
-  };
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
    *   Installs the template's dependencies.
    * @param {String} Project's Directory
    * @return {Promise}
@@ -2641,7 +2603,7 @@
 
     fs.exists(path.resolve(path.join(projectDir, 'package.json')), function(exists) {
       if (exists) {
-        process.stdout.write('Installing template dependencies...\n');
+        utils.info('Installing template dependencies...\n');
         this._npmInstall(projectDir).then(
           deferred.resolve.bind(null, projectDir),
           deferred.reject.bind(null, 'Failed to install template dependencies.')
@@ -2677,33 +2639,18 @@
    * @method
    * @memberof Monaca
    * @description
-   *   Returns true if the type of project supports transpile.
+   *   Get the project's framework
    * @param {String} Project Directory
-   * @return {Boolean}
+   * @return {String}
    */
-  Monaca.prototype.isTranspilable = function(projectDir) {
-    var config = this.fetchProjectData(projectDir);
+  Monaca.prototype.getTemplateType = function(projectDir) {
+    let config = this.fetchProjectData(projectDir);
 
-    if (!config) {
-      return false;
-    }
+    if (!config) return null;
+    let type = config['template-type'];
 
-    var type = config['template-type'];
-    return type && ( type === 'react' || type === 'angular2' || type === 'vue' );
+    return type ? type : null;
   }
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Returns true if user has enabled the project transpile feature.
-   * @param {String} Project Directory
-   * @return {Boolean}
-   */
-  Monaca.prototype.isTranspileEnabled = function(projectDir) {
-    var config = this.fetchProjectData(projectDir);
-    return config ? config.build && config.build.transpile && config.build.transpile.enabled : null;
-  };
 
   /**
    * @method
@@ -2712,8 +2659,8 @@
    *   Returns path to the webpack config file.
    * @return {String}
    */
-  Monaca.prototype.getWebpackConfigFile = function(projectDir, environment) {
-    var webpackConfig = path.resolve(projectDir, 'webpack.' + environment + '.config.js');
+  Monaca.prototype.getWebpackConfigFile = function(projectDir) {
+    var webpackConfig = path.resolve(projectDir, 'webpack.config.js');
     if (!fs.existsSync(webpackConfig)) {
       var error = new Error();
       error.link = 'https://github.com/monaca/monaca-lib/blob/master/updateProject.md';
@@ -2733,89 +2680,128 @@
    *   Transpiles projects that need to be transpiled and are enabled.
    * @param {String} Project Directory
    * @param {Object} Options
+   * @param {Function} cb Callback
    * @return {Promise}
    */
   Monaca.prototype.transpile = function(projectDir, options, cb) {
     options = options || {};
 
-    if (!this.isTranspilable(projectDir)) {
-      return Q.resolve({
-        message: 'This project\'s type does not support transpiling capabilities.\n'
-      });
-    }
+    return new Promise((resolve, reject) => {
 
-    if (!this.isTranspileEnabled(projectDir)) {
-      return Q.resolve({
-        message: 'The transpiling feature for this project is currently disabled.\n'
-      });
-    }
+      if (!this.hasTranspileScript(projectDir)) {
+        return resolve(new Error('This project\'s type does not support transpiling capabilities. Please create \'monaca:transpile\' script to transpile the project in the \'package.json\' \n' ));
+      } else if ((options && options.watch) && !this.hasDebugScript(projectDir)) {
+        return reject(new Error('Transpile --watch option failed! Please create \'monaca:debug\' script in \'package.json\''));
+      }
 
-    try {
-      var webpackConfigFile = this.getWebpackConfigFile(projectDir, 'prod');
-    } catch(error) {
-      return Q.reject(error);
-    }
+      /**
+       * Exit Callback function
+       */
+      let exited = false;
+      let exitCb = (err, stats) => {
+        if (exited) return;
+        const response = {message: '\n\nTranspiling finished for ' + projectDir};
 
-    var deferred = Q.defer();
-    this.emitter.emit('output', {
-      type: 'success',
-      message: 'Running Transpiler...'
-    });
-    process.stdout.write('Running Transpiler...\n');
+        if (cb) cb( { type: 'lifecycle', action : 'process-exit'} );
+        if (err === 1) reject(new Error('Error has occured while transpiling ' + projectDir));
+        this.emitter.emit('output', Object.assign({}, response, {type: 'success'}));
+        if(!options.watch) resolve(response);
+        exited = true;
+      }
 
-    var parameters = [webpackConfigFile];
-    if (options.watch) {
-      parameters.push('--watch')
-    }
+      this.emitter.emit('output', { type: 'success', message: 'Running Transpiler...' });
+      utils.info('Running Transpiler...\n');
 
-    var webpackProcess = child_process.fork(path.join(__dirname, 'transpile.js'), parameters, {
-      env: extend({}, process.env, {
-        USER_CORDOVA: USER_CORDOVA,
-        NODE_ENV: JSON.stringify('production'),
-        WP_CACHE: options.cache || ''
-      })
-    });
+      if (cb != null) cb( { type: 'lifecycle', action : 'start-compile' } );
 
-    webpackProcess.on('message', function(data) {
-      if (data.monacaTranspileLifecycle) {
-        if (cb != null) {
-          cb( { type: 'lifecycle', action : data.action } );
-        }
-        // deferred.notify( data.text);
-      } else {
-        if (this.clientType === 'cli') {
-          process.stdout.write(data + '\n');
+      const command = options.watch ? 'monaca:debug' : 'monaca:transpile';
+      let npm;
+      let globalNpm;
+
+      try {
+
+        // set global npm based on os
+        if (process.platform === 'win32') {
+          globalNpm = 'npm.cmd';
         } else {
-          this.emitter.emit('output', {
-            type: 'progress',
-            message: data
+          globalNpm = 'npm';
+        }
+
+        if (this.clientType === 'localkit') {
+          let pathDelimiter;
+
+          let npmPath;
+          if (options.npmPath) {
+            npmPath = options.npmPath;
+          } else {
+            npmPath = globalNpm;
+          }
+
+          if (options.nodePath) {
+            if (process.platform === 'win32') {
+              pathDelimiter = ';'
+            } else {
+              pathDelimiter = ':';
+              fixPath();
+            }
+            process.env.PATH = options.nodePath + pathDelimiter + process.env.PATH;
+          }
+
+          npm = spawn(npmPath, ['run', command], {
+            cwd: projectDir,
+            stdio: 'pipe',
+            env: process.env
+          });
+
+          npm.stdout.on('data', (data) => {
+            utils.info(data.toString());
+            this.emitter.emit('output', { type: 'progress', message: data.toString() });
+          });
+
+          npm.stderr.on('data', (data) => {
+            let errorMessage = data.toString();
+            if (errorMessage &&
+                  (
+                    errorMessage.indexOf('npm: command not found') >= 0 ||
+                    errorMessage.indexOf('node: No such file or directory') >= 0 ||
+                    errorMessage.indexOf('\'node\' is not recognized as an internal or external command') >= 0
+                  )
+                ) {
+              utils.info(errorMessage);
+              this.emitter.emit('output', { type: 'error', message: 'NPM_NOT_FOUND' });
+            } else {
+              utils.info(errorMessage);
+              this.emitter.emit('output', { type: 'progress', message: errorMessage });
+            }
+          });
+
+        } else {
+
+          npm = spawn(globalNpm, ['run', command], {
+            cwd: projectDir,
+            stdio: this.clientType === 'cli' ? 'inherit': 'pipe',
+            env: process.env
           });
         }
-      }
-    }.bind(this));
 
-    webpackProcess.on('exit', function(code) {
-      if (cb != null) {
-        cb( { type: 'lifecycle', action : 'process-exit'} );
+        if (!npm || !npm.pid) {
+          utils.info('Could not spawn npm command');
+          exitCb(1);
+        }
+
+        // Watch option: waiting for after emit message
+        if (options.watch) resolve({ message: 'Watching directory "' + projectDir + '" for changes...', pid: npm.pid });
+
+        // Finish
+        npm.on('exit', exitCb);
+
+      } catch (ex) {
+        utils.info('Could not spawn npm');
+        utils.info(ex.message);
+        exitCb(1);
       }
-      if (code === 1) {
-        var error = new Error('Error has occured while transpiling ' + projectDir + ' with webpack. Please check the logs.');
-        deferred.reject(error);
-      } else {
-        deferred.resolve({
-          message: '\n\nTranspiling finished for ' + projectDir
-        });
-      }
+
     });
-
-    if (options.watch) {
-      deferred.resolve({
-        message: 'Watching directory "' + projectDir + '" for changes...',
-        pid: webpackProcess.pid
-      });
-    }
-
-    return deferred.promise;
   };
 
   /**
@@ -2910,7 +2896,7 @@
     };
 
     var fetchFile = function() {
-      process.stdout.write('\nDownloading template...\n');
+      utils.info('\nDownloading template...\n');
 
       return this._get(resource)
         .then(function(data) {
@@ -2922,9 +2908,7 @@
       .then(fetchFile)
       .then(unzipFile)
       .then(this.initComponents.bind(this))
-      .then(this.generateBuildConfigs.bind(this))
-      .then(this.installTemplateDependencies.bind(this))
-      .then(this.installBuildDependencies.bind(this));
+      .then(this.installTemplateDependencies.bind(this));
   };
 
   /**
@@ -3297,14 +3281,17 @@
    * @return {Promise}
    */
   Monaca.prototype.isMonacaProject = function(projectDir) {
-
     return this.isReactNativeProject(projectDir)
     .then(
       function(value) {
         return Q.resolve(value);
       },
       function() {
-        return this.isCordovaProject(projectDir);
+        return this.isCordovaProject(projectDir)
+          .then(values => {
+            if(!!this.fetchProjectData(projectDir)) Q.resolve('monaca');
+            else throw '[.monaca/project_info.json] File is missing';
+          });
       }.bind(this)
     )
   };
@@ -4196,6 +4183,196 @@
       (response) => { return this._prepareResponse(response, unknownErrorMsg); },
       (error) => { return Q.reject(error || unknownErrorMsg); }
     );
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns true if the project has the (Monaca) Transpile command defined.
+   *
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  Monaca.prototype.hasTranspileScript = function (projectDir) {
+    let packageJsonFile = path.join(projectDir, 'package.json');
+    let packageJsonContent = utils.readJSONFile(packageJsonFile);
+
+    return !!(packageJsonContent && packageJsonContent.scripts && packageJsonContent.scripts['monaca:transpile']);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns true if the project has the (Monaca) Transpile command defined.
+   *
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  Monaca.prototype.hasDebugScript = function (projectDir) {
+    let packageJsonFile = path.join(projectDir, 'package.json');
+    let packageJsonContent = utils.readJSONFile(packageJsonFile);
+
+    return !!(packageJsonContent && packageJsonContent.scripts && packageJsonContent.scripts['monaca:debug']);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Returns true if it is a old project (created using Monaca 2.x or lower).
+   * @param {String} projectDir Project directory
+   * @return {Boolean}
+   */
+  Monaca.prototype.isOldProject = function (projectDir) {
+    let packageJsonFile = path.join(projectDir, 'package.json');
+    let packageJsonContent = utils.readJSONFile(packageJsonFile);
+
+    return (packageJsonContent && packageJsonContent.scripts) ? (!packageJsonContent.scripts['monaca:preview']) : true;
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Writes new webpack configs with new dependencies to the project directory.
+   * @param {String} Project Directory
+   * @return {Promise}
+   */
+  Monaca.prototype.generateTemplateWebpackConfigs = function (projectDir) {
+    const config = this.fetchProjectData(projectDir);
+    const environment = ['dev', 'prod'];
+    const folder = utils.MIGRATION_TEMPLATES_FOLDER;
+
+    if (!config.build) return Promise.resolve(projectDir);
+
+    return new Promise((resolve, reject) => {
+      try {
+        environment.forEach((env) => {
+          let webpackConfig = 'webpack.' + env + '.new.config.js';
+          let webpackFile = path.resolve(path.join(projectDir, webpackConfig));
+          if (!fs.existsSync(webpackFile)) {
+            let fileContent = this.getWebpackConfig(env, projectDir, folder);
+            fs.writeFileSync(webpackFile, fileContent, 'utf8');
+          } else {
+            utils.info(`\t${webpackConfig} already exists. Skipping.\n`);
+          }
+        })
+        resolve(projectDir);
+      } catch (error) {
+        reject(error);
+      }
+      resolve(projectDir);
+    });
+
+  };
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   This is the lastest Cordova Version for building
+   * @return {String}
+   */
+  Monaca.prototype.getLatestCordovaVersion = function () {
+    return utils.CORDOVA_VERSION;
+  };
+
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Function to create .monaca/project_info.json file
+   *
+   * @param {String} projectDir Project directory
+   * @param {Boolean} isTranspile
+   * @return {Promise}
+   */
+  Monaca.prototype.createProjectInfoFile = function (projectDir, isTranspile) {
+    return migration.createProjectInfoFile(projectDir, isTranspile);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Function to create res folder with icons and splashes
+   *
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  Monaca.prototype.initIconsSplashes = function (projectDir) {
+    return migration.initIconsSplashes(projectDir);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Copies Monaca components folder to www.
+   *
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  Monaca.prototype.initComponents = function (projectDir) {
+    return migration.initComponents(projectDir);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Create default config.xml file.
+   *
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  Monaca.prototype.createConfigFile = function (projectDir) {
+    return migration.createConfigFile(projectDir);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Create default package.json file.
+   *
+   * @param {String} projectDir Project directory
+   * @return {Promise}
+   */
+  Monaca.prototype.createPackageJsonFile = function (projectDir) {
+    return migration.createPackageJsonFile(projectDir);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Upgrade old projects (Monaca CLI 2.x or lower) to Monaca CLI 3.0.0 structure
+   *
+   * @param {String} projectDir Project directory
+   * @param {Object} options Options
+   * @return {Promise}
+   */
+  Monaca.prototype.upgrade = function (projectDir, options) {
+    return migration.upgrade(projectDir, options, this);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Allow projects created using other cli tools to use Monaca
+   *
+   * @param {String} projectDir Project directory
+   * @param {Boolean} isTranspile
+   * @param {Object} commands commands to inject into package.json
+   * @return {Promise}
+   */
+  Monaca.prototype.init = function (projectDir, isTranspile, commands) {
+    return migration.init(projectDir, isTranspile, commands, this);
   }
 
   module.exports = Monaca;

@@ -1,20 +1,18 @@
 try {
   var path = require('path');
-  var os = require('os');
-  var cordovaNodeModules = path.join(os.homedir(), '.cordova', 'node_modules');
 
-  var webpack = require(path.join(cordovaNodeModules, 'webpack'));
-  var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
-  var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
-  var CopyWebpackPlugin = require(path.join(cordovaNodeModules, 'copy-webpack-plugin'));
-  var ProgressBarPlugin = require(path.join(cordovaNodeModules, 'progress-bar-webpack-plugin'));
+  var webpack = require('webpack');
+  var HtmlWebpackPlugin = require('html-webpack-plugin');
+  var ExtractTextPlugin = require('extract-text-webpack-plugin');
+  var CopyWebpackPlugin = require('copy-webpack-plugin');
+  var ProgressBarPlugin = require('progress-bar-webpack-plugin');
 
-  var cssnext = require(path.join(cordovaNodeModules, 'postcss-cssnext'));
-  var postcssImport = require(path.join(cordovaNodeModules, 'postcss-import'));
-  var postcssUrl = require(path.join(cordovaNodeModules, 'postcss-url'));
+  var cssnext = require('postcss-cssnext');
+  var postcssImport = require('postcss-import');
+  var postcssUrl = require('postcss-url');
 
 } catch (e) {
-  throw new Error('Missing Webpack Build Dependencies. ');
+  throw new Error('Missing Webpack Build Dependencies.');
 }
 
 var useCache = !!process.env.WP_CACHE;
@@ -28,40 +26,42 @@ module.exports = {
   },
 
   entry: {
-    app: './src/main',
-    vendor: ['vue']
+    'polyfills': './src/polyfills',
+    'vendor': './src/vendor',
+    'app': './src/main'
   },
 
   output: {
     path: path.join(__dirname, 'www'),
     filename: '[name].bundle.js',
-    chunkFilename: '[name].chunk.js'
+    chunkFilename: '[id].chunk.js'
   },
 
   resolve: {
     root: [
       path.join(__dirname, 'src'),
-      path.join(__dirname, 'node_modules'),
-      path.resolve(cordovaNodeModules)
+      path.join(__dirname, 'node_modules')
     ],
 
-    extensions: ['', '.js', '.vue', '.json', '.css', '.html', '.styl'],
+    extensions: ['', '.ts', '.js', '.json', '.css', '.html', '.styl'],
 
-    unsafeCache: useCache,
-
-    alias: {
-      vue:'vue/dist/vue.common.js'
-    }
+    unsafeCache: useCache
   },
 
   module: {
     loaders: [{
-      test: /\.vue$/,
-      loader: 'vue-loader'
-    }, {
-      test: /\.js$/,
-      loader: 'babel',
-      exclude: /node_modules/
+      test: /\.ts$/,
+      loader: 'ts',
+      include: path.join(__dirname, 'src'),
+
+      query: {
+        presets: [
+          'babel-preset-es2015',
+          'babel-preset-stage-2'
+        ],
+
+        cacheDirectory: useCache
+      }
     }, {
       test: /\.html$/,
       loader: 'html'
@@ -74,7 +74,7 @@ module.exports = {
         path.join(__dirname, 'node_modules', 'onsenui', 'css-components-src', 'src'),
         path.join(__dirname, 'src')
       ],
-      loader: ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss-loader')
+      loaders: ['css-to-string', ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')]
     }, {
       test: /\.css$/,
       exclude: [
@@ -85,18 +85,17 @@ module.exports = {
     }, {
       test: /\.json$/,
       loader: 'json'
-    }]
+    }],
+
+    noParse: [/.+zone\.js\/dist\/.+/, /.+angular2\/bundles\/.+/, /angular2-polyfills\.js/]
   },
 
-  vue: {
-    loaders: {
-      js: 'babel'
-    }
-  },
-  babel: {
-    presets: [
-      require.resolve(path.join(cordovaNodeModules, 'babel-preset-es2015'))
-    ],
+  htmlLoader: {
+    minimize: true,
+    removeAttributeQuotes: false,
+    caseSensitive: true,
+    customAttrSurround: [[/#/, /(?:)/], [/\*/, /(?:)/], [/\[?\(?/, /(?:)/]],
+    customAttrAssign: [/\)?\]?=/]
   },
 
   postcss: function() {
@@ -109,16 +108,24 @@ module.exports = {
     ]
   },
 
+  ts: {
+    compilerOptions: {
+      sourceMap: false,
+      sourceRoot: './src',
+      inlineSourceMap: true
+    }
+  },
+
   plugins: [
     new webpack.DefinePlugin({
       'process.env': {
         'NODE_ENV': JSON.stringify('production')
       }
     }),
-    new webpack.optimize.CommonsChunkPlugin({
-      name: ['vendor']
-    }),
     new ExtractTextPlugin('[name].css'),
+    new webpack.optimize.CommonsChunkPlugin({
+      name: ['app', 'vendor', 'polyfills']
+    }),
     new HtmlWebpackPlugin({
       template: 'src/public/index.html.ejs',
       chunksSortMode: 'dependency',
@@ -128,7 +135,7 @@ module.exports = {
         caseSensitive: true,
         collapseWhitespace: true,
         conservativeCollapse: true,
-        removeAttributeQuotes: true,
+        removeAttributeQuotes: false,
         removeComments: true
       }
     }),
@@ -144,8 +151,8 @@ module.exports = {
 
   resolveLoader: {
     root: [
-      path.join(__dirname, 'node_modules'),
-      cordovaNodeModules
+      path.join(__dirname, 'node_modules')
     ]
   }
 };
+

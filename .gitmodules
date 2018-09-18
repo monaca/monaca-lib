@@ -1,0 +1,3 @@
+[submodule "src/template/blank"]
+	path = src/template/blank
+	url = git@github.com:monaca-templates/blank.git

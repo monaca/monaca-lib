@@ -9,6 +9,7 @@
     crypto = require('crypto'),
     util = require('util'),
     events = require('events'),
+    utils = require(path.join(__dirname, 'utils')),
     nconf = require('nconf');
 
   // local imports
@@ -585,6 +586,7 @@
 
         project.fileWatcher.run(watchDir);
         paths.push(watchDir);
+        utils.info('Start watching ' + watchDir, deferred);
       }
       catch (e) {
         console.log('Unable to start file watcher: ' + e);

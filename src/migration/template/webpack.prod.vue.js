@@ -1,17 +1,15 @@
 try {
   var path = require('path');
-  var os = require('os');
-  var cordovaNodeModules = path.join(os.homedir(), '.cordova', 'node_modules');
 
-  var webpack = require(path.join(cordovaNodeModules, 'webpack'));
-  var HtmlWebpackPlugin = require(path.join(cordovaNodeModules, 'html-webpack-plugin'));
-  var ExtractTextPlugin = require(path.join(cordovaNodeModules, 'extract-text-webpack-plugin'));
-  var CopyWebpackPlugin = require(path.join(cordovaNodeModules, 'copy-webpack-plugin'));
-  var ProgressBarPlugin = require(path.join(cordovaNodeModules, 'progress-bar-webpack-plugin'));
+  var webpack = require('webpack');
+  var HtmlWebpackPlugin = require('html-webpack-plugin');
+  var ExtractTextPlugin = require('extract-text-webpack-plugin');
+  var CopyWebpackPlugin = require('copy-webpack-plugin');
+  var ProgressBarPlugin = require('progress-bar-webpack-plugin');
 
-  var cssnext = require(path.join(cordovaNodeModules, 'postcss-cssnext'));
-  var postcssImport = require(path.join(cordovaNodeModules, 'postcss-import'));
-  var postcssUrl = require(path.join(cordovaNodeModules, 'postcss-url'));
+  var cssnext = require('postcss-cssnext');
+  var postcssImport = require('postcss-import');
+  var postcssUrl = require('postcss-url');
 
 } catch (e) {
   throw new Error('Missing Webpack Build Dependencies. ');
@@ -29,7 +27,7 @@ module.exports = {
 
   entry: {
     app: './src/main',
-    vendor: ['react', 'react-dom', 'onsenui', 'react-onsenui']
+    vendor: ['vue']
   },
 
   output: {
@@ -44,36 +42,23 @@ module.exports = {
       path.join(__dirname, 'node_modules')
     ],
 
-    extensions: ['', '.js', '.jsx', '.json', '.css', '.html', '.styl'],
+    extensions: ['', '.js', '.vue', '.json', '.css', '.html', '.styl'],
 
     unsafeCache: useCache,
 
     alias: {
-      webpack: path.join(cordovaNodeModules, 'webpack'),
-      'react-hot-loader': path.join(cordovaNodeModules, 'react-hot-loader'),
-      'react-hot-loader/patch': path.join(cordovaNodeModules, 'react-hot-loader', 'patch')
+      vue:'vue/dist/vue.common.js'
     }
   },
 
   module: {
     loaders: [{
-      test: /\.(js|jsx)$/,
-      loader: 'babel-loader',
-      include: path.join(__dirname, 'src'),
-
-      query: {
-        presets: [
-          path.join(cordovaNodeModules, 'babel-preset-es2015'),
-          path.join(cordovaNodeModules, 'babel-preset-stage-2'),
-          path.join(cordovaNodeModules, 'babel-preset-react')
-        ],
-
-        cacheDirectory: useCache,
-
-        plugins: [
-          path.join(cordovaNodeModules, 'react-hot-loader', 'babel')
-        ]
-      }
+      test: /\.vue$/,
+      loader: 'vue-loader'
+    }, {
+      test: /\.js$/,
+      loader: 'babel',
+      exclude: /node_modules/
     }, {
       test: /\.html$/,
       loader: 'html'
@@ -86,7 +71,7 @@ module.exports = {
         path.join(__dirname, 'node_modules', 'onsenui', 'css-components-src', 'src'),
         path.join(__dirname, 'src')
       ],
-      loader: ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss')
+      loader: ExtractTextPlugin.extract('style', 'css?importLoaders=1&-raw!postcss-loader')
     }, {
       test: /\.css$/,
       exclude: [
@@ -98,6 +83,17 @@ module.exports = {
       test: /\.json$/,
       loader: 'json'
     }]
+  },
+
+  vue: {
+    loaders: {
+      js: 'babel'
+    }
+  },
+  babel: {
+    presets: [
+      'babel-preset-es2015'
+    ],
   },
 
   postcss: function() {
@@ -145,8 +141,7 @@ module.exports = {
 
   resolveLoader: {
     root: [
-      path.join(__dirname, 'node_modules'),
-      cordovaNodeModules
+      path.join(__dirname, 'node_modules')
     ]
   }
 };

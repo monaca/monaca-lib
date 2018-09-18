@@ -1,10 +1,10 @@
 {
   "name": "monaca-lib",
-  "version": "2.7.13",
+  "version": "3.0.0-beta.8",
   "description": "Monaca cloud and localkit API bindings for JavaScript",
   "main": "./src/main.js",
   "scripts": {
-    "test": "jasmine-node --color spec/"
+    "test": "jasmine spec/**/*.spec.js"
   },
   "repository": {
     "type": "git",
@@ -25,7 +25,7 @@
   },
   "homepage": "https://github.com/monaca/monaca-lib",
   "devDependencies": {
-    "jasmine-node": "^1.14.5"
+    "jasmine": "^3.1.0"
   },
   "dependencies": {
     "adbkit": "^2.2.1",
@@ -33,12 +33,12 @@
     "buffer-crc32": "^0.2.4",
     "extend": "^2.0.0",
     "extract-zip": "^1.5.0",
+    "fix-path": "^2.1.0",
     "fs-extra": "0.30.0",
     "glob": "^5.0.14",
     "global-npm": "^0.3.0",
     "ignore": "^3.3.8",
     "lockfile": "^1.0.0",
-    "minimatch": "https://github.com/frandiox/minimatch/archive/escape-fix.tar.gz",
     "nconf": "^0.7.1",
     "padlock": "^1.1.2",
     "portfinder": "^1.0.7",
@@ -49,41 +49,8 @@
     "shelljs": "^0.7.7",
     "sse": "0.0.6",
     "tmp": "0.0.26",
+    "validate-npm-package-name": "^3.0.0",
     "watch": "^0.13.0",
     "xml2js": "^0.4.6"
-  },
-  "additionalDependencies": {
-    "babel-core": "6.24.0",
-    "babel-loader": "6.2.4",
-    "babel-preset-es2015": "6.9.0",
-    "babel-preset-react": "6.11.1",
-    "babel-preset-stage-2": "6.11.0",
-    "copy-webpack-plugin": "3.0.1",
-    "css-loader": "0.23.1",
-    "css-to-string-loader": "0.1.0",
-    "extract-text-webpack-plugin": "1.0.1",
-    "file-loader": "0.9.0",
-    "html-loader": "0.4.3",
-    "html-webpack-plugin": "2.22.0",
-    "null-loader": "0.1.1",
-    "postcss-loader": "0.9.1",
-    "postcss-cssnext": "2.9.0",
-    "postcss-import": "9.1.0",
-    "postcss-url": "7.0.0",
-    "progress-bar-webpack-plugin": "1.8.0",
-    "raw-loader": "0.5.1",
-    "react-hot-loader": "3.0.0-beta.1",
-    "read-cache": "1.0.0",
-    "stylus": "0.54.5",
-    "stylus-loader": "2.1.1",
-    "style-loader": "0.13.1",
-    "ts-loader": "1.3.0",
-    "typescript": "2.0.10",
-    "vue-loader": "11.0.0",
-    "vue-template-compiler": "2.3.4",
-    "webpack": "1.13.1",
-    "webpack-dev-server": "1.14.1",
-    "write-file-webpack-plugin": "4.3.2",
-    "script-ext-html-webpack-plugin": "2.0.1"
   }
 }

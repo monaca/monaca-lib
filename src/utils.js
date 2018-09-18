@@ -1,8 +1,12 @@
 
-let path = require('path');
-let fs = require('fs-extra');
-let crc32 = require('buffer-crc32');
-let ignore = require('ignore');
+const path = require('path');
+const fs = require('fs-extra');
+const crc32 = require('buffer-crc32');
+const ignore = require('ignore');
+const MIGRATION_FOLDER = 'migration';
+const MIGRATION_TEMPLATES_FOLDER = MIGRATION_FOLDER + '/template';
+const PROJECT_INFO_FOLDER = MIGRATION_FOLDER + '/project_info';
+const CORDOVA_VERSION = '7.1.0';
 
 
 let filterIgnoreFiles = function(files, ignoreList, removeBasePath = false) {
@@ -64,6 +68,35 @@ let filterObjectByKeys = function(files, selectedKeys) {
   return filtered;
 };
 
+/**
+ * 
+ * Checking if Cordova is already installed in the project and we need to install it
+ * 
+ * @param {String} Project's Directory
+ * @return {Boolean}
+ */
+let needToInstallCordova = (projectDir) => {
+  let dep;
+  try { dep = require(path.resolve(projectDir, 'node_modules', 'cordova', 'package.json')); }
+  catch (e) { return true }
+  finally { if (!dep) return true; return false; }
+};
+
+/**
+ * Read file and parse to JSON
+ * @param {String} file path
+ * @return {Object}
+ */
+let readJSONFile = (file, encoding = 'UTF8') => {
+  let content = null;
+  try {
+    content = JSON.parse(fs.readFileSync(file, encoding));
+  } catch(e) {
+    content = null;
+  };
+  return content;
+};
+
 module.exports = {
   filterIgnoreFiles: filterIgnoreFiles,
   isDirectory: isDirectory,
@@ -71,4 +104,10 @@ module.exports = {
   info: info,
   filterObjectByKeys: filterObjectByKeys,
   filter: filter,
+  needToInstallCordova: needToInstallCordova,
+  MIGRATION_FOLDER,
+  MIGRATION_TEMPLATES_FOLDER,
+  PROJECT_INFO_FOLDER,
+  CORDOVA_VERSION,
+  readJSONFile: readJSONFile
 };
