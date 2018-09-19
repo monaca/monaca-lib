@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v3.0.2
+----
+* Fixed backup process of package.json for `monaca update` and `monaca init`.
+
 v3.0.1
 ----
 
