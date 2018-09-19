@@ -47,7 +47,7 @@ const prepareScriptsCommand = (projectDir, isTranspile, packageJsonFile, overwri
 
   try { packageJsonContent = JSON.parse(fs.readFileSync(packageJsonFile, 'UTF8')); } catch (ex) { throw `Failed getting ${packageJsonFile}`; }
 
-  createPackageJsonBackup(projectDir, packageJsonContent);
+  createPackageJsonBackup(projectDir);
 
   // change invalid name, if any
   if (packageJsonContent.name) {
@@ -146,11 +146,11 @@ const getPackageJsonName = () => {
  * @param {String} packageJsonContent Project's packake.json content
  * @return {null | Exception}
  */
-const createPackageJsonBackup = (projectDir, packageJsonContent) => {
+const createPackageJsonBackup = (projectDir) => {
   // Backup package.json
   try {
     utils.info('\n[package.json] Creating backup...');
-    fs.writeFileSync(path.resolve(projectDir, packageBackupJsonFile), JSON.stringify(packageJsonContent, null, 4), 'utf8');
+    fs.copySync(path.resolve(projectDir, 'package.json'), path.resolve(projectDir, packageBackupJsonFile));
   } catch (ex) { throw 'Failed backuping up package.json.'; }
 }
 
@@ -400,7 +400,7 @@ module.exports = {
         // backup package.json
         let packageJsonContent;
         try { packageJsonContent = JSON.parse(fs.readFileSync(packageFolder, 'UTF8')); } catch (ex) { throw `Failed getting ${packageFolder}`; }
-        createPackageJsonBackup(projectDir, packageJsonContent);
+        createPackageJsonBackup(projectDir);
         return resolve(projectDir)
       } else {
         utils.info('[package.json] Creating file...');
