@@ -1374,6 +1374,126 @@
     return localProperties.set(projectDir, 'project_id', projectId);
   };
 
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Fetch a list of files and directories for a project.
+   *   Must be logged in to use.
+   * @param {string} projectId
+   * @param {Array} ignoreList
+   * @return {Promise}
+   * @example
+   *   monaca.getRemoteProjectFiles('SOME_PROJECT_ID', ['node_modules', '.git']).then(
+   *     function(files) {
+   *       // Fetched file list!
+   *     },
+   *     function(error) {
+   *       // Failed fetching file list!
+   *     }
+   *   );
+   */
+  Monaca.prototype.getRemoteProjectFiles = function(projectId, ignoreList) {
+    var deferred = Q.defer();
+
+    utils.info('Reading Remote Files...', deferred);
+
+    let readDirRecursive = (path) => {
+      let readDirQueue = [],
+        fileList = {};
+      let readDir = (path) => {
+        let getItemList = (path) => {
+          return new Promise((resolve,reject) => {
+
+            this.getRemoteProjectFilesByPath(projectId, path)
+            .then(files => {
+              return resolve(files);
+            })
+            .catch(err => {
+              return reject(err);
+            });
+
+          });
+        }
+        let processItemList = (files) => {
+          if (files && !utils.isEmptyObject(files)) {
+            files = utils.filterIgnoreFiles(files, ignoreList, true);
+            for (let fileKey in files) {
+              let file = files[fileKey];
+              fileList[fileKey] = file;
+              if (file.type === 'dir') {
+                readDirQueue.push(fileKey);
+                continue;
+              }
+            }
+          }
+          if (readDirQueue.length > 0) {
+            return readDir(readDirQueue.shift());
+          }
+          return fileList;
+        }
+        return getItemList(path)
+          .then(processItemList);
+      }
+      return readDir(path);
+    }
+
+    readDirRecursive('/')
+    .then(itemList => {
+      utils.info('Reading Remote Files [FINISHED]', deferred);
+      deferred.resolve(itemList);
+    })
+    .catch(error => {
+      utils.info('Reading Remote Files [ERROR]', deferred);
+      if (error && (error.code === 404 || error.message === 'Not found')) utils.info(`\nThis project (${projectId}) is not existed in cloud.`, deferred);
+      if (error && (error === 500 || error.code === 500)) utils.info(`\nIt seems that there is problem with this project (${projectId}).\nPlease verify 'project_id' in '.monaca/local_properties.json' and this project in the cloud.`, deferred);
+      deferred.reject(error);
+    });
+
+    return deferred.promise;
+  };
+
+
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Fetch a list of files and directories for a project.
+   *   Must be logged in to use.
+   * @param {string} projectId
+   * @param {string} path
+   * @return {Promise}
+   * @example
+   *   monaca.getRemoteProjectFilesByPath('SOME_PROJECT_ID', '/').then(
+   *     function(files) {
+   *       // Fetched file list!
+   *     },
+   *     function(error) {
+   *       // Failed fetching file list!
+   *     }
+   *   );
+   */
+  Monaca.prototype.getRemoteProjectFilesByPath = function(projectId, path = '/') {
+    return new Promise((resolve, reject) => {
+      this._post('/project/' + projectId + '/file/tree/byPath', {
+        id: path
+      })
+      .then( data => {
+        let files = null;;
+        if (data && data.body) files = JSON.parse(data.body).result.items;
+        resolve(files);
+      })
+      .catch( err => {
+        reject(err);
+      });
+    });
+
+  }
+
+
+
   /**
    * @method
    * @memberof Monaca
@@ -1820,7 +1940,7 @@
    *   );
    */
   Monaca.prototype.checkModifiedFiles = function(projectDir, options) {
-    let projectId, framework;
+    let projectId, framework, ignoreList;
 
     if (options && options.result) {
       // return the result if it is supplied
@@ -1840,7 +1960,8 @@
     .then(
       function(value) {
         projectId = value;
-        return Q.all([this.getLocalProjectFiles(projectDir), this.getProjectFiles(projectId)]);
+        ignoreList = this._filterMonacaIgnore(projectDir);
+        return Q.all([this.getLocalProjectFiles(projectDir), this.getRemoteProjectFiles(projectId, ignoreList)]);
       }.bind(this)
     )
     .then(
@@ -1848,8 +1969,6 @@
         let localFiles, remoteFiles, actionType, temp;
 
         utils.info('Comparing Files...');
-
-        let ignoreList = this._filterMonacaIgnore(projectDir);
 
         if (options && options.actionType === 'downloadProject') {
           localFiles = files[1]; //remote file
