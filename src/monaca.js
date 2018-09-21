@@ -1554,17 +1554,28 @@
   Monaca.prototype.getLocalProjectFiles = function(projectDir, options) {
     let deferred = Q.defer();
     let qLimit = qlimit(100);
-    let getFileChecksum = qLimit(function(file) {
+    let getFileChecksum = qLimit(function(file, isSymbolicLink) {
       let deferred = Q.defer();
 
-      fs.readFile(file, function(error, data) {
-        if (error) {
-          deferred.reject(error);
-        }
-        else {
-          deferred.resolve(crc32(data).toString('hex'));
-        }
-      });
+      if (isSymbolicLink) {
+        fs.readlink(file, function(error, data) {
+          if (error) {
+            deferred.reject(error);
+          }
+          else {
+            deferred.resolve(crc32(data).toString('hex'));
+          }
+        });
+      } else {
+        fs.readFile(file, function(error, data) {
+          if (error) {
+            deferred.reject(error);
+          }
+          else {
+            deferred.resolve(crc32(data).toString('hex'));
+          }
+        });
+      }
 
       return deferred.promise;
     });
@@ -1619,7 +1630,7 @@
           else {
             obj.type = 'file';
             let deferred = Q.defer();
-            getFileChecksum(absolutePath).then(
+            getFileChecksum(absolutePath, fileStat.isSymbolicLink()).then(
               function(checksum) {
                 deferred.resolve([key, checksum]);
               },
