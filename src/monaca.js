@@ -1753,8 +1753,13 @@
                   if (clone === true) {
                     return this.setProjectId(destDir, projectId);
                   } else {
-                    return deferred.resolve(destDir);
+                    return true;
                   }
+                }.bind(this)
+              ).then(
+                function() {
+                  utils.info('\nInstall dependencies...', deferred);
+                  return this._npmInstall(destDir, [], false);
                 }.bind(this)
               ).then(
                 function() {
