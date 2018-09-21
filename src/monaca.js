@@ -1517,7 +1517,7 @@
 
     utils.info('Reading Remote Files...', deferred);
 
-    this._post('/project/' + projectId + '/file/tree').then(
+    this._post('/project/' + projectId + '/file/tree', {ignoredNodeModules: true}).then(
       function(data) {
         utils.info('Reading Remote Files [FINISHED]', deferred);
         deferred.resolve(JSON.parse(data.body).result.items);
