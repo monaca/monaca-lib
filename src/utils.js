@@ -97,6 +97,14 @@ let readJSONFile = (file, encoding = 'UTF8') => {
   return content;
 };
 
+let isEmptyObject = (obj) => {
+  if (!obj) return true;
+  for (let key in obj) {
+    if (obj.hasOwnProperty(key)) return false;
+  }
+  return true;
+};
+
 module.exports = {
   filterIgnoreFiles: filterIgnoreFiles,
   isDirectory: isDirectory,
@@ -109,5 +117,6 @@ module.exports = {
   MIGRATION_TEMPLATES_FOLDER,
   PROJECT_INFO_FOLDER,
   CORDOVA_VERSION,
-  readJSONFile: readJSONFile
+  readJSONFile: readJSONFile,
+  isEmptyObject: isEmptyObject
 };
