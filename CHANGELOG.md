@@ -2,6 +2,14 @@
 CHANGELOG
 ====
 
+v3.0.3
+----
+* Added `getRemoteProjectFiles` for reading project files from cloud.
+* Added `getRemoteProjectFilesByPath` to read project files from cloud specified by file path.
+* Modified `getProjectFiles` to not download `node_modules` folders.
+* Modified `getLocalProjectFiles` to upload symlinked files/directories if any.
+* Modified `cloneProject` to install dependencies after cloning/importing project from cloud.
+
 v3.0.2
 ----
 * Fixed backup process of package.json for `monaca update` and `monaca init`.
