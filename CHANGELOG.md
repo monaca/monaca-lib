@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v3.0.4
+----
+* Minor fix to the comment blocks.
+
 v3.0.3
 ----
 * Added `getRemoteProjectFiles` for reading project files from cloud.
