@@ -306,7 +306,7 @@
    *   to send information about file system changes that the debugger listens to.</p>
    *
    * @param {object} [params] - Options
-   * @param {number} [params.httpPort] - Port to listen on. Defaults to 8080.
+   * @param {number} [params.httpPort] - Port to listen on. Defaults to 8001.
    * @return {Promise} - Resolves to <code>{ address: IP_ADDRESS, port: PORT }</code>.
    * @example
    *   localkit.startHttpServer().then(
