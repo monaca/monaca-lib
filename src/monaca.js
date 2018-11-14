@@ -123,6 +123,28 @@
 
     /**
      * @description
+     *   Executable path of npm.
+     * @name Monaca#npmPath
+     * @type string
+     */
+    Object.defineProperty(this, 'npmPath', {
+      value: options.npmPath || '',
+      writable: true
+    });
+
+    /**
+     * @description
+     *   Executable path of node.
+     * @name Monaca#npmPath
+     * @type string
+     */
+    Object.defineProperty(this, 'nodePath', {
+      value: options.nodePath || '',
+      writable: true
+    });
+
+    /**
+     * @description
      *   Version of Monaca library
      * @name Monaca#version
      * @type string
@@ -186,6 +208,8 @@
       value: USER_CORDOVA,
       writable: false
     });
+
+    if (this.clientType === 'localkit') this._setExecutablePathForNPMAndNode();
 
     this.tokens = {
       api: null,
@@ -2530,28 +2554,63 @@
     argvs = argvs || [];
 
     return new Promise((resolve, reject) => {
-      this._npmInit().then(function () {
-        let opts = {
-          'audit': false
-        };
-        if (dev) opts['save-dev'] = true;
-        npm.load(opts, function (err) {
-          if (err) {
-            return reject(err);
-          }
 
-          npm.commands.install(dir, argvs, function (err, data) {
+      if ((!argvs || !dev) && this.clientType === 'localkit') {
+        let exitCb = (err) => {
+          if (err === 1) {
+            reject(new Error('Error while installing '));
+          } else {
+            resolve(true);
+          }
+        }
+        try {
+          let npmPath = this._getNpmPathForSpawn();
+          let npm;
+          npm = spawn(npmPath, ['install'], {
+            cwd: dir,
+            stdio: 'pipe',
+            env: process.env
+          });
+          npm.stdout.on('data', (data) => {
+            utils.info(data.toString());
+          });
+          npm.stderr.on('data', (data) => {
+            utils.info(data.toString());
+          });
+          if (!npm || !npm.pid) {
+            utils.info('Could not spawn npm command');
+            exitCb(1);
+          }
+          npm.on('exit', exitCb);
+        } catch (ex) {
+          utils.info('Could not spawn npm');
+          utils.info(ex.message);
+          exitCb(1);
+        }
+      } else {
+        this._npmInit().then(function () {
+          let opts = {
+            'audit': false
+          };
+          if (dev) opts['save-dev'] = true;
+          npm.load(opts, function (err) {
             if (err) {
-              utils.info(err);
               return reject(err);
             }
-            resolve(data);
+
+            npm.commands.install(dir, argvs, function (err, data) {
+              if (err) {
+                utils.info(err);
+                return reject(err);
+              }
+              resolve(data);
+            });
           });
+        }, function (err) {
+          console.error('[NPM ERROR]', err.message);
+          process.exit(1);
         });
-      }, function (err) {
-        console.error('[NPM ERROR]', err.message);
-        process.exit(1);
-      });
+      }
     });
   };
 
@@ -2812,6 +2871,50 @@
    * @method
    * @memberof Monaca
    * @description
+   *   return an executable npm path for child_process.spawn method
+   * @return {String}
+   */
+  Monaca.prototype._getNpmPathForSpawn = function () {
+    if (this.npmPath) return this.npmPath;
+    return this._getGlobalNpmPath();
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   return an executable global npm path.
+   * @return {String}
+   */
+  Monaca.prototype._getGlobalNpmPath = function () {
+    if (process.platform !== 'win32') return 'npm';
+    return 'npm.cmd';
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Set executable path for Node/Npm.
+   */
+  Monaca.prototype._setExecutablePathForNPMAndNode = function () {
+    let pathDelimiter;
+    if (this.nodePath && this.clientType === 'localkit') {
+      if (process.platform === 'win32') {
+        pathDelimiter = ';'
+      } else {
+        pathDelimiter = ':';
+        fixPath();
+      }
+      process.env.PATH = this.nodePath + pathDelimiter + process.env.PATH;
+    }
+    return process.env.PATH;
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *   Transpiles projects that need to be transpiled and are enabled.
    * @param {String} Project Directory
    * @param {Object} Options
@@ -2851,36 +2954,10 @@
 
       const command = options.watch ? 'monaca:debug' : 'monaca:transpile';
       let npm;
-      let globalNpm;
-
       try {
 
-        // set global npm based on os
-        if (process.platform === 'win32') {
-          globalNpm = 'npm.cmd';
-        } else {
-          globalNpm = 'npm';
-        }
-
         if (this.clientType === 'localkit') {
-          let pathDelimiter;
-
-          let npmPath;
-          if (options.npmPath) {
-            npmPath = options.npmPath;
-          } else {
-            npmPath = globalNpm;
-          }
-
-          if (options.nodePath) {
-            if (process.platform === 'win32') {
-              pathDelimiter = ';'
-            } else {
-              pathDelimiter = ':';
-              fixPath();
-            }
-            process.env.PATH = options.nodePath + pathDelimiter + process.env.PATH;
-          }
+          let npmPath = this._getNpmPathForSpawn();
 
           npm = spawn(npmPath, ['run', command], {
             cwd: projectDir,
@@ -2911,7 +2988,7 @@
           });
 
         } else {
-
+          let globalNpm = this._getGlobalNpmPath();
           npm = spawn(globalNpm, ['run', command], {
             cwd: projectDir,
             stdio: this.clientType === 'cli' ? 'inherit': 'pipe',
@@ -2970,6 +3047,9 @@
         .then(
           function() {
             return arguments[0][0];
+          },
+          function(error) {
+            utils.info(error);
           }
         );
     };
@@ -2979,6 +3059,9 @@
         .then(
           function() {
             return path;
+          },
+          function(error) {
+            utils.info(error);
           }
         );
     };
@@ -2988,6 +3071,9 @@
         .then(
           function(path) {
             return saveZipFile(path, data);
+          },
+          function(error) {
+            utils.info(error);
           }
         )
         .then(
@@ -3026,6 +3112,9 @@
             });
 
             return deferred.promise;
+          },
+          function(error) {
+            utils.info(error);
           }
         );
     };
@@ -3034,9 +3123,14 @@
       utils.info('\nDownloading template...\n');
 
       return this._get(resource)
-        .then(function(data) {
-          return Q.resolve(data.body);
-        });
+        .then(
+          function(data) {
+            return Q.resolve(data.body);
+          },
+          function(error) {
+            return Q.reject(error);
+          }
+        );
     }.bind(this);
 
     return checkDirectory()

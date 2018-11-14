@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v3.1.0
+----
+* Added new properties - `npmPath` and `nodePath` to the `Monaca` Object. These properties are used to `spawn` the `npm` process.
+* Fixed for `Monaca Localkit@3.1.0` - use spawned `npm` process to install `dependencies` instead of `npm` API.
+
 v3.0.4
 ----
 * Minor fix to the comment blocks.
