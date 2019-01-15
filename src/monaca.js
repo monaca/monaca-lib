@@ -10,8 +10,6 @@
     shell = require('shelljs'),
     crc32 = require('buffer-crc32'),
     nconf = require('nconf'),
-    rimraf = require('rimraf'),
-    async = require('async'),
     extend = require('extend'),
     crypto = require('crypto'),
     xml2js = require('xml2js'),
@@ -20,12 +18,16 @@
     extract = require('extract-zip'),
     glob = require('glob'),
     EventEmitter = require('events'),
+    ora = require('ora'),
     npm;
 
   const { spawn } = require('child_process');
   const utils = require(path.join(__dirname, 'utils'));
   const migration = require('./migration');
   const fixPath = require('fix-path');
+
+  // Spinner
+  var spinner = null;
 
   // local imports
   var localProperties = require(path.join(__dirname, 'monaca', 'localProperties'));
@@ -453,6 +455,7 @@
 
   Monaca.prototype._filterFiles = function(dst, src) {
     for (var key in dst) {
+      utils.spinnerLoading(spinner, 'Comparing File: ' + key);
       if (dst.hasOwnProperty(key)) {
         var d = dst[key];
 
@@ -1421,7 +1424,7 @@
   Monaca.prototype.getRemoteProjectFiles = function(projectId, ignoreList) {
     var deferred = Q.defer();
 
-    utils.info('Reading Remote Files...', deferred);
+    utils.info('Reading Remote Files...', deferred, spinner);
 
     let readDirRecursive = (path) => {
       let readDirQueue = [],
@@ -1429,7 +1432,7 @@
       let readDir = (path) => {
         let getItemList = (path) => {
           return new Promise((resolve,reject) => {
-
+            utils.spinnerLoading(spinner, 'Reading Remote File: ' + path);
             this.getRemoteProjectFilesByPath(projectId, path)
             .then(files => {
               return resolve(files);
@@ -1465,11 +1468,11 @@
 
     readDirRecursive('/')
     .then(itemList => {
-      utils.info('Reading Remote Files [FINISHED]', deferred);
+      utils.info('Reading Remote Files [FINISHED]', deferred, spinner);
       deferred.resolve(itemList);
     })
     .catch(error => {
-      utils.info('Reading Remote Files [ERROR]', deferred);
+      utils.info('Reading Remote Files [ERROR]', deferred, spinner);
       if (error && (error.code === 404 || error.message === 'Not found')) utils.info(`\nThis project (${projectId}) is not existed in cloud.`, deferred);
       if (error && (error === 500 || error.code === 500)) utils.info(`\nIt seems that there is problem with this project (${projectId}).\nPlease verify 'project_id' in '.monaca/local_properties.json' and this project in the cloud.`, deferred);
       deferred.reject(error);
@@ -1580,7 +1583,7 @@
     let qLimit = qlimit(100);
     let getFileChecksum = qLimit(function(file, isSymbolicLink) {
       let deferred = Q.defer();
-
+      utils.spinnerLoading(spinner, 'Reading Local File: ' + file);
       if (isSymbolicLink) {
         fs.readlink(file, function(error, data) {
           if (error) {
@@ -1604,7 +1607,7 @@
       return deferred.promise;
     });
 
-    utils.info('Reading Local Files...', deferred);
+    utils.info('Reading Local Files...', deferred, spinner);
 
     fs.exists(projectDir, function(exists) {
       if (exists) {
@@ -1635,7 +1638,7 @@
           return deferred.reject(error);
         }
 
-        utils.info('Reading Local Files [Calculating File Checksum]');
+        utils.info('Reading Local Files [Calculating File Checksum]', deferred, spinner);
 
         filteredList.forEach(function(file) {
           let obj = {},
@@ -1678,11 +1681,11 @@
               files[key].hash = checksum;
             });
 
-            utils.info('Reading Local Files [FINISHED]', deferred);
+            utils.info('Reading Local Files [FINISHED]', deferred, spinner);
             deferred.resolve(files);
           },
           function(error) {
-            utils.info('Reading Local Files [ERROR]', deferred);
+            utils.info('Reading Local Files [ERROR]', deferred, spinner);
             deferred.reject(error);
           }
         );
@@ -1981,6 +1984,7 @@
    */
   Monaca.prototype.checkModifiedFiles = function(projectDir, options) {
     let projectId, framework, ignoreList;
+    spinner = null;
 
     if (options && options.result) {
       // return the result if it is supplied
@@ -2001,6 +2005,10 @@
       function(value) {
         projectId = value;
         ignoreList = this._filterMonacaIgnore(projectDir);
+        if (this.clientType !== 'localkit' && options && options.showSpinner) {
+          spinner = ora();
+          utils.startSpinner(spinner, 'Comparing Files...');
+        }
         return Q.all([this.getLocalProjectFiles(projectDir), this.getRemoteProjectFiles(projectId, ignoreList)]);
       }.bind(this)
     )
@@ -2008,7 +2016,7 @@
       function(files) {
         let localFiles, remoteFiles, actionType, temp;
 
-        utils.info('Comparing Files...');
+        utils.info('Comparing Files...', null, spinner);
 
         if (options && options.actionType === 'downloadProject') {
           localFiles = files[1]; //remote file
@@ -2060,12 +2068,16 @@
           projectId: projectId
         };
 
-        utils.info('Comparing Files [FINISHED]');
+        utils.info('Comparing Files [FINISHED]', null, spinner);
+        utils.spinnerSuccess(spinner, 'Comparing Files: DONE');
+        if (spinner) spinner = null; // clear spinner object if any
         return Q.resolve(result);
       }.bind(this)
     )
     .catch(
       function(e) {
+        utils.spinnerFail(spinner, 'Comparing Files: Failed');
+        if (spinner) spinner = null; // clear spinner object if any
         return Q.reject(e);
       }
     );

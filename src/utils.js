@@ -48,9 +48,29 @@ let includeInExplicitFilterList = function(f) {
   return false;
 };
 
-let info = function(msg, deferred) {
+let info = function(msg, deferred, spinner) {
   if (deferred) deferred.notify(msg);
-  console.log(msg);
+  if (spinner) {
+    spinner.text = msg;
+  } else {
+    console.log(msg);
+  }
+}
+
+let spinnerSuccess = function(spinner, msg) {
+  if (spinner) spinner.succeed(msg);
+}
+
+let spinnerFail = function(spinner, msg) {
+  if (spinner) spinner.fail(msg);
+}
+
+let spinnerLoading = function(spinner, msg) {
+  if (spinner && spinner.isSpinning) spinner.text = msg;
+}
+
+let startSpinner = function(spinner, msg) {
+  if (spinner) spinner.start(msg);
 }
 
 let filterObjectByKeys = function(files, selectedKeys) {
@@ -118,5 +138,9 @@ module.exports = {
   PROJECT_INFO_FOLDER,
   CORDOVA_VERSION,
   readJSONFile: readJSONFile,
-  isEmptyObject: isEmptyObject
+  isEmptyObject: isEmptyObject,
+  spinnerFail,
+  spinnerLoading,
+  spinnerSuccess,
+  startSpinner
 };

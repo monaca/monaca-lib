@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v3.2.0
+----
+* Modified `checkModifiedFiles` function to show spinner and file information when reading file for upload/download process if `showSpinner` flag is passed.
+
 v3.1.0
 ----
 * Added new properties - `npmPath` and `nodePath` to the `Monaca` Object. These properties are used to `spawn` the `npm` process.
