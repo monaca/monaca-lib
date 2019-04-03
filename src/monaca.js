@@ -699,7 +699,7 @@
   Monaca.prototype.downloadFile = function(projectId, remotePath, localPath) {
     var deferred = Q.defer();
 
-    this._post('/project/' + projectId + '/file/read' + remotePath, { path: remotePath }).then(
+    this._post('/project/' + projectId + '/file/read/' + encodeURIComponent(remotePath), { path: remotePath }).then(
       function(data) {
         var parentDir = path.dirname(localPath);
 
