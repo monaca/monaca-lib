@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v3.2.1
+----
+* Fixed to encode the file path param
+
 v3.2.0
 ----
 * Modified `checkModifiedFiles` function to show spinner and file information when reading file for upload/download process if `showSpinner` flag is passed.
