@@ -33,7 +33,7 @@
     "extend": "^2.0.0",
     "extract-zip": "^1.5.0",
     "fix-path": "^2.1.0",
-    "fs-extra": "0.30.0",
+    "fs-extra": "8.0.1",
     "glob": "^5.0.14",
     "global-npm": "^0.3.0",
     "ignore": "^3.3.8",
