@@ -2275,11 +2275,11 @@
           for (let f in filesToBeDeleted) {
             try {
               if (filesToBeDeleted[f].type === 'file') {
-                fs.unlinkSync(path.join(projectDir, f));
+                fs.removeSync(path.join(projectDir, f));
                 console.log("deleted file-> " + path.join(projectDir, f));
               }
               else if (filesToBeDeleted[f].type === 'dir') {
-                fs.rmdirSync(path.join(projectDir, f));
+                fs.removeSync(path.join(projectDir, f));
                 console.log("deleted folder-> " + path.join(projectDir, f));
               }
             } catch (err) {

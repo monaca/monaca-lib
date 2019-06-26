@@ -370,12 +370,17 @@
                 var deviceId = results[i][0],
                   output = results[i][1];
 
-                var matches = output.match(/@[^\s]+/g) || [];
+                var matches = output.match(/@webview[^\s]+/g) || [];
+                if (! matches) {
+                  matches = output.match(/@[^\s]+/g) || [];
+                }
 
-                sockets[deviceId] = matches
-                  .map(function(socket) {
-                    return socket.replace(/^@/, 'localabstract:');
-                  });
+                if (matches) {
+                  sockets[deviceId] = matches
+                    .map(function(socket) {
+                      return socket.replace(/^@/, 'localabstract:');
+                    });
+                }
               }
               return sockets;
             }
