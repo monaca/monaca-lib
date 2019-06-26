@@ -2,6 +2,12 @@
 CHANGELOG
 ====
 
+v3.2.2
+----
+* Fixed inspector run in Android 9
+* Fixed remove non-empoty directories
+* Upgraded fs-extra dependencies
+
 v3.2.1
 ----
 * Fixed to encode the file path param
