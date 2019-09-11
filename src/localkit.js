@@ -172,6 +172,11 @@
   };
 
   Localkit.prototype._sendBeacon = function() {
+    
+    if (!global.enableBeaconBroadcast) {
+      return;
+    }
+
     var port;
 
     try {
