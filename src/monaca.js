@@ -1154,9 +1154,10 @@
             }
             // electron platform
             if (platform.startsWith('electron')) {
-              if (!platformContent.has_valid_cordova_version) return 'This cordova version is not supported.';
+              if (platformContent.has_valid_cordova_version === false) return 'This cordova version is not supported.';
+              if (platformContent.has_valid_icon === false) return 'The icon is invalid. Icon should be at least 512x512 pixels.'
             }
-            if (typeof platformContent.can_build_for[buildType] === 'undefined' || !platformContent.can_build_for[buildType]) {
+            if (typeof platformContent.can_build_for[buildType] === 'undefined') {
               return platform + ' ' + buildType + ' build is not supported or doesn\'t exist.';
             }
             // android platform
