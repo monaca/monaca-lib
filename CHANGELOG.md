@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v3.2.3
+----
+* Validated cordova version for electron build
+
 v3.2.2
 ----
 * Fixed inspector run in Android 9
