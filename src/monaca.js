@@ -1152,9 +1152,14 @@
             if (!platformContent.is_start_file_exist) {
               return 'Your project is missing the startup file (usually index.html).';
             }
-            if (typeof platformContent.can_build_for[buildType] === 'undefined') {
+            // electron platform
+            if (platform.startsWith('electron')) {
+              if (!platformContent.has_valid_cordova_version) return 'This cordova version is not supported.';
+            }
+            if (typeof platformContent.can_build_for[buildType] === 'undefined' || !platformContent.can_build_for[buildType]) {
               return platform + ' ' + buildType + ' build is not supported or doesn\'t exist.';
             }
+            // android platform
             if (platform === 'android') {
               if (!platformContent.is_versionname_valid) {
                 return 'Version name is invalid.';
@@ -1163,6 +1168,7 @@
                 return 'Missing KeyStore configuration. Configure remote build by executing `monaca remote build --browser`.';
               }
             }
+            // ios platform
             if (platform === 'ios') {
               if (!platformContent.has_splash_and_icons) {
                 return 'Your project is missing splash screens and/or icons. Please add the missing files from remote build settings by executing `monaca remote build --browser`.';
