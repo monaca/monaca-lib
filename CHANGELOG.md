@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v3.2.4
+----
+* Validated application icon for electron build
+
 v3.2.3
 ----
 * Validated cordova version for electron build
