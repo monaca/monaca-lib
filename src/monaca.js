@@ -1511,7 +1511,7 @@
    */
   Monaca.prototype.getRemoteProjectFilesByPath = function(projectId, path = '/') {
     return new Promise((resolve, reject) => {
-      this._post('/project/' + projectId + '/file/tree/byPath' + path, {
+      this._post('/project/' + projectId + '/file/tree/byPath/' + encodeURIComponent(path), {
         path: path
       })
       .then( data => {

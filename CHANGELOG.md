@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v3.2.6
+----
+* Fixed to encode the file path param for file comparison operation
+
 v3.2.5
 ----
 * Fixed to encode the file path param for upload operation
