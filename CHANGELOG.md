@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v3.2.5
+----
+* Fixed to encode the file path param for upload operation
+
 v3.2.4
 ----
 * Validated application icon for electron build

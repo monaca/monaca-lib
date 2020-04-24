@@ -758,7 +758,7 @@
             deferred.reject(error);
           }
           else {
-            this._post_file('/project/' + projectId + '/file/save' + remotePath, {
+            this._post_file('/project/' + projectId + '/file/save/' + encodeURIComponent(remotePath), {
               path: remotePath,
 //              contentBase64: data.toString('base64')
               file: fs.createReadStream(localPath)
