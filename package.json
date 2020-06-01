@@ -1,6 +1,6 @@
 {
   "name": "monaca-lib",
-  "version": "3.2.6",
+  "version": "3.2.7",
   "description": "Monaca cloud and localkit API bindings for JavaScript",
   "main": "./src/main.js",
   "scripts": {
@@ -30,6 +30,7 @@
   "dependencies": {
     "adbkit": "^2.2.1",
     "buffer-crc32": "^0.2.4",
+    "compare-versions": "^3.6.0",
     "extend": "^2.0.0",
     "extract-zip": "^1.5.0",
     "fix-path": "^2.1.0",

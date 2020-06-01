@@ -19,6 +19,7 @@
     glob = require('glob'),
     EventEmitter = require('events'),
     ora = require('ora'),
+    compareVersions = require('compare-versions'),
     npm;
 
   const { spawn } = require('child_process');
@@ -211,7 +212,16 @@
       writable: false
     });
 
-    if (this.clientType === 'localkit') this._setExecutablePathForNPMAndNode();
+    if (this.clientType === 'localkit') {
+      this._setExecutablePathForNPMAndNode();
+    } else {
+      // Check node version
+      if (compareVersions(process.version, '10.0.0') < 0) {
+        console.log('We have detected that you are using the old version of Node (' + process.version + '). Please upgrade it to 10.x or higher.');
+        console.log('In order to work with this version, We need to apply this patch - process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0" \n\r')
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+      }
+    }
 
     this.tokens = {
       api: null,

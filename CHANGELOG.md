@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v3.2.7
+----
+* Fixes to support older version of Nodejs (CERT_HAS_EXPIRED).
+* We will drop support of Node 8.x in the future. Please upgrade Node to 10.x or higher.
+
 v3.2.6
 ----
 * Fixed to encode the file path param for file comparison operation
