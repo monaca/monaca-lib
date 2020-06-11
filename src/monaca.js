@@ -1268,34 +1268,57 @@
    *   downloaded filename.
    * @param {string} url - URL to download from
    * @param {object} data - Request parameters
-   * @param {string} filename - Filename the data will be saved to. Can be a callback function.
+   * @param {string} filename - Filename the data will be saved to. Can be a callback (promise) function.
    * @return {Promise}
    */
   Monaca.prototype.download = function(url, data, filename) {
     var deferred = Q.defer();
 
+    var getFilename = (filename, response) => {
+      return new Promise((resolve, reject) => {
+        if (typeof filename === 'string') {
+          return resolve(filename);
+        } else if (typeof filename === 'function') {
+          // Callback so that the caller can decide the filename from the response
+          var dest = filename(response);
+  
+          // if the function return string, return it right away
+          if (typeof dest === 'string') return resolve(dest);
+          // if the function return promise
+          if (dest != null && dest.then != null && typeof dest.then === 'function') {
+            dest.then(data => {
+              if (!data) return reject(new Error('Could not get data from dialog'));
+              if (data.canceled) return reject(new Error('User cancel the save dialog'));
+              if (!data.filePath) return reject(new Error('Not a valid file name.'));
+              if (data.filePath) return resolve(data.filePath);
+            });
+          }
+        } else {
+          return reject(new Error('Not a valid file name.'));
+        }
+      });
+    };
+
     this._createRequestClient(data).then(function(requestClient) {
       requestClient.get(url)
       .on('response', function(response) {
 
-        var dest = filename;
-        if (typeof filename === 'function') {
-          // Callback so that the caller can decide the filename from the response
-          dest = filename(response);
-        }
-
-        if (typeof dest === 'string') {
-          var file = fs.createWriteStream(dest);
-          response.pipe(file);
-          file.on('finish', function() {
-            deferred.resolve(dest);
-          });
-          file.on('error', function(error) {
-            deferred.reject(error);
-          });
-        } else {
-          deferred.reject(new Error('Not a valid file name.'));
-        }
+        getFilename(filename, response).then(dest => {
+          if (typeof dest === 'string') {
+            var file = fs.createWriteStream(dest);
+            response.pipe(file);
+            file.on('finish', function() {
+              deferred.resolve(dest);
+            });
+            file.on('error', function(error) {
+              deferred.reject(error);
+            });
+          } else {
+            deferred.reject(new Error('Not a valid file name.'));
+          }
+        }).catch(e => {
+          deferred.reject(e);
+        });
       })
 
     }.bind(this),
@@ -2546,7 +2569,7 @@
       return Q.resolve(npm);
     }
 
-    var npmModules = (this.clientType === 'cli') ? ['global-npm', 'npm'] : ['npm', 'global-npm'];
+    var npmModules = ['global-npm', 'npm'];
 
     for (var i in npmModules) {
       try {
