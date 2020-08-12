@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v3.2.8
+----
+* Upgrade default blank template to the latest version
+* Update default cordova version to 9.0.0
+
 v3.2.7
 ----
 * Fixes to support older version of Nodejs (CERT_HAS_EXPIRED).
