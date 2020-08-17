@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v3.2.9
+----
+* Fixed Resource Permission for Localkit on Non-Windows
+
 v3.2.8
 ----
 * Upgrade default blank template to the latest version
