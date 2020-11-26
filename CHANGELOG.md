@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v3.2.10
+----
+* Update Cordova 10 Blank Template for Project Migration Command
+
 v3.2.9
 ----
 * Fixed Resource Permission for Localkit on Non-Windows
