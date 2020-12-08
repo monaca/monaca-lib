@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v3.2.11
+----
+* Ppdate dependencies to resolve circular dependency warnings
+
 v3.2.10
 ----
 * Update Cordova 10 Blank Template for Project Migration Command
