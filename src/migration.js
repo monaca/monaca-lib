@@ -2,12 +2,78 @@ const path = require('path');
 const fs = require('fs-extra');
 const utils = require(path.join(__dirname, 'utils'));
 const common = require(path.join(__dirname, 'common'));
+const os = require('os');
+let gMonaca;
 
 const packageBackupJsonFile = 'package.backup.json';
 const oldMonacaPlugin = 'mobi.monaca.plugins.Monaca';
 const newMonacaPlugin = 'monaca-plugin-monaca-core';
 const oldBackendMonacaPlugin = 'mobi.monaca.plugins.MonacaBackend';
 const newBackendMonacaPlugin = 'monaca-plugin-backend';
+
+/**
+ * Copy directory for localkit (mac and linux)
+ * - solve permission error when creating folder using fs-extra.copySync package
+ * @param {String} srcDir 
+ * @param {String} dstDir 
+ */
+const copy = (srcDir, dstDir) => {
+  const list = fs.readdirSync(srcDir);
+  fs.ensureDirSync(dstDir); // create directory
+  let src, dst;
+  let success = true;
+  list.forEach(function(file) {
+    src = path.join(srcDir, file);
+    dst = path.join(dstDir, file);
+    var stat = fs.statSync(src);
+    if (stat && stat.isDirectory()) {
+      try {
+        fs.ensureDirSync(dst); // create directory
+      } catch(e) {
+        succeed = false;
+        utils.info(`could not create dir ${src} -> ${dst}`);
+        utils.info(e);
+      }
+      copy(src, dst); // copy inner files and directories
+    } else {
+      try {
+        fs.createReadStream(src).pipe(fs.createWriteStream(dst)); // copy file
+      } catch(e) {
+        succeed = false;
+        utils.info(p`could not copy file ${src} -> ${dst}`);
+        utils.info(e);
+      }
+    }
+  });
+  return success;
+};
+
+/**
+ * Copy directory
+ * @param {String} source 
+ * @param {String} destination 
+ */
+const copyDirectory = (source, destination) => {
+  return new Promise((resolve, reject) => {
+    if (gMonaca && gMonaca.clientType === 'localkit' && os.platform() !== 'win32') {
+      const result = copy(source, destination);
+      if (!result) {
+        utils.info(`Please download the file (${source}) manually from https://github.com/monaca-templates/blank`);
+        utils.info('After downloading, please try running the command again.');
+        return reject(`Could NOT copy ${source} from the template`);
+      } else {
+        return resolve(true);
+      }
+    } else {
+      fs.copy(source, destination, {clobber: false}, (err) => {
+        if (err) return reject(err);
+        return resolve(true);
+      });
+    }
+  });
+};
+
+
 
 /**
  *
@@ -330,10 +396,9 @@ module.exports = {
       const resFolder = path.join(projectDir, 'res');
       const resTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'res');
 
-      fs.copy(resTemplateFolder, resFolder, {clobber: false}, (err) => {
-        if (err) return reject(err);
-        return resolve(projectDir);
-      });
+      copyDirectory(resTemplateFolder, resFolder)
+        .then(() => resolve(projectDir))
+        .catch(err => reject(err));
     });
   },
 
@@ -352,10 +417,9 @@ module.exports = {
       const componentsFolder = path.join(projectDir, 'www', 'components');
       const componentsTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'www', 'components');
 
-      fs.copy(componentsTemplateFolder, componentsFolder, {clobber: false}, (err) => {
-        if (err) return reject(err);
-        return resolve(projectDir);
-      });
+      copyDirectory(componentsTemplateFolder, componentsFolder)
+        .then(() => resolve(projectDir))
+        .catch(err => reject(err));
     });
   },
 
@@ -462,6 +526,7 @@ module.exports = {
    */
   init: function (projectDir, isTranspile, commands, monaca) {
     const packageJsonFile = path.join(projectDir, 'package.json');
+    gMonaca = monaca;
 
     return this.createPackageJsonFile(projectDir)
       .then(() => {

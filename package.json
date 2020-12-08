@@ -1,6 +1,6 @@
 {
   "name": "monaca-lib",
-  "version": "3.2.8-dev",
+  "version": "3.2.11",
   "description": "Monaca cloud and localkit API bindings for JavaScript",
   "main": "./src/main.js",
   "scripts": {
@@ -46,7 +46,7 @@
     "q": "^1.1.2",
     "qlimit": "^0.1.1",
     "request": "^2.55.0",
-    "shelljs": "^0.7.7",
+    "shelljs": "^0.8.4",
     "sse": "0.0.6",
     "tmp": "0.0.26",
     "validate-npm-package-name": "^3.0.0",
