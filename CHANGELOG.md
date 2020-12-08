@@ -4,7 +4,7 @@ CHANGELOG
 
 v3.2.11
 ----
-* Ppdate dependencies to resolve circular dependency warnings
+* Update dependencies to resolve circular dependency warnings
 
 v3.2.10
 ----
