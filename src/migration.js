@@ -538,8 +538,8 @@ module.exports = {
       .then(() => this.initComponents(projectDir))
       .then(() => this.createConfigFile(projectDir))
       .then(() => this.initIconsSplashes(projectDir))
-      .then(() => installLatestCordova(projectDir, monaca))
       .then(() => this.createProjectInfoFile(projectDir))
+      .then(() => installLatestCordova(projectDir, monaca))
       .then(() => Promise.resolve({status: 'finished', doc: common.migrationDocUrl()}))
       .catch(failedCb);
   }

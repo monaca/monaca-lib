@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v4.0.0
+----
+* Accept `filenamecallback` function as Promise function
+* Synchronize version with other Monaca Development Kits
+
 v3.2.11
 ----
 * Update dependencies to resolve circular dependency warnings
