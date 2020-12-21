@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v4.0.1
+----
+* Fix `monaca download`
+
 v4.0.0
 ----
 * Accept `filenamecallback` function as Promise function
