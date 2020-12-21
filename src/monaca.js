@@ -1275,50 +1275,59 @@
     var deferred = Q.defer();
 
     var getFilename = (filename, response) => {
-      return new Promise((resolve, reject) => {
-        if (typeof filename === 'string') {
-          return resolve(filename);
-        } else if (typeof filename === 'function') {
-          // Callback so that the caller can decide the filename from the response
-          var dest = filename(response);
-  
+      var d = Q.defer();
+      if (typeof filename === 'string') {
+        d.resolve(filename);
+      } else if (typeof filename === 'function') {
+        // Callback so that the caller can decide the filename from the response
+        const dest = filename(response);
+
+        if (typeof dest === 'string') {
           // if the function return string, return it right away
-          if (typeof dest === 'string') return resolve(dest);
+          d.resolve(dest);
+        } else if (dest != null && dest.then != null && typeof dest.then === 'function') {
           // if the function return promise
-          if (dest != null && dest.then != null && typeof dest.then === 'function') {
-            dest.then(data => {
-              if (!data) return reject(new Error('Could not get data from dialog'));
-              if (data.canceled) return reject(new Error('User cancel the save dialog'));
-              if (!data.filePath) return reject(new Error('Not a valid file name.'));
-              if (data.filePath) return resolve(data.filePath);
-            });
-          }
-        } else {
-          return reject(new Error('Not a valid file name.'));
+          dest.then(data => {
+            if (!data) {
+              d.reject(new Error('Could not get data from dialog'));
+            } else if (data.canceled) {
+              d.reject(new Error('User cancel the save dialog'));
+            } else if (!data.filePath) {
+              d.reject(new Error('Not a valid file name.'));
+            } else if (data.filePath) {
+              d.resolve(data.filePath);
+            }
+          });
         }
-      });
+      } else {
+        d.reject(new Error('Not a valid file name.'));
+      }
+      return d.promise;
     };
 
     this._createRequestClient(data).then(function(requestClient) {
       requestClient.get(url)
       .on('response', function(response) {
 
-        getFilename(filename, response).then(dest => {
-          if (typeof dest === 'string') {
-            var file = fs.createWriteStream(dest);
-            response.pipe(file);
-            file.on('finish', function() {
-              deferred.resolve(dest);
-            });
-            file.on('error', function(error) {
-              deferred.reject(error);
-            });
-          } else {
-            deferred.reject(new Error('Not a valid file name.'));
+        getFilename(filename, response).then(
+          function (dest) {
+            if (typeof dest === 'string') {
+              var file = fs.createWriteStream(dest);
+              response.pipe(file);
+              file.on('finish', function() {
+                deferred.resolve(dest);
+              });
+              file.on('error', function(error) {
+                deferred.reject(error);
+              });
+            } else {
+              deferred.reject(new Error('Not a valid file name.'));
+            }
+          }, 
+          function (e) {
+            deferred.reject(e);
           }
-        }).catch(e => {
-          deferred.reject(e);
-        });
+        );
       })
 
     }.bind(this),
