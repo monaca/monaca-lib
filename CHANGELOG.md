@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v4.0.2
+----
+* Fix `cloneProject` function when project name contains Japanese characters
+* Change default cordova version from 9.0.0 to 10.0.0
+
 v4.0.1
 ----
 * Fix `monaca download`
