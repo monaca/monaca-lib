@@ -20,6 +20,7 @@
     EventEmitter = require('events'),
     ora = require('ora'),
     compareVersions = require('compare-versions'),
+    showNpmVersion = false,
     npm;
 
   const { spawn } = require('child_process');
@@ -1846,14 +1847,17 @@
               ).then(
                 function() {
                   utils.info('\nInstall dependencies...', deferred);
+                  showNpmVersion = true;
                   return this._npmInstall(destDir, [], false);
                 }.bind(this)
               ).then(
                 function() {
                   deferred.resolve(destDir);
+                  showNpmVersion = false;
                 },
                 function(error) {
                   deferred.reject(error);
+                  showNpmVersion = false;
                 }
               );
             }.bind(this),
@@ -2659,9 +2663,22 @@
               return reject(err);
             }
 
+            if (showNpmVersion) {
+              // temporarily fixed for monaca clone when project name contain Japanese characters
+              // dump npm command information to the console is somehow resolving the problems
+              utils.info('\n npm command information:');
+              npm.commands.version({}, false, function (err, data) {
+                if (err) {
+                  utils.info(err);
+                  return reject(err);
+                }
+              });
+            }
+
             npm.commands.install(dir, argvs, function (err, data) {
               if (err) {
                 utils.info(err);
+                utils.info('\nNOTE: There are errors during installing project dependencies. Please navigate to the project directory and install it manually.');
                 return reject(err);
               }
               resolve(data);
