@@ -909,6 +909,11 @@
                 } catch (e) {
                   console.error(e.message);
                 }
+                try {
+                  project.isTranspilable = this.monaca.hasTranspileScript(project_path);
+                } catch (e) {
+                  console.error(e.message);
+                }
 
                 deferred.resolve(project);
               },
