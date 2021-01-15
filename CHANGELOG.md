@@ -2,6 +2,14 @@
 CHANGELOG
 ====
 
+v4.0.4
+----
+* Upload missing project creation template to NPM
+
+v4.0.3
+----
+* Return `isTranspilable` to `project` instance in Monaca Localkit
+
 v4.0.2
 ----
 * Fix `cloneProject` function when project name contains Japanese characters
