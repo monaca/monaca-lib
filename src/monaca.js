@@ -619,6 +619,7 @@
             if (error) {
               deferred.reject(error.code);
             } else {
+              const unauthorizedErrorMessage = 'Error in user authentication. Please login first.';
               if (response.statusCode === 200) {
                 deferred.resolve({body: body, response: response});
               } else if (response.statusCode === 401 && resource.startsWith(this.apiRoot) && !this.retry) {
@@ -626,11 +627,15 @@
                   this.relogin().then(function() {
                     deferred.resolve(this._request(method, resource, data, null ));
                   }.bind(this), function(error) {
-                    deferred.reject(new Error('Error in user authentication. Please run "monaca login" command to continue.'));
+                    deferred.reject(new Error(unauthorizedErrorMessage));
                   });
               } else if (response.statusCode === 401) {
-                const url = 'https://monaca.io/pricing-detail.html';
-                deferred.reject(new Error(`Failed to authenticate. Please run "monaca login" command to continue.\nIf you\'re already logged in, you might not able to perform this operation due to limitations in your subscription plan.\nPlease review our subscription plan ${url} or contact us for more detail.`));
+                let errorMessage = unauthorizedErrorMessage;
+                const bodyJson = JSON.parse(body);
+                if (body && bodyJson && bodyJson.message) {
+                  errorMessage = bodyJson.message;
+                }
+                deferred.reject(new Error(errorMessage));
               } else {
                 try {
                   deferred.reject(JSON.parse(body));
