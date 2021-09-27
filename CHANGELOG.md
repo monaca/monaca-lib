@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v4.0.5
+----
+* Fix to return the error message got from the server.
+
 v4.0.4
 ----
 * Upload missing project creation template to NPM
