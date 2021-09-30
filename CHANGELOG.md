@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v4.0.6
+----
+* Update new Monaca Document Url.
+
 v4.0.5
 ----
 * Fix to return the error message got from the server.
