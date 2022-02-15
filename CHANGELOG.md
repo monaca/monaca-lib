@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v4.1.0
+----
+* Remove NPM API-related functions for monaca-cli. 
+
 v4.0.6
 ----
 * Update new Monaca Document Url.

@@ -1,6 +1,6 @@
 {
   "name": "monaca-lib",
-  "version": "4.0.6",
+  "version": "4.1.0",
   "description": "Monaca cloud and localkit API bindings for JavaScript",
   "main": "./src/main.js",
   "scripts": {
