@@ -2582,34 +2582,6 @@
       );
   };
 
-  Monaca.prototype._npmInit = function () {
-    if (npm) {
-      return Q.resolve(npm);
-    }
-
-    var npmModules = ['global-npm', 'npm'];
-
-    for (var i in npmModules) {
-      try {
-        npm = require(npmModules[i]);
-      } catch (err) {
-        if (i == (npmModules.length - 1)) {
-          if (err.code === 'MODULE_NOT_FOUND') {
-            err.message = 'npm module not found, add it in order to be able to use this functionality.';
-          } else {
-            err.message = 'There is an issue with npm. Error code: ' + err.code;
-          }
-
-          return Q.reject(err);
-        }
-      }
-
-      if (npm) {
-        return Q.resolve(npm);
-      }
-    }
-  }
-
   /**
    * @method
    * @memberof Monaca
@@ -2625,74 +2597,45 @@
 
     return new Promise((resolve, reject) => {
 
-      if ((!argvs || !dev) && this.clientType === 'localkit') {
-        let exitCb = (err) => {
-          if (err === 1) {
-            reject(new Error('Error while installing '));
-          } else {
-            resolve(true);
-          }
+      let exitCb = (err) => {
+        if (err === 1) {
+          reject(new Error('Error while installing '));
+        } else {
+          resolve(true);
         }
-        try {
-          let npmPath = this._getNpmPathForSpawn();
-          let npm;
-          npm = spawn(npmPath, ['install'], {
-            cwd: dir,
-            stdio: 'pipe',
-            env: process.env
-          });
-          npm.stdout.on('data', (data) => {
-            utils.info(data.toString());
-          });
-          npm.stderr.on('data', (data) => {
-            utils.info(data.toString());
-          });
-          if (!npm || !npm.pid) {
-            utils.info('Could not spawn npm command');
-            exitCb(1);
-          }
-          npm.on('exit', exitCb);
-        } catch (ex) {
-          utils.info('Could not spawn npm');
-          utils.info(ex.message);
+      }
+      try {
+        let npmPath = this._getNpmPathForSpawn();
+        let npm;
+        let command = ['install', '--no-audit'];
+        const option = {
+          cwd: dir,
+          stdio: 'pipe',
+          env: process.env
+        };
+        if (dev) {
+          command.push('--save-dev');
+        }
+        if (argvs && argvs.length) {
+          command = command.concat(argvs);
+        }
+        utils.info(`Executing npm ${command.join(' ')}`);
+        npm = spawn(npmPath, command, option);
+        npm.stdout.on('data', (data) => {
+          utils.info(data.toString());
+        });
+        npm.stderr.on('data', (data) => {
+          utils.info(data.toString());
+        });
+        if (!npm || !npm.pid) {
+          utils.info('Could not spawn npm command');
           exitCb(1);
         }
-      } else {
-        this._npmInit().then(function () {
-          let opts = {
-            'audit': false
-          };
-          if (dev) opts['save-dev'] = true;
-          npm.load(opts, function (err) {
-            if (err) {
-              return reject(err);
-            }
-
-            if (showNpmVersion) {
-              // temporarily fixed for monaca clone when project name contain Japanese characters
-              // dump npm command information to the console is somehow resolving the problems
-              utils.info('\n npm command information:');
-              npm.commands.version({}, false, function (err, data) {
-                if (err) {
-                  utils.info(err);
-                  return reject(err);
-                }
-              });
-            }
-
-            npm.commands.install(dir, argvs, function (err, data) {
-              if (err) {
-                utils.info(err);
-                utils.info('\nNOTE: There are errors during installing project dependencies. Please navigate to the project directory and install it manually.');
-                return reject(err);
-              }
-              resolve(data);
-            });
-          });
-        }, function (err) {
-          console.error('[NPM ERROR]', err.message);
-          process.exit(1);
-        });
+        npm.on('exit', exitCb);
+      } catch (ex) {
+        utils.info('Could not spawn npm');
+        utils.info(ex.message);
+        exitCb(1);
       }
     });
   };

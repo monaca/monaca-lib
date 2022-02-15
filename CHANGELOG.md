@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v4.1.0
+----
+* Remove NPM API-related functions 
+* Remove internal function `_npmInit`
+
 v4.0.6
 ----
 * Update new Monaca Document Url.
