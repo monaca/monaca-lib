@@ -36,7 +36,6 @@
     "fix-path": "^2.1.0",
     "fs-extra": "8.0.1",
     "glob": "^5.0.14",
-    "global-npm": "^0.3.0",
     "ignore": "^3.3.8",
     "lockfile": "^1.0.0",
     "nconf": "^0.7.1",
