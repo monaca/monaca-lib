@@ -2582,34 +2582,6 @@
       );
   };
 
-  Monaca.prototype._npmInit = function () {
-    if (npm) {
-      return Q.resolve(npm);
-    }
-
-    var npmModules = ['global-npm', 'npm'];
-
-    for (var i in npmModules) {
-      try {
-        npm = require(npmModules[i]);
-      } catch (err) {
-        if (i == (npmModules.length - 1)) {
-          if (err.code === 'MODULE_NOT_FOUND') {
-            err.message = 'npm module not found, add it in order to be able to use this functionality.';
-          } else {
-            err.message = 'There is an issue with npm. Error code: ' + err.code;
-          }
-
-          return Q.reject(err);
-        }
-      }
-
-      if (npm) {
-        return Q.resolve(npm);
-      }
-    }
-  }
-
   /**
    * @method
    * @memberof Monaca

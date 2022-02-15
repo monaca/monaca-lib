@@ -4,7 +4,8 @@ CHANGELOG
 
 v4.1.0
 ----
-* Remove NPM API-related functions for monaca-cli. 
+* Remove NPM API-related functions 
+* Remove internal function `_npmInit`
 
 v4.0.6
 ----
