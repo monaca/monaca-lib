@@ -25,7 +25,7 @@
   },
   "homepage": "https://github.com/monaca/monaca-lib",
   "devDependencies": {
-    "jasmine": "^3.1.0"
+    "jasmine": "^4.0.2"
   },
   "dependencies": {
     "adbkit": "^2.2.1",
