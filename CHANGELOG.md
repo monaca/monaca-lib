@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v4.1.2
+----
+* Cordova 11 support
+
 v4.1.0
 ----
 * Remove NPM API-related functions 
