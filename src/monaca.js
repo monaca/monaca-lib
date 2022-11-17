@@ -1984,7 +1984,7 @@
                     var projectConfig = {
                       name: result.widget.name[0],
                       directory: projectDir,
-                      description: result.widget.description[0],
+                      description: result.widget.description ? result.widget.description[0] : '',
                       projectId: projectId
                     };
 
