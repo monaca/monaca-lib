@@ -3,6 +3,20 @@ Monaca Cloud API
 
 This is a library used to communicate with the Monaca Cloud REST API.
 
+Git Submodule
+-------------
+
+This library uses git submodules.
+Please following command.
+
+```
+$ git submodule update 
+```
+or initially 
+```
+$ git submodule --init -recursive
+```
+
 Initialization
 -------------
 
