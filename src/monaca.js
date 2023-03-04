@@ -1204,6 +1204,8 @@
                 if (platformContent.debug_provisioning_error) {
                   return 'Error in debug provisioning file. Please upload again from remote build settings by executing `monaca remote build --browser`.';
                 }
+              } else if (buildType === 'simulator') {
+                return ''; // no need to check provisioning file.
               } else {
                 if (!platformContent['has_' + buildType + '_provisioning']) {
                   return 'Missing ' + buildType + ' provisioning file. Please upload it from remote build settings by executing `monaca remote build --browser`.';
