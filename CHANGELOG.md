@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v4.1.5
+----
+* Support iOS Simulator build
+
 v4.1.2
 ----
 * Cordova 11 support
