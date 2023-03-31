@@ -18,8 +18,7 @@
     FileWatcher = require(path.join(__dirname, 'localkit', 'fileWatcher')),
     LocalAuth = require(path.join(__dirname, 'localkit', 'localAuth')),
     Api = require(path.join(__dirname, 'localkit', 'api')),
-    broadcastAddresses = require(path.join(__dirname, 'localkit', 'broadcastAddresses')),
-    inspector = require(path.join(__dirname, 'inspector'));
+    broadcastAddresses = require(path.join(__dirname, 'localkit', 'broadcastAddresses'));
 
   // config
   var config = nconf.env()
@@ -1075,40 +1074,6 @@
     var deferred = Q.defer();
     deferred.resolve(this.projectEvents.connectedClients);
     return deferred.promise;
-  };
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Init inspector functionality
-   * @param {Object} options - Parameter object
-   * @param {String} options.adbPath - Path to adb [optional]
-   * @param {String} options.proxyPath - Path to iOS WebKit Proxy [optional]
-   */
-  Localkit.prototype.initInspector = function(config) {
-    inspector.initialize(config);
-    inspector.startProxy();
-  }
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Start inspector
-   * @param {Object} options - Parameter object
-   * @param {String} options.type - Device type, should be "ios" or "android".
-   * @param {String} options.pageUrl - URL of the page to inspect.
-   * @param {String} options.projectId - ID of the project to inspect.
-   */
-  Localkit.prototype.startInspector = function(options) {
-    return inspector.launch(options)
-      .catch(
-        function(error) {
-          this.emit('inspectorError', error);
-          return Q.reject(error);
-        }.bind(this)
-      );
   };
 
   /**

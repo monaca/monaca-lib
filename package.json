@@ -28,7 +28,6 @@
     "jasmine": "^4.0.2"
   },
   "dependencies": {
-    "adbkit": "^2.2.1",
     "buffer-crc32": "^0.2.4",
     "compare-versions": "^3.6.0",
     "extend": "^2.0.0",

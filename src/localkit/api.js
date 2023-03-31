@@ -25,7 +25,6 @@
       '/api/project/:project_id/file/read': this.fileReadApi.bind(this),
       '/api/project/:project_id/started': this.noop.bind(this),
       '/api/project/:project_id/stopped': this.noop.bind(this),
-      '/api/debugger/inspect': this.inspectApi.bind(this),
       '/api/local/auth': this.localAuthApi.bind(this)
     };
   };
@@ -287,35 +286,6 @@
       }
     }.bind(this));
   };
-
-  Api.prototype.inspectApi = function(request, response) {
-    if (!this.validatePairing(request)) {
-      this.sendJsonResponse(response, 401, 'Not paired with debugger.');
-      return;
-    }
-
-    var data = qs.parse((request.url + '?').split('?')[1]),
-      pairingKey = this.getPairingKey(request),
-      fileUrl = data.fileUrl;
-
-    if (!fileUrl) {
-      return this.sendJsonResponse(response, 400, 'Parameters missing.', undefined, true, pairingKey);
-    }
-
-    var platform = data['abstractSocketAddress'] ? 'android' : 'ios';
-
-    this.localkit.startInspector({
-      type: platform,
-      pageUrl: fileUrl
-    }).then(
-      function() {
-        return this.sendJsonResponse(response, 200, 'Inspection started.', undefined, true, pairingKey);
-      }.bind(this),
-      function(error) {
-        return this.sendJsonResponse(response, 500, 'Unable to start inspector: ' + error, undefined, true, pairingKey);
-      }.bind(this)
-    );
-  }
 
   Api.prototype.localAuthApi = function(request, response) {
     var passwordHash = request.headers['x-otp-hash'] || '';
