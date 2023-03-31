@@ -1,1 +1,0 @@
-WebInspector.CSSMetadata.initializeWithSupportedProperties({});
