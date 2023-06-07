@@ -2783,21 +2783,6 @@
    * @method
    * @memberof Monaca
    * @description
-   *   Get Cordova version used by the project
-   * @param {String} Project's Directory
-   * @return {String | Exception}
-   */
-  Monaca.prototype.getCordovaVersion = function (projectDir) {
-    let config = this.fetchProjectData(projectDir);
-
-    if (!config) throw '\'.monaca/project_info.json\' is missing.';
-    return config['cordova_version'];
-  };
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
    *   Installs the template's dependencies.
    * @param {String} Project's Directory
    * @return {Promise}
