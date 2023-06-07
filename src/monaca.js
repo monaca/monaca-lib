@@ -28,6 +28,11 @@
   const migration = require('./migration');
   const fixPath = require('fix-path');
 
+  // support project type
+  const REACT_NATIVE = 'react-native';
+  const CAPACITOR = 'capacitor';
+  const CORDOVA = 'cordova';
+
   // Spinner
   var spinner = null;
 
@@ -3507,6 +3512,41 @@
     return deferred.promise;
   };
 
+    /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Utility method to get project type - react-native, capacitor, or other.
+   * @param {String} projectDir - Project directory.
+   * @return {Promise}
+   */
+    Monaca.prototype.getProjectType = function(projectDir) {
+      return new Promise((resolve, reject) => {
+        if (fs.existsSync(projectDir)) {
+          let projectConfig;
+
+          try {
+            projectConfig = require(path.join(projectDir, 'package.json'));
+          } catch (err) {
+            return reject(err);
+          }
+
+          // by checking dependencies, we can later add "reactive-native" or other frameworks
+          if (projectConfig && projectConfig.dependencies) {
+            if (projectConfig.dependencies['@capacitor/core']) {
+              return resolve(CAPACITOR);
+            } else {
+              return reject(new Error('This project is not supported by Monaca. We currently support "Cordova" and "Capacitor" projects.'));
+            }
+          } else {
+            return reject(new Error('Invalid Package Dependencies'));
+          }
+        } else {
+          return reject(new Error('The directory does not exist.'));
+        }
+      });
+    };
+
   /**
    * @method
    * @memberof Monaca
@@ -3516,19 +3556,21 @@
    * @return {Promise}
    */
   Monaca.prototype.isMonacaProject = function(projectDir) {
-    return this.isReactNativeProject(projectDir)
-    .then(
-      function(value) {
-        return Q.resolve(value);
-      },
-      function() {
-        return this.isCordovaProject(projectDir)
-          .then(values => {
-            if(!!this.fetchProjectData(projectDir)) Q.resolve('monaca');
-            else throw '[.monaca/project_info.json] File is missing';
-          });
-      }.bind(this)
-    )
+    return new Promise((resolve, reject) => {
+      this.isCordovaProject(projectDir)
+        .then(() => {
+          return resolve('monaca');
+        })
+        .catch(() => {
+          this.getProjectType(projectDir)
+            .then((type) => {
+              return resolve(type);
+            })
+            .catch((error) => {
+              return reject(error);
+            })
+        });
+    });
   };
 
    /**

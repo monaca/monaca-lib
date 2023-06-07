@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v5.0.0
+----
+* Support Capacitor Projects
+
 v4.1.5
 ----
 * Support iOS Simulator build
