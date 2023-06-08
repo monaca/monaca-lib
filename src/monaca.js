@@ -1929,9 +1929,9 @@
   };
 
   Monaca.prototype.getProjectInfo = function(projectDir, framework) {
-    var deferred = Q.defer();
+    const deferred = Q.defer();
 
-    var getDefaultProjectInfo = function(projectId) {
+    const getDefaultProjectInfo = function(projectId) {
       return Q.resolve({
         name: 'Undefined Project Name',
         directory: projectDir,
@@ -1940,14 +1940,14 @@
       });
     };
 
-    var getReactNativeProjectInfo = function(projectId) {
-      var projectConfig = require(path.join(projectDir, 'package.json'));
+    const getProjectInfoFromPackageJson = function(projectId) {
+      const projectConfig = require(path.join(projectDir, 'package.json'));
 
       // extract the name from the project path
-      var projectName = path.basename(projectDir),
+      let projectName = path.basename(projectDir),
         projectDescription;
 
-      if (projectConfig && projectConfig.description) {
+      if (projectConfig?.description) {
         projectDescription = projectConfig.description;
       }
 
@@ -1959,7 +1959,7 @@
       });
     };
 
-    var getCordovaProjectInfo = function(projectId) {
+    const getCordovaProjectInfo = function(projectId) {
 
       var getValidConfigFile = function() {
         var possibleFiles = ['config.xml', 'config.ios.xml', 'config.android.xml'];
@@ -2018,7 +2018,7 @@
         if (!framework || framework === 'cordova') {
           return getCordovaProjectInfo(projectId);
         } else {
-          return getReactNativeProjectInfo(projectId);
+          return getProjectInfoFromPackageJson(projectId);
         }
       },
       function(error) {
@@ -3485,7 +3485,7 @@
         return Q.reject(err);
       }
 
-      if (projectConfig && projectConfig.dependencies && projectConfig.dependencies['react-native']) {
+      if (projectConfig?.dependencies && projectConfig.dependencies['react-native']) {
         deferred.resolve('react-native');
       } else {
         deferred.reject();
@@ -3517,7 +3517,7 @@
           }
 
           // by checking dependencies, we can later add "reactive-native" or other frameworks
-          if (projectConfig && projectConfig.dependencies) {
+          if (projectConfig?.dependencies) {
             if (projectConfig.dependencies['@capacitor/core']) {
               return resolve(CAPACITOR);
             } else {

@@ -538,8 +538,8 @@ module.exports = {
     gMonaca = monaca;
 
     // get project type (capacitor)
-    projectConfig = require(path.join(packageJsonFile));
-    if (projectConfig && projectConfig.dependencies && projectConfig.dependencies['@capacitor/core']) {
+    let projectConfig = require(path.join(packageJsonFile));
+    if (projectConfig?.dependencies && projectConfig.dependencies['@capacitor/core']) {
       projectType = 'capacitor';
     }
 
