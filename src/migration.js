@@ -4,6 +4,7 @@ const utils = require(path.join(__dirname, 'utils'));
 const common = require(path.join(__dirname, 'common'));
 const os = require('os');
 let gMonaca;
+let projectType;
 
 const packageBackupJsonFile = 'package.backup.json';
 const oldMonacaPlugin = 'mobi.monaca.plugins.Monaca';
@@ -250,8 +251,11 @@ const prepareScriptsCommandInit = (packageJsonFile, commands) => {
  * @return {Promise}
  */
 const installLatestCordova = (projectDir, monaca) => {
-  utils.info(`[Cordova] Installing Cordova ${utils.CORDOVA_VERSION}...`);
   return new Promise((resolve, reject) => {
+    if (projectType === 'capacitor') return resolve(projectDir);
+
+    utils.info(`[Cordova] Installing Cordova ${utils.CORDOVA_VERSION}...`);
+
     let installDependencies = [];
 
     if (utils.needToInstallCordova(projectDir)) installDependencies.push('cordova@' + utils.CORDOVA_VERSION);
@@ -370,9 +374,12 @@ module.exports = {
    */
   createProjectInfoFile: function (projectDir) {
     const projectInfo = path.resolve(projectDir, '.monaca', 'project_info.json');
-    const projectInfoTemplate = path.resolve(__dirname, 'template', 'blank', '.monaca', 'project_info.json');
+    let projectInfoTemplate = path.resolve(__dirname, 'template', 'blank', '.monaca', 'project_info.json');
     
     utils.info('[.monaca] Creating project_info.json...');
+    if (projectType === 'capacitor') {
+      projectInfoTemplate = path.resolve(__dirname, 'template', 'capacitor-basic', '.monaca', 'project_info.json');
+    }
     return new Promise((resolve, reject) => {
       fs.copy(projectInfoTemplate, projectInfo, (err) => {
         if (err) return reject(err);
@@ -391,8 +398,8 @@ module.exports = {
    * @return {Promise}
    */
   initIconsSplashes: function (projectDir) {
-    utils.info('[res] Inserting icons and splashes...');
     return new Promise((resolve, reject) => {
+      utils.info('[res] Inserting icons and splashes...');
       const resFolder = path.join(projectDir, 'res');
       const resTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'res');
 
@@ -412,8 +419,8 @@ module.exports = {
    * @return {Promise}
    */
   initComponents: function (projectDir) {
-    utils.info('[www] Inserting components...');
     return new Promise((resolve, reject) => {
+      utils.info('[www] Inserting components...');
       const componentsFolder = path.join(projectDir, 'www', 'components');
       const componentsTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'www', 'components');
 
@@ -433,8 +440,10 @@ module.exports = {
    * @return {Promise}
    */
   createConfigFile: function (projectDir) {
-    utils.info('[config.xml] Creating file...');
     return new Promise((resolve, reject) => {
+      if (projectType === 'capacitor') return resolve(projectDir);
+
+      utils.info('[config.xml] Creating file...');
       const configFolder = path.resolve(projectDir, 'config.xml');
       const configTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'config.xml');
 
@@ -527,6 +536,12 @@ module.exports = {
   init: function (projectDir, isTranspile, commands, monaca) {
     const packageJsonFile = path.join(projectDir, 'package.json');
     gMonaca = monaca;
+
+    // get project type (capacitor)
+    projectConfig = require(path.join(packageJsonFile));
+    if (projectConfig && projectConfig.dependencies && projectConfig.dependencies['@capacitor/core']) {
+      projectType = 'capacitor';
+    }
 
     return this.createPackageJsonFile(projectDir)
       .then(() => {
