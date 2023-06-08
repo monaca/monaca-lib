@@ -4,7 +4,10 @@ CHANGELOG
 
 v5.0.0
 ----
-* Support Capacitor Projects
+* Support Capacitor Projects (Beta)
+
+#### Breaking changes
+* Modified `isMonacaProject` function. The project is "Monaca" if it is either "Cordova" or "Capacitor" project.
 
 v4.1.5
 ----
