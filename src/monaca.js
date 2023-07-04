@@ -1148,7 +1148,6 @@
     }
 
     var projectId = projectInfo.projectId,
-      framework = projectInfo.framework ? projectInfo.framework : '',
       platform = buildParams.platform,
       buildType = buildParams.purpose;
 
@@ -1186,7 +1185,7 @@
               if (!platformContent.is_versionname_valid) {
                 return 'Version name is invalid.';
               }
-              if (buildType === 'release' && (!checkForMinimumRequirements && !platformContent.has_keysetting || checkForMinimumRequirements && !platformContent.has_keystore)) {
+              if (buildType === 'release' && (!checkForMinimumRequirements && !platformContent.has_keysetting || !checkForMinimumRequirements && !platformContent.has_keystore)) {
                 return 'Missing KeyStore configuration. Configure remote build by executing `monaca remote build --browser`.';
               }
             }
@@ -1227,11 +1226,10 @@
 
           var errorMessage = checkError();
 
-          if (!framework || framework === 'cordova') {
-            if (errorMessage) {
-              return Q.reject(new Error(errorMessage));
-            }
+          if (errorMessage) {
+            return Q.reject(new Error(errorMessage));
           }
+
           return Q.resolve(body);
         } else {
           return Q.reject(new Error(body.status + " - " + body.message));
