@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v4.1.7
+----
+* Pinned latest blank template for Cordova 12
+
 v4.1.5
 ----
 * Support iOS Simulator build

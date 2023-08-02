@@ -5,7 +5,7 @@ const ignore = require('ignore');
 const MIGRATION_FOLDER = 'migration';
 const MIGRATION_TEMPLATES_FOLDER = MIGRATION_FOLDER + '/template';
 const PROJECT_INFO_FOLDER = MIGRATION_FOLDER + '/project_info';
-const CORDOVA_VERSION = '11.0.0';
+const CORDOVA_VERSION = '12.0.0';
 
 
 let filterIgnoreFiles = function(files, ignoreList, removeBasePath = false) {
