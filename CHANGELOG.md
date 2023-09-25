@@ -2,6 +2,10 @@
 CHANGELOG
 ====
 
+v4.1.8
+----
+* Added retry to `downloadFile`
+
 v4.1.7
 ----
 * Pinned latest blank template for Cordova 12
