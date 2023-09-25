@@ -124,6 +124,10 @@ let isEmptyObject = (obj) => {
   return true;
 };
 
+let sleep = (ms) => {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 module.exports = {
   filterIgnoreFiles: filterIgnoreFiles,
   isDirectory: isDirectory,
@@ -141,5 +145,6 @@ module.exports = {
   spinnerFail,
   spinnerLoading,
   spinnerSuccess,
-  startSpinner
+  startSpinner,
+  sleep
 };
