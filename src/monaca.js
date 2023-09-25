@@ -701,6 +701,7 @@
    * @param {string} projectId - Monaca project id.
    * @param {string} remotePath - Source file in cloud.
    * @param {string} localPath - Local file destination.
+   * @param {number} retryCount - Retry count to download a file.
    * @return {Promise}
    * @example
    *   monaca.downloadFile('SOME_PROJECT_ID', '/remote/file', '/local/file').then(
@@ -712,7 +713,9 @@
    *     }
    *   );
    */
-  Monaca.prototype.downloadFile = function(projectId, remotePath, localPath) {
+  Monaca.prototype.downloadFile = function(projectId, remotePath, localPath, retryCount = 0) {
+    const RETRY_COUNT_LIMIT = 3;
+    const RETRY_SLEEP_MS = 3000;
     var deferred = Q.defer();
 
     this._post('/project/' + projectId + '/file/read/' + encodeURIComponent(remotePath), { path: remotePath }).then(
@@ -734,9 +737,17 @@
           });
         });
       },
-      function(error) {
-        deferred.reject(error);
-      }
+      async function(error) {
+        if (retryCount < RETRY_COUNT_LIMIT) {
+          console.log(`Retrying ${retryCount + 1} times for ${remotePath}...`);
+          await utils.sleep(RETRY_SLEEP_MS);
+          this.downloadFile(projectId, remotePath, localPath, retryCount + 1)
+              .then(deferred.resolve)
+              .catch(deferred.reject);
+        } else {
+          deferred.reject(error);
+        }
+      }.bind(this)
     );
 
     return deferred.promise;
