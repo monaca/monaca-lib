@@ -539,7 +539,7 @@ module.exports = {
 
     // get project type (capacitor)
     let projectConfig = require(path.join(packageJsonFile));
-    if (projectConfig?.dependencies && projectConfig.dependencies['@capacitor/core']) {
+    if (projectConfig && projectConfig.dependencies && projectConfig.dependencies['@capacitor/core']) {
       projectType = 'capacitor';
     }
 

@@ -1945,7 +1945,7 @@
       let projectName = path.basename(projectDir),
         projectDescription;
 
-      if (projectConfig?.description) {
+      if (projectConfig && projectConfig.description) {
         projectDescription = projectConfig.description;
       }
 
@@ -3483,7 +3483,7 @@
         return Q.reject(err);
       }
 
-      if (projectConfig?.dependencies && projectConfig.dependencies['react-native']) {
+      if (projectConfig && projectConfig.dependencies && projectConfig.dependencies['react-native']) {
         deferred.resolve('react-native');
       } else {
         deferred.reject();
@@ -3515,7 +3515,7 @@
           }
 
           // by checking dependencies, we can later add "reactive-native" or other frameworks
-          if (projectConfig?.dependencies) {
+          if (projectConfig && projectConfig.dependencies) {
             if (projectConfig.dependencies['@capacitor/core']) {
               return resolve(CAPACITOR);
             } else {
