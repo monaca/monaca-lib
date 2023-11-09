@@ -3495,6 +3495,24 @@
     return deferred.promise;
   };
 
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
+   *   Utility method to get project type - react-native, capacitor, or other.
+   * @param {String} projectDir - Project directory.
+   * @return bool
+   */
+  Monaca.prototype.isCapacitorProject = function(projectDir) {
+    try {
+      const projectConfig = require(path.join(projectDir, 'package.json'));
+      if (projectConfig && projectConfig.dependencies && projectConfig.dependencies['@capacitor/core']) {
+        return true;
+      }
+    } catch (err) {}
+    return false;
+  }
+
     /**
    * @method
    * @memberof Monaca
@@ -3515,9 +3533,11 @@
           }
 
           // by checking dependencies, we can later add "reactive-native" or other frameworks
-          if (projectConfig && projectConfig.dependencies) {
-            if (projectConfig.dependencies['@capacitor/core']) {
+          if (projectConfig) {
+            if (projectConfig.dependencies && projectConfig.dependencies['@capacitor/core']) {
               return resolve(CAPACITOR);
+            } else if (projectConfig.devDependencies && projectConfig.devDependencies['cordova']) {
+              return resolve(CORDOVA);
             } else {
               return reject(new Error('This project is not supported by Monaca. We currently support "Cordova" and "Capacitor" projects.'));
             }
@@ -3647,7 +3667,8 @@
             name: arg.name,
             description: arg.description || '',
             templateId: 'minimum',
-            isBuildOnly: false
+            isBuildOnly: false,
+            framework: this.isCapacitorProject(arg.path) ? CAPACITOR : CORDOVA,
           })
           .then(
             function(info) {
