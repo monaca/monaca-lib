@@ -3513,43 +3513,6 @@
     return false;
   }
 
-    /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   Utility method to get project type - react-native, capacitor, or other.
-   * @param {String} projectDir - Project directory.
-   * @return {Promise}
-   */
-    Monaca.prototype.getProjectType = function(projectDir) {
-      return new Promise((resolve, reject) => {
-        if (fs.existsSync(projectDir)) {
-          let projectConfig;
-
-          try {
-            projectConfig = require(path.join(projectDir, 'package.json'));
-          } catch (err) {
-            return reject(err);
-          }
-
-          // by checking dependencies, we can later add "reactive-native" or other frameworks
-          if (projectConfig) {
-            if (projectConfig.dependencies && projectConfig.dependencies['@capacitor/core']) {
-              return resolve(CAPACITOR);
-            } else if (projectConfig.devDependencies && projectConfig.devDependencies['cordova']) {
-              return resolve(CORDOVA);
-            } else {
-              return reject(new Error('This project is not supported by Monaca. We currently support "Cordova" and "Capacitor" projects.'));
-            }
-          } else {
-            return reject(new Error('Invalid Package Dependencies'));
-          }
-        } else {
-          return reject(new Error('The directory does not exist.'));
-        }
-      });
-    };
-
   /**
    * @method
    * @memberof Monaca
@@ -3560,18 +3523,23 @@
    */
   Monaca.prototype.isMonacaProject = function(projectDir) {
     return new Promise((resolve, reject) => {
+      // Check if project contains .monaca/project_info.json
+      if(!this.fetchProjectData(projectDir)) {
+        return reject('[.monaca/project_info.json] File is missing');
+      }
+      // Check if it is cordova project
       this.isCordovaProject(projectDir)
         .then(() => {
           return resolve('monaca');
         })
         .catch(() => {
-          this.getProjectType(projectDir)
-            .then((type) => {
-              return resolve(type);
-            })
-            .catch((error) => {
-              return reject(error);
-            })
+          // Check if it is capacitor project
+          if (this.isCapacitorProject(projectDir)) {
+            return resolve(CAPACITOR);
+          } else {
+            // return error
+            return reject('This project is not supported by Monaca. We currently support "Cordova" and "Capacitor" projects.');
+          }
         });
     });
   };
