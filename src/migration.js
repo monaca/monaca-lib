@@ -4,7 +4,7 @@ const utils = require(path.join(__dirname, 'utils'));
 const common = require(path.join(__dirname, 'common'));
 const os = require('os');
 let gMonaca;
-let projectType;
+let gIsCapacitorProject = null;
 
 const packageBackupJsonFile = 'package.backup.json';
 const oldMonacaPlugin = 'mobi.monaca.plugins.Monaca';
@@ -242,6 +242,14 @@ const prepareScriptsCommandInit = (packageJsonFile, commands) => {
   return packageJsonContent;
 }
 
+const isCapacitorProject = (projectDir) => {
+  if (gIsCapacitorProject !== null) {
+    return gIsCapacitorProject;
+  }
+  gIsCapacitorProject = utils.isCapacitorProject(projectDir);
+  return gIsCapacitorProject;
+};
+
 /**
  *
  * Install Cordova as a Dev Dependency
@@ -252,7 +260,7 @@ const prepareScriptsCommandInit = (packageJsonFile, commands) => {
  */
 const installLatestCordova = (projectDir, monaca) => {
   return new Promise((resolve, reject) => {
-    if (projectType === 'capacitor') return resolve(projectDir);
+    if (isCapacitorProject(projectDir)) return resolve(projectDir);
 
     utils.info(`[Cordova] Installing Cordova ${utils.CORDOVA_VERSION}...`);
 
@@ -377,7 +385,7 @@ module.exports = {
     let projectInfoTemplate = path.resolve(__dirname, 'template', 'blank', '.monaca', 'project_info.json');
     
     utils.info('[.monaca] Creating project_info.json...');
-    if (projectType === 'capacitor') {
+    if (isCapacitorProject(projectDir)) {
       projectInfoTemplate = path.resolve(__dirname, 'template', 'capacitor-basic', '.monaca', 'project_info.json');
     }
     return new Promise((resolve, reject) => {
@@ -400,8 +408,12 @@ module.exports = {
   initIconsSplashes: function (projectDir) {
     return new Promise((resolve, reject) => {
       utils.info('[res] Inserting icons and splashes...');
-      const resFolder = path.join(projectDir, 'res');
-      const resTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'res');
+      let resFolder = path.join(projectDir, 'res');
+      let resTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'res');
+      if (isCapacitorProject(projectDir)) {
+        resTemplateFolder = path.resolve(__dirname, 'template', 'capacitor-basic', 'assets');
+        resFolder = path.join(projectDir, 'assets');
+      }
 
       copyDirectory(resTemplateFolder, resFolder)
         .then(() => resolve(projectDir))
@@ -422,7 +434,10 @@ module.exports = {
     return new Promise((resolve, reject) => {
       utils.info('[www] Inserting components...');
       const componentsFolder = path.join(projectDir, 'www', 'components');
-      const componentsTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'www', 'components');
+      let componentsTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'www', 'components');
+      if (isCapacitorProject(projectDir)) {
+        componentsTemplateFolder = path.resolve(__dirname, 'template', 'capacitor-basic', 'www', 'components');
+      }
 
       copyDirectory(componentsTemplateFolder, componentsFolder)
         .then(() => resolve(projectDir))
@@ -441,7 +456,7 @@ module.exports = {
    */
   createConfigFile: function (projectDir) {
     return new Promise((resolve, reject) => {
-      if (projectType === 'capacitor') return resolve(projectDir);
+      if (isCapacitorProject(projectDir)) return resolve(projectDir);
 
       utils.info('[config.xml] Creating file...');
       const configFolder = path.resolve(projectDir, 'config.xml');
@@ -467,7 +482,10 @@ module.exports = {
   createPackageJsonFile: function (projectDir) {
     return new Promise((resolve, reject) => {
       const packageFolder = path.resolve(projectDir, 'package.json');
-      const packageTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'package.json');
+      let packageTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'package.json');
+      if (isCapacitorProject(projectDir)) {
+        packageTemplateFolder = path.resolve(__dirname, 'template', 'capacitor-basic', 'package.json');
+      }
 
       if (fs.existsSync(packageFolder)) {
         // backup package.json
@@ -536,12 +554,6 @@ module.exports = {
   init: function (projectDir, isTranspile, commands, monaca) {
     const packageJsonFile = path.join(projectDir, 'package.json');
     gMonaca = monaca;
-
-    // get project type (capacitor)
-    let projectConfig = require(path.join(packageJsonFile));
-    if (projectConfig && projectConfig.dependencies && projectConfig.dependencies['@capacitor/core']) {
-      projectType = 'capacitor';
-    }
 
     return this.createPackageJsonFile(projectDir)
       .then(() => {

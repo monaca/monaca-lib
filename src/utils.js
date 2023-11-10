@@ -124,7 +124,26 @@ let isEmptyObject = (obj) => {
   return true;
 };
 
+/**
+ * @method
+ * @description
+ *  isCapacitorProject
+ *
+ * @param {String} projectDir Project directory
+ * @return {String}
+ */
+const isCapacitorProject = (projectDir) => {
+  try {
+    const projectConfig = require(path.join(projectDir, 'package.json'));
+    if (projectConfig && projectConfig.dependencies && projectConfig.dependencies['@capacitor/core']) {
+      return true;
+    }
+  } catch (err) {}
+  return false;
+};
+
 module.exports = {
+  isCapacitorProject: isCapacitorProject,
   filterIgnoreFiles: filterIgnoreFiles,
   isDirectory: isDirectory,
   includeInExplicitFilterList: includeInExplicitFilterList,

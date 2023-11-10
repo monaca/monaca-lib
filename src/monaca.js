@@ -3504,13 +3504,7 @@
    * @return bool
    */
   Monaca.prototype.isCapacitorProject = function(projectDir) {
-    try {
-      const projectConfig = require(path.join(projectDir, 'package.json'));
-      if (projectConfig && projectConfig.dependencies && projectConfig.dependencies['@capacitor/core']) {
-        return true;
-      }
-    } catch (err) {}
-    return false;
+    return utils.isCapacitorProject(projectDir);
   }
 
   /**
