@@ -128,24 +128,36 @@ let sleep = (ms) => {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Function to retrieve the value of a specific widget from XML data
 const getXmlWidgetValue = (xml, widgetName, defaultValue = '') => {
+  // Helper function to safely get the first value from an array
+  const safeGetFirstValue = (values) => {
+    if (!Array.isArray(values) || values.length === 0) {
+      return undefined;
+    }
+
+    const firstValue = values[0];
+    // If the first element is an object and has the '_' property, return its value
+    if (firstValue && typeof firstValue === 'object' && '_' in firstValue) {
+      return firstValue._;
+    }
+
+    return firstValue;
+  };
+
   try {
-    if (xml.widget && xml.widget[widgetName]) {
+    // Check if xml.widget is an object and contains the specified widget name
+    if (xml.widget && typeof xml.widget === 'object' && widgetName in xml.widget) {
       const value = xml.widget[widgetName];
-      if (Array.isArray(value)) {
-        if (typeof value[0] === 'object') {
-          return value[0]._;
-        } else if (typeof value[0] === 'string') {
-          return value[0];
-        }
-      } else {
-        return value;
-      }
+      const extractedValue = safeGetFirstValue(value);
+
+      return extractedValue !== undefined ? extractedValue : value;
     }
   } catch (error) {
-    // DO NOTHING
+    console.error(`Error while getting widget value: ${error}`);
   }
-  return defaultValue;
+
+  return typeof defaultValue === 'string' ? defaultValue : '';
 };
 
 module.exports = {
