@@ -1984,7 +1984,7 @@
       this.getLocalProjectId(projectDir)
       .then(
         function(projectId) {
-          var configFile = getValidConfigFile();
+          const configFile = getValidConfigFile();
           if (configFile) {
             fs.readFile(configFile, function(error, data) {
               if (error) {
@@ -1994,10 +1994,10 @@
                   if (error) {
                     deferred.reject(error);
                   } else {
-                    var projectConfig = {
-                      name: result.widget.name[0],
+                    const projectConfig = {
+                      name: utils.getXmlWidgetValue(result, 'name', 'project'),
                       directory: projectDir,
-                      description: result.widget.description ? result.widget.description[0] : '',
+                      description: utils.getXmlWidgetValue(result, 'description', 'monaca-project'),
                       projectId: projectId
                     };
 

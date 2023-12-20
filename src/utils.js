@@ -128,6 +128,26 @@ let sleep = (ms) => {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+const getXmlWidgetValue = (xml, widgetName, defaultValue = '') => {
+  try {
+    if (xml.widget && xml.widget[widgetName]) {
+      const value = xml.widget[widgetName];
+      if (Array.isArray(value)) {
+        if (typeof value[0] === 'object') {
+          return value[0]._;
+        } else if (typeof value[0] === 'string') {
+          return value[0];
+        }
+      } else {
+        return value;
+      }
+    }
+  } catch (error) {
+    // DO NOTHING
+  }
+  return defaultValue;
+};
+
 module.exports = {
   filterIgnoreFiles: filterIgnoreFiles,
   isDirectory: isDirectory,
@@ -146,5 +166,6 @@ module.exports = {
   spinnerLoading,
   spinnerSuccess,
   startSpinner,
-  sleep
+  sleep,
+  getXmlWidgetValue,
 };
