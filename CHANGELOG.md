@@ -1,6 +1,11 @@
 
 CHANGELOG
 ====
+v4.1.10
+----
+
+* Fix template
+* Update README
 
 v4.1.9
 ----
