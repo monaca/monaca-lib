@@ -2,6 +2,11 @@
 CHANGELOG
 ====
 
+v4.1.9
+----
+
+* Fix getting project name and description from config.xml
+
 v4.1.8
 ----
 * Added retry to `downloadFile`
