@@ -432,13 +432,14 @@ module.exports = {
    */
   initComponents: function (projectDir) {
     return new Promise((resolve, reject) => {
-      utils.info('[www] Inserting components...');
       const componentsFolder = path.join(projectDir, 'www', 'components');
-      let componentsTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'www', 'components');
+      const componentsTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'www', 'components');
       if (isCapacitorProject(projectDir)) {
-        componentsTemplateFolder = path.resolve(__dirname, 'template', 'capacitor-basic', 'www', 'components');
+        // Skip adding components for capacitor projects
+        return resolve(projectDir)
       }
 
+      utils.info('[www] Inserting components...');
       copyDirectory(componentsTemplateFolder, componentsFolder)
         .then(() => resolve(projectDir))
         .catch(err => reject(err));
