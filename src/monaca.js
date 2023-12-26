@@ -1999,7 +1999,7 @@
               }
             });
           } else {
-            return getDefaultProjectInfo(projectId);
+            deferred.resolve(getDefaultProjectInfo(projectId));
           }
         },
         function(error) {
