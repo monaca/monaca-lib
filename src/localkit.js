@@ -896,6 +896,11 @@
                 if (project_path == '.') {
                    project_path = process.cwd();
                 }
+                if (utils.isCapacitorProject(project_path)) {
+                  // capacitor project should not be added to projects for debugger.
+                  deferred.resolve(null);
+                  return;
+                }
 
                 project.name = _project.name || project.name;
                 project.frameworkVersion = "";
@@ -913,7 +918,6 @@
                 } catch (e) {
                   console.error(e.message);
                 }
-
                 deferred.resolve(project);
               },
               function(error) {
@@ -926,7 +930,9 @@
       }.bind(this))(currentId);
     }
 
-    return Q.all(promises);
+    return Q.all(promises).then((projects)=>{
+      return projects.filter((project) => project != null);
+    });
   };
 
   /**
