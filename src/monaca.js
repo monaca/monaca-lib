@@ -2648,7 +2648,8 @@
           utils.info(data.toString());
         });
         if (!npm || !npm.pid) {
-          utils.info('Could not spawn npm command');
+          utils.info('Could not spawn ' + packageManager);
+          utils.info('Please install/configure ' + packageManager);
           exitCb(1);
         }
         npm.on('exit', exitCb);
@@ -2938,11 +2939,12 @@
 
       const command = options.watch ? 'monaca:debug' : 'monaca:transpile';
       let npm;
+      let packageManager = 'npm'; // default
       try {
 
-        if (this.clientType === 'localkit') {
-          const packageManager = utils.getPackageManager(projectDir);
+        packageManager = utils.getPackageManager(projectDir);
 
+        if (this.clientType === 'localkit') {
           npm = spawn(packageManager, ['run', command], {
             cwd: projectDir,
             stdio: 'pipe',
@@ -2972,8 +2974,7 @@
           });
 
         } else {
-          let globalNpm = utils.getPackageManager(projectDir);
-          npm = spawn(globalNpm, ['run', command], {
+          npm = spawn(packageManager, ['run', command], {
             cwd: projectDir,
             stdio: this.clientType === 'cli' ? 'inherit': 'pipe',
             env: process.env
@@ -2981,7 +2982,8 @@
         }
 
         if (!npm || !npm.pid) {
-          utils.info('Could not spawn npm command');
+          utils.info('Could not spawn ' + packageManager);
+          utils.info('Please install/configure ' + packageManager);
           exitCb(1);
         }
 
@@ -2992,7 +2994,7 @@
         npm.on('exit', exitCb);
 
       } catch (ex) {
-        utils.info('Could not spawn npm');
+        utils.info('Could not spawn ' + packageManager);
         utils.info(ex.message);
         exitCb(1);
       }
