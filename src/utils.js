@@ -142,6 +142,38 @@ const isCapacitorProject = (projectDir) => {
   return false;
 };
 
+/**
+ * Checks if a project is using Yarn as its package manager.
+ *
+ * @param {string} projectDir - The directory path of the project.
+ * @returns {boolean} - Returns true if the project uses Yarn, false otherwise.
+ */
+const isUsingYarn = (projectDir) => {
+  try {
+    const projectConfig = require(path.join(projectDir, 'package.json'));
+    const monacaPreviewScript = projectConfig.scripts && projectConfig.scripts['monaca:preview'];
+    if (monacaPreviewScript && monacaPreviewScript.indexOf('yarn') >= 0) {
+      return true;
+    }
+  } catch (err) {}
+  return false;
+};
+
+  /**
+   * @method
+   * @description
+   *   return an executable global npm path.
+   * @return {String}
+   */
+  const getPackageManager = function (projectDir) {
+    let command = 'npm';
+    if (isUsingYarn(projectDir)) {
+      command = 'yarn';
+    }
+    if (process.platform !== 'win32') return command;
+    return command + '.cmd';
+  }
+
 module.exports = {
   isCapacitorProject: isCapacitorProject,
   filterIgnoreFiles: filterIgnoreFiles,
@@ -160,5 +192,7 @@ module.exports = {
   spinnerFail,
   spinnerLoading,
   spinnerSuccess,
+  isUsingYarn,
+  getPackageManager,
   startSpinner
 };

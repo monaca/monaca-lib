@@ -144,7 +144,7 @@
     /**
      * @description
      *   Executable path of node.
-     * @name Monaca#npmPath
+     * @name Monaca#nodePath
      * @type string
      */
     Object.defineProperty(this, 'nodePath', {
@@ -2610,22 +2610,37 @@
         }
       }
       try {
-        let npmPath = this._getNpmPathForSpawn();
+        const packageManager = utils.getPackageManager(dir);
         let npm;
-        let command = ['install', '--no-audit'];
+        let command;
+        let msg;
+        if (utils.isUsingYarn(dir)) {
+          command = ['install'];
+          if (argvs && argvs.length) {
+            command = ['add'];
+            command = command.concat(argvs);
+            if (dev) {
+              command.push('--dev');
+            }
+          }
+          msg = `Executing yarn ${command.join(' ')}`
+        } else {
+          command = ['install', '--no-audit'];
+          if (dev) {
+            command.push('--save-dev');
+          }
+          if (argvs && argvs.length) {
+            command = command.concat(argvs);
+          }
+          msg = `Executing npm ${command.join(' ')}`
+        }
+        utils.info(msg);
         const option = {
           cwd: dir,
           stdio: 'pipe',
           env: process.env
         };
-        if (dev) {
-          command.push('--save-dev');
-        }
-        if (argvs && argvs.length) {
-          command = command.concat(argvs);
-        }
-        utils.info(`Executing npm ${command.join(' ')}`);
-        npm = spawn(npmPath, command, option);
+        npm = spawn(packageManager, command, option);
         npm.stdout.on('data', (data) => {
           utils.info(data.toString());
         });
@@ -2864,30 +2879,6 @@
    * @method
    * @memberof Monaca
    * @description
-   *   return an executable npm path for child_process.spawn method
-   * @return {String}
-   */
-  Monaca.prototype._getNpmPathForSpawn = function () {
-    if (this.npmPath) return this.npmPath;
-    return this._getGlobalNpmPath();
-  }
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   return an executable global npm path.
-   * @return {String}
-   */
-  Monaca.prototype._getGlobalNpmPath = function () {
-    if (process.platform !== 'win32') return 'npm';
-    return 'npm.cmd';
-  }
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
    *   Set executable path for Node/Npm.
    */
   Monaca.prototype._setExecutablePathForNPMAndNode = function () {
@@ -2950,9 +2941,9 @@
       try {
 
         if (this.clientType === 'localkit') {
-          let npmPath = this._getNpmPathForSpawn();
+          const packageManager = utils.getPackageManager(projectDir);
 
-          npm = spawn(npmPath, ['run', command], {
+          npm = spawn(packageManager, ['run', command], {
             cwd: projectDir,
             stdio: 'pipe',
             env: process.env
@@ -2981,7 +2972,7 @@
           });
 
         } else {
-          let globalNpm = this._getGlobalNpmPath();
+          let globalNpm = utils.getPackageManager(projectDir);
           npm = spawn(globalNpm, ['run', command], {
             cwd: projectDir,
             stdio: this.clientType === 'cli' ? 'inherit': 'pipe',
