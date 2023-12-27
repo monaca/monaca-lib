@@ -2609,8 +2609,9 @@
           resolve(true);
         }
       }
+      let packageManager = 'npm'; // default
       try {
-        const packageManager = utils.getPackageManager(dir);
+        packageManager = utils.getPackageManager(dir);
         let npm;
         let command;
         let msg;
@@ -2648,13 +2649,15 @@
           utils.info(data.toString());
         });
         if (!npm || !npm.pid) {
-          utils.info('Could not spawn ' + packageManager);
-          utils.info('Please install/configure ' + packageManager);
+          utils.info(`>>> Could not spawn ${packageManager}. Please install/configure ${packageManager}.\n\r`);
+          if (packageManager.indexOf('yarn') >= 0) {
+            this.emitter.emit('output', { type: 'error', message: 'YARN_NOT_FOUND' });
+          }
           exitCb(1);
         }
         npm.on('exit', exitCb);
       } catch (ex) {
-        utils.info('Could not spawn npm');
+        utils.info('Could not spawn ' + packageManager);
         utils.info(ex.message);
         exitCb(1);
       }
@@ -2941,7 +2944,6 @@
       let npm;
       let packageManager = 'npm'; // default
       try {
-
         packageManager = utils.getPackageManager(projectDir);
 
         if (this.clientType === 'localkit') {
@@ -2982,8 +2984,10 @@
         }
 
         if (!npm || !npm.pid) {
-          utils.info('Could not spawn ' + packageManager);
-          utils.info('Please install/configure ' + packageManager);
+          utils.info(`>>> Could not spawn ${packageManager}. Please install/configure ${packageManager}.\n\r`);
+          if (packageManager.indexOf('yarn') >= 0) {
+            this.emitter.emit('output', { type: 'error', message: 'YARN_NOT_FOUND' });
+          }
           exitCb(1);
         }
 
