@@ -150,8 +150,10 @@ const isCapacitorProject = (projectDir) => {
  */
 const isUsingYarn = (projectDir) => {
   try {
+    console.log(projectDir);
     const projectConfig = require(path.join(projectDir, 'package.json'));
     const monacaPreviewScript = projectConfig.scripts && projectConfig.scripts['monaca:preview'];
+    console.log(monacaPreviewScript);
     if (monacaPreviewScript && monacaPreviewScript.indexOf('yarn') >= 0) {
       return true;
     }
