@@ -155,7 +155,9 @@ const isUsingYarn = (projectDir) => {
     if (monacaPreviewScript && monacaPreviewScript.indexOf('yarn') >= 0) {
       return true;
     }
-  } catch (err) {}
+  } catch (err) {
+    console.log(err);
+  }
   return false;
 };
 
@@ -176,7 +178,7 @@ const getPackageManager = function (projectDir) {
 
 const checkIfPackageManagerExists = function (npm, packageManager, emitter, exitCb) {
   if (!npm || !npm.pid) {
-    info(`>>>Could not spawn ${packageManager}. Please install/configure ${packageManager}.\n\r`);
+    info(`>>> Could not spawn ${packageManager}. Please install/configure ${packageManager}.\n\r`);
     if (packageManager.indexOf('yarn') >= 0) {
       emitter.emit('output', { type: 'error', message: 'YARN_NOT_FOUND' });
     }
