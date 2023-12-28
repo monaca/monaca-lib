@@ -2987,6 +2987,7 @@
 
       } catch (ex) {
         utils.info('Could not spawn ' + packageManager);
+        utils.info(ex);
         utils.info(ex.message);
         exitCb(1);
       }
