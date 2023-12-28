@@ -159,20 +159,30 @@ const isUsingYarn = (projectDir) => {
   return false;
 };
 
-  /**
-   * @method
-   * @description
-   *   return an executable global npm path.
-   * @return {String}
-   */
-  const getPackageManager = function (projectDir) {
-    let command = 'npm';
-    if (isUsingYarn(projectDir)) {
-      command = 'yarn';
-    }
-    if (process.platform !== 'win32') return command;
-    return command + '.cmd';
+/**
+ * @method
+ * @description
+ *   return an executable global npm path.
+ * @return {String}
+ */
+const getPackageManager = function (projectDir) {
+  let command = 'npm';
+  if (isUsingYarn(projectDir)) {
+    command = 'yarn';
   }
+  if (process.platform !== 'win32') return command;
+  return command + '.cmd';
+}
+
+const checkIfPackageManagerExists = function (npm, packageManager, emitter, exitCb) {
+  if (!npm || !npm.pid) {
+    info(`>>>Could not spawn ${packageManager}. Please install/configure ${packageManager}.\n\r`);
+    if (packageManager.indexOf('yarn') >= 0) {
+      emitter.emit('output', { type: 'error', message: 'YARN_NOT_FOUND' });
+    }
+    exitCb(1);
+  }
+};
 
 module.exports = {
   isCapacitorProject: isCapacitorProject,
@@ -194,5 +204,6 @@ module.exports = {
   spinnerSuccess,
   isUsingYarn,
   getPackageManager,
+  checkIfPackageManagerExists,
   startSpinner
 };

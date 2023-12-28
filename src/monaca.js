@@ -2648,13 +2648,7 @@
         npm.stderr.on('data', (data) => {
           utils.info(data.toString());
         });
-        if (!npm || !npm.pid) {
-          utils.info(`>>> Could not spawn ${packageManager}. Please install/configure ${packageManager}.\n\r`);
-          if (packageManager.indexOf('yarn') >= 0) {
-            this.emitter.emit('output', { type: 'error', message: 'YARN_NOT_FOUND' });
-          }
-          exitCb(1);
-        }
+        utils.checkIfPackageManagerExists(npm, packageManager, this.emitter, exitCb);
         npm.on('exit', exitCb);
       } catch (ex) {
         utils.info('Could not spawn ' + packageManager);
@@ -2983,13 +2977,7 @@
           });
         }
 
-        if (!npm || !npm.pid) {
-          utils.info(`>>> Could not spawn ${packageManager}. Please install/configure ${packageManager}.\n\r`);
-          if (packageManager.indexOf('yarn') >= 0) {
-            this.emitter.emit('output', { type: 'error', message: 'YARN_NOT_FOUND' });
-          }
-          exitCb(1);
-        }
+        utils.checkIfPackageManagerExists(npm, packageManager, this.emitter, exitCb);
 
         // Watch option: waiting for after emit message
         if (options.watch) resolve({ message: 'Watching directory "' + projectDir + '" for changes...', pid: npm.pid });
