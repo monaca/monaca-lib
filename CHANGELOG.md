@@ -9,6 +9,8 @@ v5.0.0
 
 #### Breaking changes
 * Modified `isMonacaProject` function. The project is "Monaca" if it is either "Cordova" or "Capacitor" project.
+* Removed `_getNpmPathForSpawn` method.
+* Removed `_getGlobalNpmPath` method.
 
 v4.1.5
 ----
