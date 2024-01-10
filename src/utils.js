@@ -167,9 +167,15 @@ const getPackageManager = function (projectDir) {
 
 const checkIfPackageManagerExists = function (npm, packageManager, emitter, exitCb) {
   if (!npm || !npm.pid) {
+    let message = '';
+    if (packageManager.indexOf('yarn') >= 0) {
+      message = 'YARN_NOT_FOUND';
+    } else {
+      message = 'NPM_NOT_FOUND';
+    }
     info(`>>> Could not spawn ${packageManager}. Please install/configure ${packageManager}.\n\r`);
     if (packageManager.indexOf('yarn') >= 0) {
-      emitter.emit('output', { type: 'error', message: 'YARN_NOT_FOUND' });
+      emitter.emit('output', { type: 'error', message: message });
     }
     exitCb(1);
   }
