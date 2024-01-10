@@ -12,6 +12,11 @@ v5.0.0
 * Removed `_getNpmPathForSpawn` method.
 * Removed `_getGlobalNpmPath` method.
 
+#### Deprecated
+* Removed `includeInExplicitFilterList`.
+* Removed `_fileFilter`.
+* Removed `_excludeFromCloudDelete`.
+
 v4.1.5
 ----
 * Support iOS Simulator build
