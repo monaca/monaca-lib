@@ -14,7 +14,7 @@ $ git submodule update
 ```
 or initially 
 ```
-$ git submodule --init -recursive
+$ git submodule update --init --recursive
 ```
 
 Initialization
