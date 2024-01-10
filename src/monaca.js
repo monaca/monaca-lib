@@ -448,27 +448,6 @@
     return this._monacaData[key];
   };
 
-  /**
-   * @todo
-   * @deprecated in the next major release
-   */  
-  Monaca.prototype._fileFilter = function(f, allowFiles, projectDir, source) {
-
-    if ( utils.includeInExplicitFilterList(f) ) {
-      return false;
-    }
-
-    if (allowFiles.length > 0) {
-        var absolutePath = (os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + f;
-        if (allowFiles.indexOf(absolutePath) < 0) { // allowFilesに含まれなければfalse
-          return false;
-        }
-    }
-
-    return true;
-
-  };
-
   Monaca.prototype._filterFiles = function(dst, src) {
     for (var key in dst) {
       utils.spinnerLoading(spinner, 'Comparing File: ' + key);
@@ -488,19 +467,6 @@
       }
     }
   };
-
-  /**
-   * @todo
-   * @deprecated in the next major release
-   */
-  Monaca.prototype._excludeFromCloudDelete = function(key) {
-    if (/^\/.monaca|\/node_modules\/?|\/.git\/?/.test(key)) {
-      return true;
-    } else {
-      return false;
-    }
-  };
-
 
   Monaca.prototype._filterMonacaIgnore = function(projectDir) {
     return this._getMonacaIgnore(projectDir)
@@ -2646,7 +2612,7 @@
           utils.info(data.toString());
         });
         npm.stderr.on('data', (data) => {
-          utils.info(data.toString());
+          utils.relayErrorMessage(this.emitter, data.toString());
         });
         utils.checkIfPackageManagerExists(npm, packageManager, this.emitter, exitCb);
         npm.on('exit', exitCb);
@@ -2953,20 +2919,7 @@
           });
 
           npm.stderr.on('data', (data) => {
-            let errorMessage = data.toString();
-            if (errorMessage &&
-                  (
-                    errorMessage.indexOf('npm: command not found') >= 0 ||
-                    errorMessage.indexOf('node: No such file or directory') >= 0 ||
-                    errorMessage.indexOf('\'node\' is not recognized as an internal or external command') >= 0
-                  )
-                ) {
-              utils.info(errorMessage);
-              this.emitter.emit('output', { type: 'error', message: 'NPM_NOT_FOUND' });
-            } else {
-              utils.info(errorMessage);
-              this.emitter.emit('output', { type: 'progress', message: errorMessage });
-            }
+            utils.relayErrorMessage(this.emitter, data.toString());
           });
 
         } else {

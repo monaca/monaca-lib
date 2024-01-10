@@ -36,17 +36,6 @@ let isDirectory = (path) => {
   return false;
 };
 
-/**
- * @todo
- * @deprecated in the next major release
- */
-let includeInExplicitFilterList = function(f) {
-  if ( f.indexOf('/.monaca') >= 0 || f.indexOf('/node_modules') >= 0 || f.indexOf('/.git') >= 0 ) {
-    return true;
-  }
-  return false;
-};
-
 let info = function(msg, deferred, spinner) {
   if (deferred) deferred.notify(msg);
   if (spinner) {
@@ -186,26 +175,47 @@ const checkIfPackageManagerExists = function (npm, packageManager, emitter, exit
   }
 };
 
+const relayErrorMessage = function (emitter, errorMessage) {
+  if (!errorMessage) return;
+  // 1. display to console
+  info(errorMessage);
+  // 2. display to emitter for localkit
+  if (
+    errorMessage.indexOf('npm: command not found') >= 0 ||
+    errorMessage.indexOf('node: No such file or directory') >= 0 ||
+    errorMessage.indexOf('\'node\' is not recognized as an internal or external command') >= 0
+  ) {
+    emitter.emit('output', { type: 'error', message: 'NPM_NOT_FOUND' });
+  } else if (
+    errorMessage.indexOf('Corepack must currently be enabled by running corepack enable in your terminal.') >= 0
+  ) {
+    emitter.emit('output', { type: 'error', message: 'YARN_COREPACK_IS_DISABLE' });
+  } else {
+    emitter.emit('output', { type: 'progress', message: errorMessage });
+  }
+};
+
+
 module.exports = {
-  isCapacitorProject: isCapacitorProject,
-  filterIgnoreFiles: filterIgnoreFiles,
-  isDirectory: isDirectory,
-  includeInExplicitFilterList: includeInExplicitFilterList,
-  info: info,
-  filterObjectByKeys: filterObjectByKeys,
-  filter: filter,
-  needToInstallCordova: needToInstallCordova,
+  isCapacitorProject,
+  filterIgnoreFiles,
+  isDirectory,
+  info,
+  filterObjectByKeys,
+  filter,
+  needToInstallCordova,
   MIGRATION_FOLDER,
   MIGRATION_TEMPLATES_FOLDER,
   PROJECT_INFO_FOLDER,
   CORDOVA_VERSION,
-  readJSONFile: readJSONFile,
-  isEmptyObject: isEmptyObject,
+  readJSONFile,
+  isEmptyObject,
   spinnerFail,
   spinnerLoading,
   spinnerSuccess,
   isUsingYarn,
   getPackageManager,
   checkIfPackageManagerExists,
+  relayErrorMessage,
   startSpinner
 };
