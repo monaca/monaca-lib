@@ -1,6 +1,24 @@
 
 CHANGELOG
 ====
+v4.1.10
+----
+
+* Fix template
+* Update README
+
+v4.1.9
+----
+
+* Fix getting project name and description from config.xml
+
+v4.1.8
+----
+* Added retry to `downloadFile`
+
+v4.1.7
+----
+* Pinned latest blank template for Cordova 12
 
 v5.0.0
 ----

@@ -5,7 +5,7 @@ const ignore = require('ignore');
 const MIGRATION_FOLDER = 'migration';
 const MIGRATION_TEMPLATES_FOLDER = MIGRATION_FOLDER + '/template';
 const PROJECT_INFO_FOLDER = MIGRATION_FOLDER + '/project_info';
-const CORDOVA_VERSION = '11.0.0';
+const CORDOVA_VERSION = '12.0.0';
 
 
 let filterIgnoreFiles = function(files, ignoreList, removeBasePath = false) {
@@ -202,6 +202,42 @@ const relayErrorMessage = function (emitter, errorMessage) {
 };
 
 
+let sleep = (ms) => {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Function to retrieve the value of a specific widget from XML data
+const getXmlWidgetValue = (xml, widgetName, defaultValue = '') => {
+  // Helper function to safely get the first value from an array
+  const safeGetFirstValue = (values) => {
+    if (!Array.isArray(values) || values.length === 0) {
+      return undefined;
+    }
+
+    const firstValue = values[0];
+    // If the first element is an object and has the '_' property, return its value
+    if (firstValue && typeof firstValue === 'object' && '_' in firstValue) {
+      return firstValue._;
+    }
+
+    return firstValue;
+  };
+
+  try {
+    // Check if xml.widget is an object and contains the specified widget name
+    if (xml.widget && typeof xml.widget === 'object' && widgetName in xml.widget) {
+      const value = xml.widget[widgetName];
+      const extractedValue = safeGetFirstValue(value);
+
+      return extractedValue !== undefined ? extractedValue : value;
+    }
+  } catch (error) {
+    console.error(`Error while getting widget value: ${error}`);
+  }
+
+  return typeof defaultValue === 'string' ? defaultValue : '';
+};
+
 module.exports = {
   isCapacitorProject,
   filterIgnoreFiles,
@@ -223,5 +259,7 @@ module.exports = {
   getPackageManager,
   checkIfPackageManagerExists,
   relayErrorMessage,
-  startSpinner
+  startSpinner,
+  sleep,
+  getXmlWidgetValue,
 };
