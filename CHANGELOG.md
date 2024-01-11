@@ -23,9 +23,17 @@ v4.1.7
 v5.0.0
 ----
 * Support Capacitor Projects (Beta)
+* Support Yarn Projects (Beta)
 
 #### Breaking changes
 * Modified `isMonacaProject` function. The project is "Monaca" if it is either "Cordova" or "Capacitor" project.
+* Removed `_getNpmPathForSpawn` method.
+* Removed `_getGlobalNpmPath` method.
+
+#### Deprecated
+* Removed `includeInExplicitFilterList`.
+* Removed `_fileFilter`.
+* Removed `_excludeFromCloudDelete`.
 
 v4.1.5
 ----
