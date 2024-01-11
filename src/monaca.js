@@ -28,6 +28,11 @@
   const migration = require('./migration');
   const fixPath = require('fix-path');
 
+  // support project type
+  const REACT_NATIVE = 'react-native';
+  const CAPACITOR = 'capacitor';
+  const CORDOVA = 'cordova';
+
   // Spinner
   var spinner = null;
 
@@ -139,7 +144,7 @@
     /**
      * @description
      *   Executable path of node.
-     * @name Monaca#npmPath
+     * @name Monaca#nodePath
      * @type string
      */
     Object.defineProperty(this, 'nodePath', {
@@ -443,27 +448,6 @@
     return this._monacaData[key];
   };
 
-  /**
-   * @todo
-   * @deprecated in the next major release
-   */  
-  Monaca.prototype._fileFilter = function(f, allowFiles, projectDir, source) {
-
-    if ( utils.includeInExplicitFilterList(f) ) {
-      return false;
-    }
-
-    if (allowFiles.length > 0) {
-        var absolutePath = (os.platform() === 'win32' ? projectDir.replace(/\\/g,"/") : projectDir) + f;
-        if (allowFiles.indexOf(absolutePath) < 0) { // allowFilesに含まれなければfalse
-          return false;
-        }
-    }
-
-    return true;
-
-  };
-
   Monaca.prototype._filterFiles = function(dst, src) {
     for (var key in dst) {
       utils.spinnerLoading(spinner, 'Comparing File: ' + key);
@@ -483,19 +467,6 @@
       }
     }
   };
-
-  /**
-   * @todo
-   * @deprecated in the next major release
-   */
-  Monaca.prototype._excludeFromCloudDelete = function(key) {
-    if (/^\/.monaca|\/node_modules\/?|\/.git\/?/.test(key)) {
-      return true;
-    } else {
-      return false;
-    }
-  };
-
 
   Monaca.prototype._filterMonacaIgnore = function(projectDir) {
     return this._getMonacaIgnore(projectDir)
@@ -1154,7 +1125,6 @@
     }
 
     var projectId = projectInfo.projectId,
-      framework = projectInfo.framework ? projectInfo.framework : '',
       platform = buildParams.platform,
       buildType = buildParams.purpose;
 
@@ -1192,7 +1162,7 @@
               if (!platformContent.is_versionname_valid) {
                 return 'Version name is invalid.';
               }
-              if (buildType === 'release' && (!checkForMinimumRequirements && !platformContent.has_keysetting || checkForMinimumRequirements && !platformContent.has_keystore)) {
+              if (buildType === 'release' && (!checkForMinimumRequirements && !platformContent.has_keysetting || !checkForMinimumRequirements && !platformContent.has_keystore)) {
                 return 'Missing KeyStore configuration. Configure remote build by executing `monaca remote build --browser`.';
               }
             }
@@ -1233,11 +1203,10 @@
 
           var errorMessage = checkError();
 
-          if (!framework || framework === 'cordova') {
-            if (errorMessage) {
-              return Q.reject(new Error(errorMessage));
-            }
+          if (errorMessage) {
+            return Q.reject(new Error(errorMessage));
           }
+
           return Q.resolve(body);
         } else {
           return Q.reject(new Error(body.status + " - " + body.message));
@@ -1935,9 +1904,9 @@
   };
 
   Monaca.prototype.getProjectInfo = function(projectDir, framework) {
-    var deferred = Q.defer();
+    const deferred = Q.defer();
 
-    var getDefaultProjectInfo = function(projectId) {
+    const getDefaultProjectInfo = function(projectId) {
       return Q.resolve({
         name: 'Undefined Project Name',
         directory: projectDir,
@@ -1946,11 +1915,11 @@
       });
     };
 
-    var getReactNativeProjectInfo = function(projectId) {
-      var projectConfig = require(path.join(projectDir, 'package.json'));
+    const getProjectInfoFromPackageJson = function(projectId) {
+      const projectConfig = require(path.join(projectDir, 'package.json'));
 
       // extract the name from the project path
-      var projectName = path.basename(projectDir),
+      let projectName = path.basename(projectDir),
         projectDescription;
 
       if (projectConfig && projectConfig.description) {
@@ -1965,7 +1934,7 @@
       });
     };
 
-    var getCordovaProjectInfo = function(projectId) {
+    const getCordovaProjectInfo = function(projectId) {
 
       var getValidConfigFile = function() {
         var possibleFiles = ['config.xml', 'config.ios.xml', 'config.android.xml'];
@@ -2007,7 +1976,7 @@
               }
             });
           } else {
-            return getDefaultProjectInfo(projectId);
+            deferred.resolve(getDefaultProjectInfo(projectId));
           }
         },
         function(error) {
@@ -2024,7 +1993,7 @@
         if (!framework || framework === 'cordova') {
           return getCordovaProjectInfo(projectId);
         } else {
-          return getReactNativeProjectInfo(projectId);
+          return getProjectInfoFromPackageJson(projectId);
         }
       },
       function(error) {
@@ -2617,36 +2586,49 @@
           resolve(true);
         }
       }
+      let packageManager = 'npm'; // default
       try {
-        let npmPath = this._getNpmPathForSpawn();
+        packageManager = utils.getPackageManager(dir);
         let npm;
-        let command = ['install', '--no-audit'];
+        let command;
+        let msg;
+        if (utils.isUsingYarn(dir)) {
+          command = ['install'];
+          if (argvs && argvs.length) {
+            command = ['add'];
+            command = command.concat(argvs);
+            if (dev) {
+              command.push('--dev');
+            }
+          }
+          msg = `Executing yarn ${command.join(' ')}`
+        } else {
+          command = ['install', '--no-audit'];
+          if (dev) {
+            command.push('--save-dev');
+          }
+          if (argvs && argvs.length) {
+            command = command.concat(argvs);
+          }
+          msg = `Executing npm ${command.join(' ')}`
+        }
+        utils.info(msg);
         const option = {
           cwd: dir,
           stdio: 'pipe',
           env: process.env
         };
-        if (dev) {
-          command.push('--save-dev');
-        }
-        if (argvs && argvs.length) {
-          command = command.concat(argvs);
-        }
-        utils.info(`Executing npm ${command.join(' ')}`);
-        npm = spawn(npmPath, command, option);
+        npm = spawn(packageManager, command, option);
         npm.stdout.on('data', (data) => {
           utils.info(data.toString());
         });
         npm.stderr.on('data', (data) => {
-          utils.info(data.toString());
+          utils.relayErrorMessage(this.emitter, data.toString());
         });
-        if (!npm || !npm.pid) {
-          utils.info('Could not spawn npm command');
-          exitCb(1);
-        }
+        utils.checkIfPackageManagerExists(npm, packageManager, this.emitter, exitCb);
         npm.on('exit', exitCb);
       } catch (ex) {
-        utils.info('Could not spawn npm');
+        utils.info('Could not spawn ' + packageManager);
         utils.info(ex.message);
         exitCb(1);
       }
@@ -2789,21 +2771,6 @@
    * @method
    * @memberof Monaca
    * @description
-   *   Get Cordova version used by the project
-   * @param {String} Project's Directory
-   * @return {String | Exception}
-   */
-  Monaca.prototype.getCordovaVersion = function (projectDir) {
-    let config = this.fetchProjectData(projectDir);
-
-    if (!config) throw '\'.monaca/project_info.json\' is missing.';
-    return config['cordova_version'];
-  };
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
    *   Installs the template's dependencies.
    * @param {String} Project's Directory
    * @return {Promise}
@@ -2887,30 +2854,6 @@
    * @method
    * @memberof Monaca
    * @description
-   *   return an executable npm path for child_process.spawn method
-   * @return {String}
-   */
-  Monaca.prototype._getNpmPathForSpawn = function () {
-    if (this.npmPath) return this.npmPath;
-    return this._getGlobalNpmPath();
-  }
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
-   *   return an executable global npm path.
-   * @return {String}
-   */
-  Monaca.prototype._getGlobalNpmPath = function () {
-    if (process.platform !== 'win32') return 'npm';
-    return 'npm.cmd';
-  }
-
-  /**
-   * @method
-   * @memberof Monaca
-   * @description
    *   Set executable path for Node/Npm.
    */
   Monaca.prototype._setExecutablePathForNPMAndNode = function () {
@@ -2970,12 +2913,12 @@
 
       const command = options.watch ? 'monaca:debug' : 'monaca:transpile';
       let npm;
+      let packageManager = 'npm'; // default
       try {
+        packageManager = utils.getPackageManager(projectDir);
 
         if (this.clientType === 'localkit') {
-          let npmPath = this._getNpmPathForSpawn();
-
-          npm = spawn(npmPath, ['run', command], {
+          npm = spawn(packageManager, ['run', command], {
             cwd: projectDir,
             stdio: 'pipe',
             env: process.env
@@ -2987,35 +2930,18 @@
           });
 
           npm.stderr.on('data', (data) => {
-            let errorMessage = data.toString();
-            if (errorMessage &&
-                  (
-                    errorMessage.indexOf('npm: command not found') >= 0 ||
-                    errorMessage.indexOf('node: No such file or directory') >= 0 ||
-                    errorMessage.indexOf('\'node\' is not recognized as an internal or external command') >= 0
-                  )
-                ) {
-              utils.info(errorMessage);
-              this.emitter.emit('output', { type: 'error', message: 'NPM_NOT_FOUND' });
-            } else {
-              utils.info(errorMessage);
-              this.emitter.emit('output', { type: 'progress', message: errorMessage });
-            }
+            utils.relayErrorMessage(this.emitter, data.toString());
           });
 
         } else {
-          let globalNpm = this._getGlobalNpmPath();
-          npm = spawn(globalNpm, ['run', command], {
+          npm = spawn(packageManager, ['run', command], {
             cwd: projectDir,
             stdio: this.clientType === 'cli' ? 'inherit': 'pipe',
             env: process.env
           });
         }
 
-        if (!npm || !npm.pid) {
-          utils.info('Could not spawn npm command');
-          exitCb(1);
-        }
+        utils.checkIfPackageManagerExists(npm, packageManager, this.emitter, exitCb);
 
         // Watch option: waiting for after emit message
         if (options.watch) resolve({ message: 'Watching directory "' + projectDir + '" for changes...', pid: npm.pid });
@@ -3024,7 +2950,8 @@
         npm.on('exit', exitCb);
 
       } catch (ex) {
-        utils.info('Could not spawn npm');
+        utils.info('Could not spawn ' + packageManager);
+        utils.info(ex);
         utils.info(ex.message);
         exitCb(1);
       }
@@ -3522,24 +3449,43 @@
    * @method
    * @memberof Monaca
    * @description
+   *   Utility method to get project type - react-native, capacitor, or other.
+   * @param {String} projectDir - Project directory.
+   * @return bool
+   */
+  Monaca.prototype.isCapacitorProject = function(projectDir) {
+    return utils.isCapacitorProject(projectDir);
+  }
+
+  /**
+   * @method
+   * @memberof Monaca
+   * @description
    *   Utility method to check if a folder is a Monaca project.
    * @param {String} projectDir - Project directory.
    * @return {Promise}
    */
   Monaca.prototype.isMonacaProject = function(projectDir) {
-    return this.isReactNativeProject(projectDir)
-    .then(
-      function(value) {
-        return Q.resolve(value);
-      },
-      function() {
-        return this.isCordovaProject(projectDir)
-          .then(values => {
-            if(!!this.fetchProjectData(projectDir)) Q.resolve('monaca');
-            else throw '[.monaca/project_info.json] File is missing';
-          });
-      }.bind(this)
-    )
+    return new Promise((resolve, reject) => {
+      // Check if project contains .monaca/project_info.json
+      if(!this.fetchProjectData(projectDir)) {
+        return reject('[.monaca/project_info.json] File is missing');
+      }
+      // Check if it is cordova project
+      this.isCordovaProject(projectDir)
+        .then(() => {
+          return resolve('monaca');
+        })
+        .catch(() => {
+          // Check if it is capacitor project
+          if (this.isCapacitorProject(projectDir)) {
+            return resolve(CAPACITOR);
+          } else {
+            // return error
+            return reject('This project is not supported by Monaca. We currently support "Cordova" and "Capacitor" projects.');
+          }
+        });
+    });
   };
 
    /**
@@ -3633,7 +3579,8 @@
             name: arg.name,
             description: arg.description || '',
             templateId: 'minimum',
-            isBuildOnly: false
+            isBuildOnly: false,
+            framework: this.isCapacitorProject(arg.path) ? CAPACITOR : CORDOVA,
           })
           .then(
             function(info) {

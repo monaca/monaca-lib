@@ -36,17 +36,6 @@ let isDirectory = (path) => {
   return false;
 };
 
-/**
- * @todo
- * @deprecated in the next major release
- */
-let includeInExplicitFilterList = function(f) {
-  if ( f.indexOf('/.monaca') >= 0 || f.indexOf('/node_modules') >= 0 || f.indexOf('/.git') >= 0 ) {
-    return true;
-  }
-  return false;
-};
-
 let info = function(msg, deferred, spinner) {
   if (deferred) deferred.notify(msg);
   if (spinner) {
@@ -124,6 +113,95 @@ let isEmptyObject = (obj) => {
   return true;
 };
 
+/**
+ * @method
+ * @description
+ *  isCapacitorProject
+ *
+ * @param {String} projectDir Project directory
+ * @return {String}
+ */
+const isCapacitorProject = (projectDir) => {
+  try {
+    const projectConfig = require(path.join(projectDir, 'package.json'));
+    if (projectConfig && projectConfig.dependencies && projectConfig.dependencies['@capacitor/core']) {
+      return true;
+    }
+  } catch (err) {}
+  return false;
+};
+
+/**
+ * Checks if a project is using Yarn as its package manager.
+ *
+ * @param {string} projectDir - The directory path of the project.
+ * @returns {boolean} - Returns true if the project uses Yarn, false otherwise.
+ */
+const isUsingYarn = (projectDir) => {
+  try {
+    const projectConfig = require(path.join(projectDir, 'package.json'));
+    const monacaPreviewScript = projectConfig.scripts && projectConfig.scripts['monaca:preview'];
+    if (monacaPreviewScript && monacaPreviewScript.indexOf('yarn') >= 0) {
+      return true;
+    }
+  } catch (err) {
+    info(err);
+  }
+  return false;
+};
+
+/**
+ * @method
+ * @description
+ *   return an executable global npm path.
+ * @return {String}
+ */
+const getPackageManager = function (projectDir) {
+  let command = 'npm';
+  if (isUsingYarn(projectDir)) {
+    command = 'yarn';
+  }
+  if (process.platform !== 'win32') return command;
+  return command + '.cmd';
+}
+
+const checkIfPackageManagerExists = function (npm, packageManager, emitter, exitCb) {
+  if (!npm || !npm.pid) {
+    let message = '';
+    if (packageManager.indexOf('yarn') >= 0) {
+      message = 'YARN_NOT_FOUND';
+    } else {
+      message = 'NPM_NOT_FOUND';
+    }
+    info(`>>> Could not spawn ${packageManager}. Please install/configure ${packageManager}.\n\r`);
+    if (packageManager.indexOf('yarn') >= 0) {
+      emitter.emit('output', { type: 'error', message: message });
+    }
+    exitCb(1);
+  }
+};
+
+const relayErrorMessage = function (emitter, errorMessage) {
+  if (!errorMessage) return;
+  // 1. display to console
+  info(errorMessage);
+  // 2. display to emitter for localkit
+  if (
+    errorMessage.indexOf('npm: command not found') >= 0 ||
+    errorMessage.indexOf('node: No such file or directory') >= 0 ||
+    errorMessage.indexOf('\'node\' is not recognized as an internal or external command') >= 0
+  ) {
+    emitter.emit('output', { type: 'error', message: 'NPM_NOT_FOUND' });
+  } else if (
+    errorMessage.indexOf('Corepack must currently be enabled by running corepack enable in your terminal.') >= 0
+  ) {
+    emitter.emit('output', { type: 'error', message: 'YARN_COREPACK_IS_DISABLE' });
+  } else {
+    emitter.emit('output', { type: 'progress', message: errorMessage });
+  }
+};
+
+
 let sleep = (ms) => {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -161,22 +239,26 @@ const getXmlWidgetValue = (xml, widgetName, defaultValue = '') => {
 };
 
 module.exports = {
-  filterIgnoreFiles: filterIgnoreFiles,
-  isDirectory: isDirectory,
-  includeInExplicitFilterList: includeInExplicitFilterList,
-  info: info,
-  filterObjectByKeys: filterObjectByKeys,
-  filter: filter,
-  needToInstallCordova: needToInstallCordova,
+  isCapacitorProject,
+  filterIgnoreFiles,
+  isDirectory,
+  info,
+  filterObjectByKeys,
+  filter,
+  needToInstallCordova,
   MIGRATION_FOLDER,
   MIGRATION_TEMPLATES_FOLDER,
   PROJECT_INFO_FOLDER,
   CORDOVA_VERSION,
-  readJSONFile: readJSONFile,
-  isEmptyObject: isEmptyObject,
+  readJSONFile,
+  isEmptyObject,
   spinnerFail,
   spinnerLoading,
   spinnerSuccess,
+  isUsingYarn,
+  getPackageManager,
+  checkIfPackageManagerExists,
+  relayErrorMessage,
   startSpinner,
   sleep,
   getXmlWidgetValue,

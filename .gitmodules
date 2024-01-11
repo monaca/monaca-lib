@@ -1,3 +1,6 @@
 [submodule "src/template/blank"]
 	path = src/template/blank
 	url = git@github.com:monaca-templates/blank.git
+[submodule "src/template/capacitor-basic"]
+	path = src/template/capacitor-basic
+	url = git@github.com:monaca-templates/capacitor-basic.git
