@@ -899,7 +899,6 @@
                 if (utils.isCapacitorProject(project_path)) {
                   // capacitor project should not be added to projects for debugger.
                   deferred.resolve(null);
-                  return;
                 }
 
                 project.name = _project.name || project.name;
