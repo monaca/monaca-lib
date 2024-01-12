@@ -2,6 +2,13 @@
 CHANGELOG
 ====
 
+v5.0.1
+----
+
+# Bug Fixes
+
+* Fix Monaca Debugger getting local projects from Localkit
+
 v5.0.0
 ----
 
