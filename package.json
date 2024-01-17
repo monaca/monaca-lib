@@ -30,6 +30,7 @@
   "dependencies": {
     "buffer-crc32": "^0.2.4",
     "compare-versions": "^3.6.0",
+    "crypto-js": "^4.2.0",
     "extend": "^2.0.0",
     "extract-zip": "^1.5.0",
     "fix-path": "^2.1.0",
