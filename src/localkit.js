@@ -890,7 +890,7 @@
             _project = this.projects.getProjectById(id);
           this.monaca.getProjectInfo(_project.path)
             .then(
-              function(project) {
+              (project) => {
 
                 var project_path = _project.path;
                 if (project_path == '.') {
