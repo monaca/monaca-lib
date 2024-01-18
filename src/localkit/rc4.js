@@ -5,7 +5,10 @@
     if (!pairingKey) {
       throw new Error('Pairing key required to encrypt.');
     }
-    return CryptoJS.RC4.encrypt(msg, 
+    // if the msg is buffer, we need to use convert it to string. 
+    const data =  Buffer.isBuffer(msg) ? CryptoJS.lib.WordArray.create(msg) : msg;
+
+    return CryptoJS.RC4.encrypt(data, 
       CryptoJS.enc.Utf8.parse(pairingKey)).toString();  
   }
 
