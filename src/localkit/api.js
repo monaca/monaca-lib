@@ -172,7 +172,7 @@
 
     var expectedClientCredential;
     try {
-      expectedClientCredential = rc4.encrypt(pairingKey.toString("hex"), new Buffer(pairingKey.toString("hex"), "utf8"));
+      expectedClientCredential = rc4.encrypt(pairingKey.toString("hex"), Buffer.from(pairingKey.toString("hex"), "utf8"));
     } catch (error) {
       expectedClientCredential = null;
     }

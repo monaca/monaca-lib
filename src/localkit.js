@@ -181,7 +181,7 @@
       this.stopBeaconTransmitter();
     }
 
-    var message = new Buffer(JSON.stringify(this._getServerInfo())),
+    var message = Buffer.from(JSON.stringify(this._getServerInfo())),
       addresses = broadcastAddresses();
 
     var sendBroadcast = function(address) {
