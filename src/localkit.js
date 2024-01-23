@@ -181,7 +181,7 @@
       this.stopBeaconTransmitter();
     }
 
-    var message = new Buffer(JSON.stringify(this._getServerInfo())),
+    var message = Buffer.from(JSON.stringify(this._getServerInfo())),
       addresses = broadcastAddresses();
 
     var sendBroadcast = function(address) {
@@ -890,7 +890,7 @@
             _project = this.projects.getProjectById(id);
           this.monaca.getProjectInfo(_project.path)
             .then(
-              function(project) {
+              (project) => {
 
                 var project_path = _project.path;
                 if (project_path == '.') {

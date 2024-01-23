@@ -1,25 +1,24 @@
 (function() {
-  var crypto = require('crypto');
+  const CryptoJS = require('crypto-js');
 
-  var encrypt = function(msg, pairingKey) {
+  const encrypt = function(msg, pairingKey) {
     if (!pairingKey) {
       throw new Error('Pairing key required to encrypt.');
     }
+    // if the msg is buffer, we need to use convert it to string. 
+    const data =  Buffer.isBuffer(msg) ? CryptoJS.lib.WordArray.create(msg) : msg;
 
-    var buf = crypto.createCipheriv('rc4', pairingKey, '').update(new Buffer(msg));
+    return CryptoJS.RC4.encrypt(data, 
+      CryptoJS.enc.Utf8.parse(pairingKey)).toString();  
+  }
 
-    return buf.toString('base64');
-  };
-
-  var decrypt = function(msg, pairingKey) {
+  const decrypt = function(msg, pairingKey) {
     if (!pairingKey) {
       throw new Error('Pairing key required to decrypt data.');
     }
- 
-    var buf = new Buffer(msg, 'base64'),
-      decrypted = crypto.createDecipheriv('rc4', pairingKey, '').update(buf);
-
-    return decrypted.toString();
+    const encryptedHex = CryptoJS.enc.Base64.parse(msg);
+    return CryptoJS.RC4.decrypt({ ciphertext: encryptedHex }, 
+      CryptoJS.enc.Utf8.parse(pairingKey)).toString(CryptoJS.enc.Utf8);  
   };
 
   module.exports = {
@@ -27,3 +26,4 @@
     decrypt: decrypt
   };
 })();
+

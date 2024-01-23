@@ -187,7 +187,7 @@
         }
         else {
           var hash = crc32(data).toString('hex');
-          var base64Body = new Buffer(data).toString('base64');
+          var base64Body = Buffer.from(data).toString('base64');
 
           return this.sendMessage({
             projectId: projectId,
