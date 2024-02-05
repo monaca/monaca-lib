@@ -337,7 +337,7 @@
   Monaca.prototype.reportAnalytics = function(report, resolvedValue) {
     return this.getTrackId().then(
       function(trackId) {
-        var form = extend({}, report, { event: 'monaca-lib-' + report.event }, {
+        var form = extend({}, report, { event: 'monaca_lib_' + report.event }, {
           trackId: trackId,
           clientType: this.clientType,
           version: this.version,
@@ -368,7 +368,7 @@
    */
   Monaca.prototype.reportFail = function(report, error) {
     report.errorDetail = error === 'object' ? error.message : error;
-    return this.reportAnalytics(extend({}, report, { event: report.event + '-fail' }))
+    return this.reportAnalytics(extend({}, report, { event: report.event + '_fail' }))
       .then(Q.reject.bind(null, error));
   };
 
@@ -386,7 +386,7 @@
    *     .then(nextMethod)
    */
   Monaca.prototype.reportFinish = function(report, resolvedValue) {
-    return this.reportAnalytics(extend({}, report, { event: report.event + '-finish' }), resolvedValue);
+    return this.reportAnalytics(extend({}, report, { event: report.event + '_finish' }), resolvedValue);
   };
 
   Monaca.prototype._safeParse = function(jsonString) {
