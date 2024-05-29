@@ -18,8 +18,12 @@ const newBackendMonacaPlugin = 'monaca-plugin-backend';
  * @param {String} destination 
  */
 const copyDirectory = (source, destination) => {
+  const copyOption = {
+    overwrite: false,
+    errorOnExist: false,
+  };
   return new Promise((resolve, reject) => {
-    fs.copy(source, destination, (err) => {
+    fs.copy(source, destination, copyOption, (err) => {
       if (err) return reject(err);
       return resolve(true);
     });

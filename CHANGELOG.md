@@ -2,6 +2,14 @@
 CHANGELOG
 ====
 
+v5.1.3
+----
+
+# Bug Fixes
+
+* Update blank and capacitor-basic templates
+* Fix Copy Permission on Mac
+
 v5.0.0
 ----
 
