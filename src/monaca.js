@@ -4498,7 +4498,7 @@
    * @return {Promise}
    */
   Monaca.prototype.initIconsSplashes = function (projectDir) {
-    return migration.initIconsSplashes(projectDir);
+    return migration.initIconsSplashes(projectDir, this.clientType);
   }
 
   /**
@@ -4511,7 +4511,7 @@
    * @return {Promise}
    */
   Monaca.prototype.initComponents = function (projectDir) {
-    return migration.initComponents(projectDir);
+    return migration.initComponents(projectDir, this.clientType);
   }
 
   /**

@@ -20,16 +20,16 @@ const newBackendMonacaPlugin = 'monaca-plugin-backend';
  */
 const copy = (srcDir, dstDir) => {
   const list = fs.readdirSync(srcDir);
-  fs.ensureDirSync(dstDir); // create directory
+  fs.ensureDirSync(dstDir);
   let src, dst;
   let success = true;
   list.forEach(function(file) {
     src = path.join(srcDir, file);
     dst = path.join(dstDir, file);
-    var stat = fs.statSync(src);
+    const stat = fs.statSync(src);
     if (stat && stat.isDirectory()) {
       try {
-        fs.ensureDirSync(dst); // create directory
+        fs.ensureDirSync(dst);
       } catch(e) {
         succeed = false;
         utils.info(`could not create dir ${src} -> ${dst}`);
@@ -38,7 +38,10 @@ const copy = (srcDir, dstDir) => {
       copy(src, dst); // copy inner files and directories
     } else {
       try {
-        fs.createReadStream(src).pipe(fs.createWriteStream(dst)); // copy file
+        if (!fs.existsSync(dst)) {
+          utils.info(`creating file ${dst}`);
+          fs.createReadStream(src).pipe(fs.createWriteStream(dst)); // copy file
+        }
       } catch(e) {
         succeed = false;
         utils.info(p`could not copy file ${src} -> ${dst}`);
@@ -54,9 +57,13 @@ const copy = (srcDir, dstDir) => {
  * @param {String} source 
  * @param {String} destination 
  */
-const copyDirectory = (source, destination) => {
+const copyDirectory = (source, destination, clientType = '') => {
+  if (!clientType && gMonaca && gMonaca.clientType) {
+    clientType = gMonaca.clientType;
+  }
   return new Promise((resolve, reject) => {
-    if (gMonaca && gMonaca.clientType === 'localkit' && os.platform() !== 'win32') {
+    if (clientType === 'localkit' && os.platform() !== 'win32') {
+      utils.info('check for missing resources...');
       const result = copy(source, destination);
       if (!result) {
         utils.info(`Please download the file (${source}) manually from https://github.com/monaca-templates/blank`);
@@ -405,7 +412,7 @@ module.exports = {
    * @param {String} projectDir Project directory
    * @return {Promise}
    */
-  initIconsSplashes: function (projectDir) {
+  initIconsSplashes: function (projectDir, clientType = '') {
     return new Promise((resolve, reject) => {
       utils.info('[res] Inserting icons and splashes...');
       let resFolder = path.join(projectDir, 'res');
@@ -415,7 +422,7 @@ module.exports = {
         resFolder = path.join(projectDir, 'assets');
       }
 
-      copyDirectory(resTemplateFolder, resFolder)
+      copyDirectory(resTemplateFolder, resFolder, clientType)
         .then(() => resolve(projectDir))
         .catch(err => reject(err));
     });
@@ -430,7 +437,7 @@ module.exports = {
    * @param {String} projectDir Project directory
    * @return {Promise}
    */
-  initComponents: function (projectDir) {
+  initComponents: function (projectDir, clientType = '') {
     return new Promise((resolve, reject) => {
       const componentsFolder = path.join(projectDir, 'www', 'components');
       const componentsTemplateFolder = path.resolve(__dirname, 'template', 'blank', 'www', 'components');
@@ -440,7 +447,7 @@ module.exports = {
       }
 
       utils.info('[www] Inserting components...');
-      copyDirectory(componentsTemplateFolder, componentsFolder)
+      copyDirectory(componentsTemplateFolder, componentsFolder, clientType)
         .then(() => resolve(projectDir))
         .catch(err => reject(err));
     });
