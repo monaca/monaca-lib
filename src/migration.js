@@ -21,12 +21,11 @@ const copyDirectory = (source, destination) => {
   const copyOption = {
     overwrite: false,
     errorOnExist: false,
+    preserveTimestamps: true,
   };
   return new Promise((resolve, reject) => {
-    fs.copy(source, destination, copyOption, (err) => {
-      if (err) return reject(err);
-      return resolve(true);
-    });
+    fs.copySync(source, destination, copyOption);
+    return resolve(true);
   });
 };
 
