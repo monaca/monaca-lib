@@ -105,3 +105,18 @@ $ jsdoc src
 
 The generated documentation can be found in `out/index.html`.
 
+### GitHub Actions
+
+- submodules are recursively installed by adding the submodules: 'recursive' option.
+
+#### When merged/pushed to master branch
+
+- Get version from package.json
+- If version does not exist in GitHub tags
+    - Tag it
+    - Run npm publish
+
+#### When tagged as -beta.*
+
+- Run npm publish --beta
+
