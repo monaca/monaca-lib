@@ -211,7 +211,11 @@
       client.bind();
     };
 
+    var LINK_LOCAL_ADDRESS_PREFIX = '169.254.';
     for (var i = 0; i < addresses.length; i++) {
+      if (addresses[i].indexOf(LINK_LOCAL_ADDRESS_PREFIX) === 0) {
+        continue;
+      }
       sendBroadcast(addresses[i]);
     }
   };
