@@ -14,7 +14,7 @@
 
   describe('Setup tests', function() {
     it('should login and clone a project', function(done) {
-      monaca.login(common.username, common.password).then(
+      monaca.login(common.username, common.password, { clientType: "cli" }).then(
         function() {
           monaca.getProjects().then(
             function(projects) {
@@ -178,7 +178,10 @@
           expect(Object.keys(localkit.projects).length).toBe(1);
           done();
         }
-      );
+      ).catch(function(err) {
+        fail('setProjects should not reject: ' + err);
+        done();
+      });
     });
 
     it('should be watchable', function(done) {
