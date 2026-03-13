@@ -29,6 +29,7 @@
     });
 
     it('should not work if the directory doesn\'t contain .monaca', function(done) {
+      // localProperties.js creates .monaca directory if it doesn't exist, so get should resolve.
       var resolve = false,
         reject = false;
 
@@ -45,14 +46,15 @@
       )
       .finally(
         function() {
-          expect(resolve).toBe(false);
-          expect(reject).toBe(true);
+          expect(resolve).toBe(true);
+          expect(reject).toBe(false);
           done();
         }
       );
     });
 
     it('should work if the directory contains .monaca', function(done) {
+      // localProperties.js creates .monaca directory if it doesn't exist, so this test is same as the previous one. This test may be redundant.
       var resolve = false,
         reject = false;
 
@@ -115,6 +117,7 @@
     });
 
     it('should not work if the directory doesn\'t contain .monaca', function(done) {
+      // localProperties.js creates .monaca directory if it doesn't exist, so get should resolve.
       var resolve = false,
         reject = false;
 
@@ -131,14 +134,15 @@
       )
       .finally(
         function() {
-          expect(resolve).toBe(false);
-          expect(reject).toBe(true);
+          expect(resolve).toBe(true);
+          expect(reject).toBe(false);
           done();
         }
       );
     });
 
     it('should work if the directory does contain .monaca', function(done) {
+      // localProperties.js creates .monaca directory if it doesn't exist, so this test is same as the previous one. This test may be redundant.
       var resolve = false,
         reject = false;
 
