@@ -979,7 +979,7 @@
     return this._get(this.apiRoot + '/user/logout')
     .finally(
       function() {
-        this.setData({
+        return this.setData({
           'reloginToken': '',
           'clientId': '',
           'x-monaca-param-api-token': '',
