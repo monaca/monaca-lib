@@ -5,18 +5,29 @@
     fs = require('fs'),
     common = require(path.join(__dirname, 'common')),
     monaca = common.monaca,
-    projectId = null;
+    projectId = null,
+    setupFailed = false;
 
   describe('Test setup', function() {
     it('should login and find project id', function(done) {
       monaca.login(common.username, common.password).then(
         function() {
-          monaca.getProjects().then(
-            function(projects) {
-              projectId = projects[0].projectId;
-              done();
-            }
-          );
+          return monaca.getProjects();
+        }
+      ).then(
+        function(projects) {
+          if (!projects || projects.length === 0) {
+            setupFailed = true;
+            done.fail('getProjects returned no projects');
+            return;
+          }
+          projectId = projects[0].projectId;
+          done();
+        }
+      ).catch(
+        function(error) {
+          setupFailed = true;
+          done.fail('Test setup failed: ' + error);
         }
       );
     }, 20000);
@@ -49,6 +60,11 @@
     });
 
     it('should clone if the project exists', function(done) {
+      if (setupFailed || !projectId) {
+        pending('Skipped: Test setup failed or timed out (projectId not available)');
+        return;
+      }
+
       var resolve = false,
         reject = false;
 
@@ -68,5 +84,35 @@
         }
       );
     }, 40000);
+  });
+
+  describe('cloneProject when setup fails', function() {
+    beforeEach(function() {
+      this.destDir = path.join(common.tmpDir, common.randomString());
+    });
+
+    it('should fail gracefully when projectId is not available', function(done) {
+      if (!setupFailed && projectId) {
+        pending('Skipped: Test setup succeeded, this test is for failure scenarios only');
+        return;
+      }
+
+      var reject = false;
+
+      monaca.cloneProject(null, this.destDir).then(
+        function() {
+          done.fail('cloneProject should not resolve with null projectId');
+        },
+        function() {
+          reject = true;
+        }
+      )
+      .finally(
+        function() {
+          expect(reject).toBe(true);
+          done();
+        }
+      );
+    });
   });
 })();
