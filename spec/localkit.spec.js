@@ -12,25 +12,30 @@
     Monaca = require(path.join(__dirname, '..', 'src', 'monaca')),
     projectPath = path.join(common.tmpDir, common.randomString());
 
-  describe('Setup tests', function() {
-    it('should login and clone a project', function(done) {
-      monaca.login(common.username, common.password, { clientType: "cli" }).then(
-        function() {
-          monaca.getProjects().then(
-            function(projects) {
-              var projectId = projects[0].projectId;
-
-              monaca.cloneProject(projectId, projectPath).then(
-                function() {
-                  done();
-                }
-              );
-            }
-          );
+  beforeAll(function(done) {
+    monaca.login(common.username, common.password, { clientType: "cli" }).then(
+      function() {
+        return monaca.getProjects();
+      }
+    ).then(
+      function(projects) {
+        if (!projects || projects.length === 0) {
+          done.fail('getProjects returned no projects');
+          return;
         }
-      );
-    }, 30000);
-  });
+        var projectId = projects[0].projectId;
+        return monaca.cloneProject(projectId, projectPath);
+      }
+    ).then(
+      function() {
+        done();
+      }
+    ).catch(
+      function(error) {
+        done.fail('Test setup failed: ' + error);
+      }
+    );
+  }, 30000);
 
   describe('Localkit object', function() {
     it('requires a monaca object and a project path', function() {
