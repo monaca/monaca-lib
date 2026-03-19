@@ -128,7 +128,7 @@
   });
 
   describe('getProjects', function() {
-    beforeEach(common.login);
+    beforeAll(common.login);
 
     it('should get a list of projects', function(done) {
       var projects = null;
@@ -148,20 +148,23 @@
   });
 
   describe('downloadFile', function() {
-    beforeEach(common.login);
-
     var projectId = null;
-    
-    beforeEach(function(done) {
-      monaca.getProjects().then(
-        function(projects) {
-          projectId = projects[0].projectId;
-          done();
-        },
-        function(error) {
-          done.fail('Failed to get projects: ' + error);
-        }
-      );
+
+    beforeAll(function(done) {
+      common.login(function() {
+        monaca.getProjects().then(
+          function(projects) {
+            if (!projects || projects.length === 0) {
+              done.fail('No projects found');
+              return;
+            }
+            projectId = projects[0].projectId;
+            done();
+          }
+        ).catch(function(error) {
+          done.fail('Setup failed: ' + error);
+        });
+      });
     });
 
     it('should fail for projects that don\'t exist', function(done) {
@@ -253,29 +256,33 @@
   });
 
   describe('uploadFile', function() {
-    beforeEach(common.login);
-
     var projectId = null,
       fn = null,
-      fileContent = null,
-      fileCreated = false;
-    
+      fileContent = null;
+
+    beforeAll(function(done) {
+      common.login(function() {
+        monaca.getProjects().then(
+          function(projects) {
+            if (!projects || projects.length === 0) {
+              done.fail('No projects found');
+              return;
+            }
+            projectId = projects[0].projectId;
+            done();
+          }
+        ).catch(function(error) {
+          done.fail('Setup failed: ' + error);
+        });
+      });
+    });
+
     beforeEach(function(done) {
       fn = path.join(common.tmpDir, common.randomString());
       fileContent = common.randomString();
-      projectId = null;
-
-      monaca.getProjects().then(
-        function(projects) {
-          projectId = projects[0].projectId;
-          fs.writeFile(fn, fileContent, function() {
-            done();
-          });
-        },
-        function(error) {
-          done.fail('Failed to get projects: ' + error);
-        }
-      );
+      fs.writeFile(fn, fileContent, function() {
+        done();
+      });
     });
 
     it('should not work if the project doesn\'t exist', function(done) {
