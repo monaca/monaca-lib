@@ -12,27 +12,31 @@
   var destDir = path.join(common.tmpDir, common.randomString()),
     projectId = null;
 
-  describe('Setup test', function() {
-    it('should login and clone a project', function(done) {
+  describe('Download project', function() {
+    beforeAll(function(done) {
       monaca.login(common.username, common.password).then(
         function() {
-          monaca.getProjects().then(
-            function(projects) {
-              projectId = projects[0].projectId;
-
-              monaca.cloneProject(projectId, destDir).then(
-                function() {
-                  done();
-                }
-              );
-            }
-          );
+          return monaca.getProjects();
+        }
+      ).then(
+        function(projects) {
+          if (!projects || projects.length === 0) {
+            done.fail('getProjects returned no projects');
+            return;
+          }
+          projectId = projects[0].projectId;
+          return monaca.cloneProject(projectId, destDir);
+        }
+      ).then(
+        function() {
+          done();
+        }
+      ).catch(
+        function(error) {
+          done.fail('Test setup failed: ' + error);
         }
       );
     }, 40000);
-  });
-
-  describe('Download project', function() {
     it('should not work if the directory doesn\'t exist', function(done) {
       var resolve = false,
         reject = false;

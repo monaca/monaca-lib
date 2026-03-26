@@ -61,21 +61,21 @@
       it('requires two arguments', function() {
         expect(function() {
           monaca.setConfig();
-        }).toThrow(new Error('"key" must exist.'));
+        }).toThrowError('"key" must exist.');
 
         expect(function() {
           monaca.setConfig('key');
-        }).toThrow(new Error('"value" must exist.'));
+        }).toThrowError('"value" must exist.');
       });
 
       it('requires string arguments', function() {
         expect(function() {
           monaca.setConfig(123);
-        }).toThrow(new Error('"key" must be a string.'));
+        }).toThrowError('"key" must be a string.');
 
         expect(function() {
           monaca.setConfig('key', 123);
-        }).toThrow(new Error('"value" must be a string.'));
+        }).toThrowError('"value" must be a string or null.');
       });
     });
 

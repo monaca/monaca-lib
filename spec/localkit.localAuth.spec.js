@@ -17,12 +17,12 @@
     describe('#generateOneTimePassword()', function() {
       it('throws error if argument is not present', function() {
         expect(function() { localAuth.generateOneTimePassword() })
-          .toThrow('Must supply a "ttl" argument.');
+          .toThrowError('Must supply a "ttl" argument.');
       });
 
       it('throws error if argument is not a number', function() {
         expect(function() { localAuth.generateOneTimePassword('hoge') })
-          .toThrow('"ttl" argument must be a number.');
+          .toThrowError('"ttl" argument must be a number.');
       });
 
       it('returns a Promise', function() {
@@ -45,17 +45,18 @@
     describe('#validateOneTimePassword()', function() {
       it('throws error if argument is not present', function() {
         expect(function() { localAuth.validateOneTimePassword() })
-          .toThrow('Must supply a "passwordHash" argument.');
+          .toThrowError('Must supply a "passwordHash" argument.');
       });
 
       it('throws error if argument is not a string', function() {
         expect(function() { localAuth.validateOneTimePassword(123) })
-          .toThrow('"passwordHash" argument must be a string.');
+          .toThrowError('"passwordHash" argument must be a string.');
       });
 
       it('should return a promise', function() {
         var rv = localAuth.validateOneTimePassword('hoge');
         expect(Q.isPromise(rv)).toBe(true);
+        rv.catch(function() {});
       });
 
       it('should reject the promise if the password doesn\'t exist', function(done) {
@@ -65,7 +66,7 @@
             function() {
             },
             function(err) {
-              expect(err).toBe('No such password.');
+              expect(err.message).toBe('No such password.');
               done();
             }
           );
@@ -85,7 +86,7 @@
                     function() {
                     },
                     function(err) {
-                      expect(err).toEqual('Password has expired.');
+                      expect(err.message).toEqual('Password has expired.');
                       done();
                     }
                   );
@@ -129,7 +130,7 @@
                         function() {
                         },
                         function(err) {
-                          expect(err).toEqual('No such password.');
+                          expect(err.message).toEqual('No such password.');
                           done();
                         }
                       )

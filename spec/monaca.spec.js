@@ -55,26 +55,23 @@
     it('should remove relogin token and in-memory tokens', function(done) {
       monaca.login(common.username, common.password).then(
         function() {
-          monaca.getData('reloginToken').then(
-            function(token) {
-              expect(token.length).toBeGreaterThan(0);
-              expect(monaca.tokens).toBeTruthy();
+          var token = monaca.getData('reloginToken');
+          expect(token.length).toBeGreaterThan(0);
+          expect(monaca.tokens).toBeTruthy();
 
-              monaca.logout().then(
-                function() {
-                  monaca.getData('reloginToken').then(
-                    function(token) {
-                      expect(token.length).toBe(0);
-                      expect(monaca.tokens).toBeFalsy();
-                      done();
-                    }
-                  );
-                }
-              );
+          return monaca.logout().then(
+            function() {
+              var token = monaca.getData('reloginToken');
+              expect(token.length).toBe(0);
+              expect(monaca.tokens.api).toBeNull();
+              expect(monaca.tokens.session).toBeNull();
+              done();
             }
           );
         }
-      );
+      ).catch(function(error) {
+        done.fail('Test failed: ' + error);
+      });
     });
   });
 
@@ -99,6 +96,8 @@
             done();
           }
         );
+      }).catch(function(error) {
+        done.fail('Test failed: ' + error);
       });
     });
 
@@ -122,12 +121,14 @@
             done();
           }
         );
+      }).catch(function(error) {
+        done.fail('Test failed: ' + error);
       });
     });
   });
 
   describe('getProjects', function() {
-    beforeEach(common.login);
+    beforeAll(common.login);
 
     it('should get a list of projects', function(done) {
       var projects = null;
@@ -147,35 +148,29 @@
   });
 
   describe('downloadFile', function() {
-    beforeEach(common.login);
-
     var projectId = null;
-    
-    beforeEach(function() {
-      var ready = false;
 
-      runs(function() {
+    beforeAll(function(done) {
+      common.login(function() {
         monaca.getProjects().then(
           function(projects) {
+            if (!projects || projects.length === 0) {
+              done.fail('No projects found');
+              return;
+            }
             projectId = projects[0].projectId;
+            done();
           }
-        )
-        .finally(
-          function() {
-            ready = true;
-          }
-        );
-      });
-
-      waitsFor(function() {
-        return ready;
+        ).catch(function(error) {
+          done.fail('Setup failed: ' + error);
+        });
       });
     });
 
     it('should fail for projects that don\'t exist', function(done) {
       var resolve = false,
         reject = false;
-      
+
       monaca.downloadFile('incorrectid', '/.monaca/project_info.json', path.join(common.tmpDir, common.randomString())).then(
         function() {
           resolve = true;
@@ -191,7 +186,7 @@
           done();
         }
       );
-    });
+    }, 30000);
 
     it('should fail for a remote file that doesn\'t exist', function(done) {
       var resolve = false,
@@ -212,7 +207,7 @@
           done();
         }
       );
-    });
+    }, 30000);
 
     it('should work for a remote file that exists', function(done) {
       var resolve = false,
@@ -241,7 +236,7 @@
 
       // Download to this file.
       var fn = path.join(common.tmpDir, common.randomString());
-      
+
       monaca.downloadFile(projectId, '/.monaca/project_info.json', fn).then(
         function() {
           resolve = true;
@@ -252,43 +247,43 @@
             done();
           });
         },
-        function() {
+        function(error) {
           reject = true;
+          done.fail('Download failed: ' + error);
         }
       );
     });
   });
 
   describe('uploadFile', function() {
-    beforeEach(common.login);
-
     var projectId = null,
       fn = null,
-      fileContent = null,
-      fileCreated = false;
-    
-    beforeEach(function() {
-      fn = path.join(common.tmpDir, common.randomString());
-      fileContent = common.randomString();
-      fileCreated = false;
-      projectId = null;
+      fileContent = null;
 
-      runs(function() {
+    beforeAll(function(done) {
+      common.login(function() {
         monaca.getProjects().then(
           function(projects) {
+            if (!projects || projects.length === 0) {
+              done.fail('No projects found');
+              return;
+            }
             projectId = projects[0].projectId;
+            done();
           }
-        );
-
-        fs.writeFile(fn, fileContent, function() {
-          fileCreated = true;
+        ).catch(function(error) {
+          done.fail('Setup failed: ' + error);
         });
       });
+    });
 
-      waitsFor(function() {
-        return (projectId !== null) && fileCreated;
+    beforeEach(function(done) {
+      fn = path.join(common.tmpDir, common.randomString());
+      fileContent = common.randomString();
+      fs.writeFile(fn, fileContent, function() {
+        done();
       });
-    }); 
+    });
 
     it('should not work if the project doesn\'t exist', function(done) {
       var resolve = false,  
@@ -357,7 +352,7 @@
       monaca.uploadFile(projectId, fn, '/file').then(
         function() {
           var newFn = path.join(common.tmpDir, common.randomString());
-          monaca.downloadFile(projectId, '/file', newFn).then(
+          return monaca.downloadFile(projectId, '/file', newFn).then(
             function() {
               fs.readFile(newFn, function(error, data) {
                 expect(data.toString()).toBe(fileContent);
@@ -366,7 +361,9 @@
             }
           );
         }
-      );
+      ).catch(function(error) {
+        done.fail('Test failed: ' + error);
+      });
     });
   });
 })();

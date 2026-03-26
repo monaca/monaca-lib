@@ -13,23 +13,17 @@
     throw new Error('Must define email and password using evironment variables MONACA_TEST_EMAIL and MONACA_TEST_PASSWORD to run tests!');
   }
 
-  var monaca = new Monaca({}, { debug: true} );
+  var monaca = new Monaca({clientType: 'cli'}, { debug: true} );
 
-  var login = function() {
-    var loggedIn = false;
+  var login = function(done) {
     monaca.login(USERNAME, PASSWORD).then(
       function() {
-        loggedIn = true;
+        done();
+      },
+      function(error) {
+        done.fail('Login failed: ' + error);
       }
     );
-
-    waitsFor(function() {
-      return loggedIn;
-    });
-
-    runs(function() {
-      expect(loggedIn).toBe(true);
-    });
   };
 
   var randomString = function() {
@@ -46,6 +40,7 @@
   // Create tmp directory.
   var tmpDir = path.join(os.tmpdir(), randomString());
   shell.mkdir(tmpDir);  
+  console.log('Created tmp directory: ' + tmpDir);
 
   module.exports = {
     monaca: monaca,

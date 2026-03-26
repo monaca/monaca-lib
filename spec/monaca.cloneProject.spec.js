@@ -7,22 +7,28 @@
     monaca = common.monaca,
     projectId = null;
 
-  describe('Test setup', function() {
-    it('should login and find project id', function(done) {
+  describe('cloneProject', function() {
+    beforeAll(function(done) {
       monaca.login(common.username, common.password).then(
         function() {
-          monaca.getProjects().then(
-            function(projects) {
-              projectId = projects[0].projectId;
-              done();
-            }
-          );
+          return monaca.getProjects();
+        }
+      ).then(
+        function(projects) {
+          if (!projects || projects.length === 0) {
+            done.fail('getProjects returned no projects');
+            return;
+          }
+          projectId = projects[0].projectId;
+          done();
+        }
+      ).catch(
+        function(error) {
+          done.fail('Test setup failed: ' + error);
         }
       );
     }, 20000);
-  });
 
-  describe('cloneProject', function() {
     beforeEach(function() {
       this.destDir = path.join(common.tmpDir, common.randomString());
     });
