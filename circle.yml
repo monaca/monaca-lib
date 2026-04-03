@@ -1,0 +1,14 @@
+version: 2.1
+
+jobs:
+  noop:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: echo "CircleCI disabled"
+
+workflows:
+  version: 2
+  noop:
+    jobs:
+      - noop
