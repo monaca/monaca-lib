@@ -1,17 +1,14 @@
-general:
-  branches:
-    only:
-      - master
-machine:
-  node:
-    version: 0.12.7
-checkout:
-  post:
-    - git fetch --tags
-deployment:
-  release:
-    tag: /[0-9]+(\.[0-9]+)*/
-    commands:
-      - echo -e "$NPMUSER\n$NPMPASSWORD\n$NPMEMAIL" | npm login
-      - npm publish
+version: 2.1
 
+jobs:
+  noop:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: echo "CircleCI disabled"
+
+workflows:
+  version: 2
+  noop:
+    jobs:
+      - noop
